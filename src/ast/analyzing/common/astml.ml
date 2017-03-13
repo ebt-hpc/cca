@@ -15,6 +15,8 @@
 *)
 (* common/astml.ml *)
 
+(* Fortran namespaces added by Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+
 let sprintf = Printf.sprintf
 
 exception External_parser_not_found of string
@@ -37,6 +39,7 @@ let ccx_ns     = default_ns3^"ccx-entity#"
 let java_ns    = default_ns^"java-entity#"
 let python_ns  = default_ns^"python-entity#"
 let verilog_ns = default_ns^"verilog-entity#"
+let fortran_ns = default_ns2^"fortran-entity#"
 
 let default_prefix = "a"
 let c_prefix       = "c"
@@ -45,13 +48,14 @@ let ccx_prefix     = "ccx"
 let java_prefix    = "java"
 let python_prefix  = "py"
 let verilog_prefix = "v"
-
+let fortran_prefix = "f"
 
 let parser_tbl = (* PREFIX * NS *)
   [ c_prefix,       c_ns;
     java_prefix,    java_ns;
     python_prefix,  python_ns;
     verilog_prefix, verilog_ns;
+    fortran_prefix, fortran_ns;
     
     cx_prefix,      cx_ns;
     ccx_prefix,     ccx_ns;

@@ -19,6 +19,8 @@
   limitations under the License.
 '''
 
+# Fortran extensions added by Masatomo Hashimoto <m.hashimoto@riken.jp>
+
 import os
 import pygit2
 from datetime import datetime, timedelta, tzinfo
@@ -32,7 +34,8 @@ import factutils.fileid
 
 ###############
 
-EXTS = ['.c', '.h', '.py', '.java', '.v']
+EXTS = ['.c', '.h', '.py', '.java', '.v',
+        '.f', '.for', '.ftn', '.f90', '.f95', '.f03', '.f08']
 
 def shorten_sha(sha):
     return sha[0:7]

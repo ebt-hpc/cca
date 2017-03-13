@@ -175,6 +175,8 @@ let _ =
       external_prefix^A.java_prefix,    external_ns^"java/";
       external_prefix^A.python_prefix,  external_ns^"python/";
       external_prefix^A.verilog_prefix, external_ns^"verilog/";
+      external_prefix^A.fortran_prefix, external_ns^"fortran/";
+
       external_prefix^A.c_prefix,       external_ns^"c/";
 
       binding_prefix,     binding_ns;
@@ -185,6 +187,7 @@ let _ =
       A.java_prefix,    A.java_ns;
       A.python_prefix,  A.python_ns;
       A.verilog_prefix, A.verilog_ns;
+      A.fortran_prefix, A.fortran_ns;
     ]
   in
   List.iter 
@@ -249,6 +252,7 @@ let mkjres s = make_qname A.java_prefix s
 let mkcres s = make_qname A.c_prefix s
 let mkpres s = make_qname A.python_prefix s
 let mkvres s = make_qname A.verilog_prefix s
+let mkfres s = make_qname A.fortran_prefix s
 
 let mkccxres s = make_qname A.ccx_prefix s
 

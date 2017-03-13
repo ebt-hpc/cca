@@ -1,0 +1,231 @@
+
+body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.category {
+    /* font-weight: bold; */
+    font-style: italic;
+}
+
+.code {
+    /* font-weight: lighter; */
+    font-style: normal;
+    color: #000199;
+    font-size: 90%;
+    /* font-family: monospace; */
+}
+
+.marker-call {
+    font-weight: bold;
+    font-style: normal;
+    color: #c8371d;
+    font-size: 90%;
+    /* font-family: monospace; */
+}
+
+.byte {
+    font-weight: bold;
+    font-style: normal;
+    color: #de621c;
+    /* font-family: monospace; */
+}
+
+.flops {
+    font-weight: bold;
+    font-style: normal;
+    color: #76a2ca;
+    /* font-family: monospace; */
+}
+
+.input {
+    margin:0em auto 0em auto;
+    display:block;
+    padding:4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border-radius:4px;
+    border:1px solid silver;
+}
+
+.hits {
+    width: 48px;
+    font-style: normal;
+    color: #aaaaaa;
+    font-size: 90%;
+}
+
+.bar {
+    width: 100px;
+    height: .7em;
+    background: #96c2ea;
+    overflow: hidden;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+}
+
+.barValue {
+    height: .7em;
+    float: left;
+    background: #de621c;
+}
+
+div#searchPanel{
+    z-index: 100;
+    width: 100%;
+}
+
+button {
+    background-color: white;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border-radius: 4px;
+    border: 1px solid black;
+    outline: none;
+    height: 115%;
+}
+
+.fixed {
+    position: fixed;
+}
+
+.metrics {
+    /* font-weight: lighter; */
+    font-style: normal;
+    color: #a1522d;
+    /* font-family: monospace; */
+}
+
+.node {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.target_node {
+    display: inline-block;
+    white-space: nowrap;
+    background: #fcef76;
+}
+
+.target_node_completed {
+    display: inline-block;
+    white-space: nowrap;
+    background: #b8eab8;
+}
+
+.ui-selectmenu-button {
+    height: 10px;
+}
+
+.ui-selectmenu-button span.ui-selectmenu-text {
+    font-size: 8pt;
+    /*padding: 3px !important;*/
+}
+
+.estimation-scheme {
+    width: 8px;
+    font-size: 80% !important;
+}
+
+.es {
+    margin: 3px;
+    vertical-align: middle ;
+}
+
+td.on_level {
+    vertical-align: middle;
+    display: none;
+}
+
+.ui-selectmenu-optgroup {
+    font-size: 9pt !important;
+}
+
+.ui-menu-item {
+    font-size: 9pt;
+    line-height: 90%;
+}
+/*
+.ui-tooltip, .arrow:after {
+    background: black !important;
+    border: 2px solid white !important;
+}
+*/
+.ui-tooltip {
+    width: 200px;
+    font: bold 12px "Helvetica Neue", Sans-Serif !important;
+    border-radius: 4px;
+    /*padding: 10px 20px;*/
+    /*color: white !important;*/
+    /*border-radius: 20px !important;*/
+    /*font: bold 12px "Helvetica Neue", Sans-Serif !important;*/
+    /*text-transform: uppercase;*/
+    /*box-shadow: 0 0 7px black;*/
+}
+/*
+.arrow {
+    width: 70px;
+    height: 16px;
+    overflow: hidden;
+    position: absolute;
+    left: 50%;
+    margin-left: -35px;
+    bottom: -16px;
+}
+.arrow.top {
+    top: -16px;
+    bottom: auto;
+}
+.arrow.left {
+    left: 20%;
+}
+.arrow:after {
+    content: "";
+    position: absolute;
+    left: 20px;
+    top: -20px;
+    width: 25px;
+    height: 25px;
+    box-shadow: 6px 5px 9px -9px black;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+}
+.arrow.top:after {
+    bottom: -20px;
+    top: auto;
+}
+*/
+
+.ui-progressbar {
+    height: 20px !important;
+    position: relative;
+}
+
+.ui-progressbar-value {
+    background: #cde0fe !important;
+}
+
+.ui-progressbar-overlay {
+    opacity: 0.1 !important;
+}
+
+.progressbar-label {
+    position: absolute;
+    left: 50%;
+    font-size: 95%;
+    font-weight: bold;
+    /*color: #f37200;*/
+}
+
+.comment-icon {
+    background-image: url("icons/Bubble.png") !important;
+    background-size: auto;
+    background-position:50% 50%;
+}

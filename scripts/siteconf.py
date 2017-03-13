@@ -1,9 +1,10 @@
 
 import os
 
-HOME = os.environ['HOME']
+#HOME = os.environ['HOME']
+#CCA_HOME = os.path.join(HOME, 'github', 'ebt-hpc', 'cca')
 
-CCA_HOME = os.path.join(HOME, 'github', 'cca')
+CCA_HOME = '/opt/cca'
 
 SPARQL_ENDPOINT = 'http://localhost:8890/sparql'
 
@@ -20,5 +21,5 @@ GIT_REPO_BASE = ''
 
 PROJECTS_DIR_NAME = 'projects'
 
-_PROJECTS_DIR = os.path.join(CCA_HOME, PROJECTS_DIR_NAME)
+_PROJECTS_DIR = os.path.join('/var/lib/cca', PROJECTS_DIR_NAME)
 PROJECTS_DIR = os.getenv('CCA_PROJECTS_DIR', _PROJECTS_DIR)

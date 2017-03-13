@@ -15,6 +15,7 @@
 *)
 (* command line driver *)
 
+(* Options for Fortran added by Masatomo Hashimoto <m.hashimoto@riken.jp> *)
 
 let sprintf = Printf.sprintf
 let printf  = Printf.printf
@@ -108,6 +109,9 @@ let speclist =
    "-parser:external", Arg.Unit set_external_parser_flags, "\t\trely on external parsers";
    "-parser:disable", Arg.String options#disable_parser, "PARSER_ID\tdisable parser";
 
+   "-parser:fortran", Arg.Unit (fun () -> options#designate_parser "fortran"),
+   "\t\tforce to use Fortran parser";
+
 (* output *)
    "-dump:ast", Arg.Unit set_dump_ast_flags, "\tdump AST";
    "-dump:ast:compress", Arg.Unit set_dump_compressed_ast_flags, "\tdump compressed AST";
@@ -163,6 +167,11 @@ let speclist =
 
 (* Python *)
    "-python:disable-with-stmt", Arg.Unit (fun () -> options#set_python_with_stmt_disabled_flag), "\tdisable with_statement feature";
+
+(* Fortran *)
+   "-fortran:max-line-length", Arg.Int options#set_fortran_max_line_length, "N\tset max line length to N";
+   "-fortran:parse-d-lines",   Arg.Unit (fun () -> options#set_fortran_parse_d_lines_flag), "\tparse d-lines as code";
+   "-fortran:ignore-include",  Arg.Unit (fun () -> options#set_fortran_ignore_include_flag), "\tignore include lines";
 
  ]
 

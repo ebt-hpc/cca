@@ -260,6 +260,7 @@ module F (L : Spec.LABEL_T) = struct
   let mkcres = Triple.mkcres
   let mkpres = Triple.mkpres
   let mkvres = Triple.mkvres
+  let mkfres = Triple.mkfres
 
   let mkccxres = Triple.mkccxres
 

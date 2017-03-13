@@ -19,6 +19,7 @@
   limitations under the License.
 '''
 
+# Fortran namespaces added by Masatomo Hashimoto <m.hashimoto@riken.jp>
 
 import pathsetup
 import dp
@@ -43,6 +44,13 @@ NAMESPACES = { 'xsd'  : ns.XSD_NS,
                'svnrev'   : SVNREV_NS,
                'gitrev'   : GITREV_NS,
                'rel'      : RELEASE_NS,
+
+               'f'    : ns.F_NS,
+               'pa'   : ns.PA_NS,
+               'fjpa' : ns.FJPA_NS,
+               'fpt'  : ns.FPT_NS,
+
+               'fjpadata' : ns.PREFIX_TBL['fjpadata'],
            }
 
 
