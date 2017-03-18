@@ -61,4 +61,4 @@ def materialize(proj_id, pw=VIRTUOSO_PW, port=VIRTUOSO_PORT):
     return rc
 
 if __name__ == '__main__':
-    materialize_fact.main(QUERY_DIR, QUERIES, 'materialize facts for tuning')
+    main(QUERY_DIR, QUERIES, 'materialize facts for tuning')

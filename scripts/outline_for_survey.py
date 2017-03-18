@@ -448,6 +448,12 @@ GRAPH <%%(proj)s> {
       FILTER (?sp != ?sp0)
     }
 
+    FILTER NOT EXISTS {
+      ?constr f:inMainProgram ?m0 .
+      ?m0 f:inContainerUnit ?parent_constr .
+      FILTER (?m0 != ?constr && ?m0 != ?parent_constr)
+    }
+
     GRAPH <http://codinuum.com/ont/cpi> {
       ?sp_cat0 rdfs:label ?sp_cat .
     }
