@@ -34,6 +34,10 @@ class omp_cc_lines = object (self) (* OpenMP Conditional Compilation *)
     DEBUG_MSG "adding %d" ln;
     Xset.add ranges ln
 
+ method remove ln =
+    DEBUG_MSG "removing %d" ln;
+    Xset.remove ranges ln
+
   method add_QCC ln = 
     DEBUG_MSG "adding %d" ln;
     Xset.add ranges_QCC ln
