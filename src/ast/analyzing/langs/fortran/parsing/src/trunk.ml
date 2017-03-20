@@ -15,7 +15,7 @@
 *)
 
 (* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
-(* trunk.ml *)
+
 
 module Loc = Astloc
 module Aux = Parser_aux
@@ -323,18 +323,17 @@ module F (Stat : Aux.STATE_T) = struct
     method prebuf_peek_nth n =
       prebuf#peek_nth n
 
+    method prebuf_peek_last =
+      prebuf#peek_last
+
     method prebuf_size = prebuf#length
 
     method prebuf_get_last =
-      if self#prebuf_size > 0 then
-	let last = ref (EOF None) in
-	prebuf#iter 
-          (fun (tok, _) -> 
-            last := tok
-          );
-	!last
-      else
-	raise TB.Empty
+      try
+        let tok, _ = prebuf#peek_last in
+        tok
+      with
+        Xqueue.Empty -> raise TB.Empty
 
 
     method prebuf_to_string =
@@ -344,6 +343,9 @@ module F (Stat : Aux.STATE_T) = struct
 	  Buffer.add_string buf (sprintf "%s\n" (Token.qtoken_to_string t))
 	);
       Buffer.contents buf
+
+    method prebuf_filter f =
+      prebuf#filter f
 
     method prebuf_remove_marker =
       prebuf#filter 
@@ -1045,7 +1047,7 @@ module F (Stat : Aux.STATE_T) = struct
           | PP_MACRO_TYPE_SPEC _ -> self#check_BOPU_line t
           | _ -> tbuf#prebuf_add t
       end
-      | Macro.Unresolved ->
+      | Macro.Unresolved -> begin
           DEBUG_MSG "macro stat: UNRESOLVED";
           let buf = self#expand_line line.Macro.ln_loc st ed raw in
           let buf_as_list = buf#get_list in
@@ -1156,6 +1158,12 @@ module F (Stat : Aux.STATE_T) = struct
                               else
                                 env#recover C.tempkey;
 
+                              let head, _ = buf#peek in
+                              if head = LPAREN then begin
+                                DEBUG_MSG "starts with LPAREN";
+                                raise TB.Incomplete
+                              end;
+
                               let _ = buf#parse_by ~cache:false _parser in
                               handler (PB.make_qtoken tok st ed);
                               Macro.resolve_line line tok;
@@ -1234,7 +1242,7 @@ module F (Stat : Aux.STATE_T) = struct
                     Exit -> ()
                 end
           end
-
+      end
 
 
     method private handle_macro_line_sub nmarkers =
@@ -1480,32 +1488,44 @@ module F (Stat : Aux.STATE_T) = struct
 
           let last_loc = tbuf#get_last_taken_loc in
 
+          let omp_endif_opt = ref None in
+
           if cur_src#omp_cc_lines#is_tail last_loc.Loc.end_line then begin
             DEBUG_MSG "OMP Conditional Compilation END";
             let _, ed0 = Loc.to_lexposs last_loc in
             let qtoken =
               PB.make_qtoken (PP_BRANCH (PPD.Endif(ifdef_openmp, env#lex_paren_level))) ed0 ed0
             in
+            omp_endif_opt := Some qtoken;
             tbuf#prebuf_add qtoken
           end;
             
           if self#in_included then begin
             self#exit_source;
             env#clear_token_feeded;
-            begin
-              match !pending_EOL_ref with
-              | Some eol -> begin
-                  if env#current_source#is_free_source_form then begin
-                    tbuf#prebuf_add eol;
-                    env#set_lex_mode_queue;
-                    self#take_from_lexer ()
-                  end
-                  else begin
-                    self#take_from_lexer ~pending_EOL:(!pending_EOL_ref) ()
-                  end
-              end
-              | None -> self#take_from_lexer ()
+
+            match !pending_EOL_ref with
+            | Some eol -> begin
+                if env#current_source#is_free_source_form then begin
+                  tbuf#prebuf_add eol;
+                  env#set_lex_mode_queue;
+                  self#take_from_lexer ()
+                end
+                else begin
+                  self#take_from_lexer ~pending_EOL:(!pending_EOL_ref) ()
+                end;
+
+                match !omp_endif_opt with
+                | Some omp_endif -> begin
+                    if tbuf#prebuf_peek_last == eol then begin
+                      tbuf#prebuf_filter (fun x -> x != omp_endif);
+                      tbuf#prebuf_add omp_endif
+                    end
+                end
+                | None -> ()
             end
+            | None -> self#take_from_lexer ()
+
           end
           else if not finished then begin
             begin

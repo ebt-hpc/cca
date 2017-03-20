@@ -1,4 +1,6 @@
 (*
+   Buffer for tokens
+
    Copyright 2013-2017 RIKEN
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,12 +17,7 @@
 *)
 
 (* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
-(* 
- * tokenbuffer.ml
- *
- * Buffer for tokens
- *
- *)
+
 
 open Common
 module Loc = Astloc
@@ -904,7 +901,6 @@ module F (Stat : Aux.STATE_T) = struct
       match !tok with
       | PREFIX_SPEC s
       (*| PURE s | ELEMENTAL s | RECURSIVE s | IMPURE s*) -> begin (* <keyword> --> <identifier> *)
-          DEBUG_MSG "PURE|ELEMENTAL|RECURSIVE|IMPURE --> <identifier>";
           let n = ref 1 in
           try
             while true do
@@ -916,7 +912,7 @@ module F (Stat : Aux.STATE_T) = struct
                 | EOL | SEMICOLON | NOTHING | EOF _ ->
                     raise Not_found
 
-                | FUNCTION _ | SUBROUTINE _ -> 
+                | FUNCTION _ | SUBROUTINE _ | EOP -> 
                     raise Exit
 
                 | _ -> incr n
@@ -924,7 +920,9 @@ module F (Stat : Aux.STATE_T) = struct
             done
           with
           | Exit -> ()
-          | Not_found -> tok := IDENTIFIER s
+          | Not_found ->
+              DEBUG_MSG "PURE|ELEMENTAL|RECURSIVE|IMPURE --> <identifier>";
+              tok := IDENTIFIER s
       end
       | _ -> ()
     end;
@@ -1791,14 +1789,27 @@ module F (Stat : Aux.STATE_T) = struct
     else begin
       match !tok with
       | SLASH -> begin (* '/' ')' --> <slash-rparen> *)
-          DEBUG_MSG "'/' ')' --> <slash-rparen>";
           match peek_next() with
           | RPAREN -> 
               if env#in_array_ctor_context then begin
+                DEBUG_MSG "'/' ')' --> <slash-rparen>";
                 tok := SLASH_RPAREN;
                 let _, loc' = discard() in
 		loc := merge_locs !loc loc'
               end
+          | _ -> ()
+      end
+      | _ -> ()
+    end;
+
+    begin
+      match !tok with
+      | PASS s -> begin
+          match peek_next() with
+          | COLON -> begin
+              DEBUG_MSG "<keyword> --> <identifier>";
+              tok := IDENTIFIER s
+          end
           | _ -> ()
       end
       | _ -> ()
@@ -2342,6 +2353,53 @@ module F (Stat : Aux.STATE_T) = struct
               loc := l
           end
           | _ -> ()
+      end
+      | _ -> ()
+    end;
+
+    begin
+      match !tok with
+      | TO s -> begin
+          match last_tok with
+          | INT_LITERAL _ -> ()
+          | _ -> begin
+              DEBUG_MSG "<keyword> --> <identifier>";
+              tok := IDENTIFIER s
+          end
+      end
+      | DATA s when not is_head_of_stmt_ -> begin
+          DEBUG_MSG "<keyword> --> <identifier>";
+          tok := IDENTIFIER s
+      end
+      | END s when not is_head_of_stmt_ -> begin
+          match last_tok with
+          | COLON_COLON -> begin
+              DEBUG_MSG "<keyword> --> <identifier>";
+              tok := IDENTIFIER s
+          end
+          | _ -> begin
+              match peek_next() with
+              | EQ -> ()
+              | _ -> begin
+                  DEBUG_MSG "<keyword> --> <identifier>";
+                  tok := IDENTIFIER s
+              end
+          end
+      end
+      | FORMAT s | RECORD s | DATA s when not is_head_of_stmt_ -> begin
+          match last_tok with
+          | COLON_COLON | COMMA -> begin
+              DEBUG_MSG "<keyword> --> <identifier>";
+              tok := IDENTIFIER s
+          end
+          | _ -> begin
+              match peek_next() with
+              | COMMA -> begin
+                  DEBUG_MSG "<keyword> --> <identifier>";
+                  tok := IDENTIFIER s
+              end
+              | _ -> ()
+          end
       end
       | _ -> ()
     end;

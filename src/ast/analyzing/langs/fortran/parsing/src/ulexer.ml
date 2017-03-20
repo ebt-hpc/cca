@@ -1,4 +1,6 @@
 (*
+   A lexer (utf-8) for Fortran language
+
    Copyright 2013-2017 RIKEN
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,12 +17,7 @@
 *)
 
 (* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
-(* 
- * A lexer (utf-8) for Fortran language
- *
- * ulexer.ml
- *
- *)
+
 
 module Loc = Astloc
 module PB = Parserlib_base
@@ -1058,7 +1055,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
       let b =
         (fixed_comment_count = 0) && 
         (
-         (exclam_comment_count > 0 && amp_count > 0) ||
+         (exclam_comment_count > 0 && amp_count > 0 && marginal_amp_count <> amp_count) ||
          (letter_cont_field_count > 0)
         )
       in
@@ -1098,10 +1095,10 @@ module F (Stat : Parser_aux.STATE_T) = struct
   end (* of class guess_env *)
 
 
-  let check_pos genv =
+  let check_pos ?(is_blank=false) genv =
     let max_line_length = env#current_source#max_line_length in
     if not genv#in_margin && genv#pos > max_line_length then begin
-      DEBUG_MSG "entering margin";
+      DEBUG_MSG "entering margin (pos=%d)" genv#pos;
       let stmt_len = String.length genv#stmt in
       if genv#in_char then begin
         let c = genv#stmt.[stmt_len - 1] in (* should be double or single quote *)
@@ -1128,7 +1125,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
       end;
 
-      genv#incr_long_line_count;
+      DEBUG_MSG "is_blank=%B" is_blank;
+      if not is_blank then
+        genv#incr_long_line_count;
 
       DEBUG_MSG "line reaches the margin: stmt=^%s$ pos=%d" genv#stmt genv#pos;
       DEBUG_MSG "last_nonblank_char_within_limit=%C (max_line_length=%d)"
@@ -1434,6 +1433,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 |   eof -> form
 
 |   line_terminator ->
+    genv#add_to_lnum 1;
     DEBUG_MSG "CONTINUATION! (LINE TERMINATOR) [%dL]" genv#lnum;
     if genv#free_cont_flag then begin
       DEBUG_MSG "last line ends with '&' and continuation field is LINE_TERMINATOR";
@@ -1523,7 +1523,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
 |   white_space -> 
     genv#clear_letter_cont_field;
-    check_pos genv;
+    check_pos ~is_blank:true genv;
     genv#add_to_pos 1;
     genv#add_to_stmt (Ulexing.utf8_lexeme lexbuf);
     scan_stmt genv form lexbuf
@@ -1780,9 +1780,18 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#add_to_pos 2; 
     scan_char_single genv form lexbuf
 
-|   '&' white_space* line_terminator -> 
-    DEBUG_MSG "CHARACTER CONTEXT CONTINUATION!";
-    possibly_free genv form lexbuf
+|   '&' white_space* line_terminator ->
+    if genv#pos > env#current_source#max_line_length then begin
+      DEBUG_MSG "CHARACTER CONTEXT CONTINUATION?";
+      genv#add_to_lnum 1;
+      genv#reset_pos;
+      genv#exit_margin;
+      scan_label_field genv form lexbuf
+    end
+    else begin
+      DEBUG_MSG "CHARACTER CONTEXT CONTINUATION!";
+      possibly_free genv form lexbuf
+    end
 
 |   line_terminator ->
     DEBUG_MSG "LINE TERMINATOR";
@@ -1815,9 +1824,18 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#add_to_pos 2; 
     scan_char_double genv form lexbuf
 
-|   '&' white_space* line_terminator -> 
-    DEBUG_MSG "CHARACTER CONTEXT CONTINUATION!";
-    possibly_free genv form lexbuf
+|   '&' white_space* line_terminator ->
+    if genv#pos > env#current_source#max_line_length then begin
+      DEBUG_MSG "CHARACTER CONTEXT CONTINUATION?";
+      genv#add_to_lnum 1;
+      genv#reset_pos;
+      genv#exit_margin;
+      scan_label_field genv form lexbuf
+    end
+    else begin
+      DEBUG_MSG "CHARACTER CONTEXT CONTINUATION!";
+      possibly_free genv form lexbuf
+    end
 
 |   line_terminator -> 
     genv#add_to_lnum 1;
@@ -1833,7 +1851,8 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#exit_char PA.CH_DOUBLE;
     scan_stmt genv form lexbuf
 
-|   [^'"'] -> 
+|   [^'"'] ->
+(*    DEBUG_MSG "[%s] pos=%d" (Ulexing.utf8_lexeme lexbuf) genv#pos;*)
     check_pos genv;
     genv#add_to_pos 1; 
     scan_char_double genv form lexbuf
@@ -1849,6 +1868,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     end;
     genv#add_to_lnum 1;
     genv#reset_pos;
+    genv#exit_margin;
     genv#set_blank_line_flag;
     scan_label_field genv form lexbuf
 
@@ -3003,7 +3023,14 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
 
 
-  let rec mktok ?(set_token_feeded=true) ?(pending=false) ?(start_opt=None) ?(end_opt=None) rawtok ulexbuf =
+  let rec mktok
+      ?(force_max_line_length=None)
+      ?(set_token_feeded=true)
+      ?(pending=false)
+      ?(start_opt=None)
+      ?(end_opt=None)
+      rawtok ulexbuf
+      =
     let pos_mgr = env#current_pos_mgr in
     let st = 
       match start_opt with
@@ -3017,8 +3044,17 @@ module F (Stat : Parser_aux.STATE_T) = struct
     in
     let sl, sc = pos_mgr#get_position st in
     let src = env#current_source in
-    let max_line_length = src#max_line_length in
-    DEBUG_MSG "max_line_length: %d" max_line_length;
+    let max_line_length =
+      match force_max_line_length with
+      | Some n -> begin
+          DEBUG_MSG "max_line_length: %d (forced)" n;
+          n
+      end
+      | None -> begin
+          DEBUG_MSG "max_line_length: %d" src#max_line_length;
+          src#max_line_length
+      end
+    in
 
     if src#is_fixed_source_form && sc >= max_line_length && rawtok <> EOL then begin
       DEBUG_MSG "discarding %s (beyond source line (length=%d))" 
@@ -3401,7 +3437,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
       _token ~pp_pending_EOL lexbuf
     end
     else (* fixed source form *)
-      mktok AMP lexbuf
+      mktok ~force_max_line_length:(Some 72) AMP lexbuf
 
 |   "(" -> env#lex_enter_paren_context; mktok LPAREN lexbuf
 |   ")" -> env#lex_exit_paren_context; mktok RPAREN lexbuf
@@ -4046,7 +4082,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
 |   _ -> 
     let s = Ulexing.utf8_lexeme lexbuf in
     DEBUG_MSG "invalid symbol \"%s\"" s;
-    parse_warning_loc (mkloc lexbuf) "invalid symbol \"%s\" in label field: the rest of the line is ignored" s;
+    let loc = mkloc lexbuf in
+    parse_warning_loc loc "invalid symbol \"%s\" in label field: the rest of the line is ignored" s;
+    env#current_source#omp_cc_lines#remove loc.Loc.start_line;
     line_comment s ~pending_EOL false (Ulexing.lexeme_start lexbuf) lexbuf
 
 

@@ -15,7 +15,7 @@
 *)
 
 (* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
-(* tokenpp.ml *)
+
 
 module Loc = Astloc
 module LLoc = Layeredloc
@@ -2317,9 +2317,10 @@ module F (Stat : Aux.STATE_T) = struct
 	          | B.Tifdef(id, loc) -> begin
                       DEBUG_MSG "size=%d" buf#total_length;
                       DEBUG_MSG "id=%s" id;
-		      if (!selected_buf)#total_length < buf#total_length then begin
-		        selected_buf := buf;
-                      end
+                      if id <> "_OPENMP" then
+		        if (!selected_buf)#total_length < buf#total_length then begin
+		          selected_buf := buf;
+                        end
 	          end
 	          | B.Tifndef(id, loc) -> begin
                       DEBUG_MSG "size=%d" buf#total_length;

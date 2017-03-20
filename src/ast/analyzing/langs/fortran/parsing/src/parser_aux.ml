@@ -15,7 +15,7 @@
 *)
 
 (* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
-(* parser_aux.ml *)
+
 
 open Printf
 open Common
@@ -1022,11 +1022,11 @@ class env = object (self)
 
     DEBUG_MSG "status:\n%s" (stat_to_string stat);
     
-    Hashtbl.replace checkpoint_tbl key stat;
+    Hashtbl.add checkpoint_tbl key stat;
 
     
   method recover ?(remove=false) key =
-    DEBUG_MSG "key=%s" (C.key_to_string key);
+    DEBUG_MSG "key=%s remove=%B" (C.key_to_string key) remove;
     try
       let stat = Hashtbl.find checkpoint_tbl key in
 
