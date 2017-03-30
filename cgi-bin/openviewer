@@ -45,8 +45,8 @@ HTML_TEMPL = '''Content-Type: text/html
 <script type="text/javascript" src="%(base_url)s/js/codemirror/addon/scroll/annotatescrollbar.js"></script>
 <script type="text/javascript" src="%(base_url)s/js/codemirror/addon/dialog/dialog.js"></script>
 <script type="text/javascript" src="%(base_url)s/js/codemirror/addon/search/searchcursor.js"></script>
+<script type="text/javascript" src="%(base_url)s/js/codemirror/addon/search/search.js"></script>
 <script type="text/javascript" src="%(base_url)s/js/codemirror/addon/selection/mark-selection.js"></script>
-<script type="text/javascript" src="%(base_url)s/js/dv/search.js"></script>
 <script type="text/javascript" src="%(base_url)s/js/codemirror/addon/fold/foldcode.js"></script>
 <script type="text/javascript" src="%(base_url)s/js/codemirror/addon/fold/foldgutter.js"></script>
 <script type="text/javascript" src="%(base_url)s/js/codemirror/addon/fold/brace-fold.js"></script>
