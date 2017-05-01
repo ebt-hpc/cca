@@ -1,9 +1,4 @@
-/**
-   Outline tree viewer for CCA/EBT.
-   @author Masatomo Hashimoto <m.hashimoto@riken.jp>
-   @copyright 2013-2017 RIKEN
-   @licence Apache-2.0
-*/
+//
 
 var TASK_SIZE = 10000;
 
@@ -12,7 +7,7 @@ var EXPAND_RELEVANT_LOOPS = 'expand_relevant_loops'
 var EXPAND_ALL            = 'expand_all'
 var COLLAPSE_ALL          = 'collapse_all'
 
-var ICONS_DIR = '../treeview/icons'
+var ICONS_DIR = '../icons'
 
 var USER = $('#user').text();
 var PROJ = $('#proj').text();
@@ -59,16 +54,19 @@ function get_jstree() {
 function _attach_ui() {
   var timer = new Timer();
   timer.start();
+  console.log('attach_ui: start!');
 
-  $('input.estimation-scheme').spinner({
+  var sp_opt = {
     max: 2,
     min: 0,
     spin: function (ev, ui) {},
-  });
+  };
+  $('input.estimation-scheme').spinner(sp_opt);
 
-  $('select.judgment').selectmenu({
+  var j_opt = {
     change: sel_on_change,
-  });
+  };
+  $('select.judgment').selectmenu(j_opt);
 
   console.log(timer.get()+' seconds for attach_ui');
 }
@@ -82,6 +80,8 @@ function redraw(jstree) {
 
   var timer = new Timer();
   timer.start();
+
+  console.log('redraw: start!');
 
   jstree.redraw(true);
   attach_ui();
@@ -396,7 +396,7 @@ function get_link(obj, vkind, vid, algo, meth) {
 
     url = ['/gitweb/?p=',PID,';a=blob_plain;f=',obj.loc,';h=',obj.fid,';hb=',vid].join('');
   } else {
-    url = ['projects/',PROJ,'/',obj.loc].join('');
+    url = ['projects/',PROJ,'/',vid,'/',obj.loc].join('');
   }
 
   var params = {
