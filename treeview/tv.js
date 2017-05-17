@@ -7,7 +7,7 @@ var EXPAND_RELEVANT_LOOPS = 'expand_relevant_loops'
 var EXPAND_ALL            = 'expand_all'
 var COLLAPSE_ALL          = 'collapse_all'
 
-var ICONS_DIR = '../icons'
+var ICONS_DIR = '../treeview/icons'
 
 var USER = $('#user').text();
 var PROJ = $('#proj').text();
