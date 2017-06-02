@@ -2262,12 +2262,15 @@ class Outline(dp.base):
                 d['fid'] = fid
                 loc = node.loc
                 start_line = node.get_start_line()
-                try:
-                    code = line_text_tbl[loc][start_line]
-                    d['code'] = code
+                if node.is_block():
+                    d['code'] = '<block>'
+                else:
+                    try:
+                        code = line_text_tbl[loc][start_line]
+                        d['code'] = code
 
-                except KeyError:
-                    pass
+                    except KeyError:
+                        pass
 
                 mkey = (lver, loc, str(start_line))
 
