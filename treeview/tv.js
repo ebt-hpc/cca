@@ -1,7 +1,5 @@
 //
 
-var TASK_SIZE = 10000;
-
 var EXPAND_TARGET_LOOPS   = 'expand_target_loops'
 var EXPAND_RELEVANT_LOOPS = 'expand_relevant_loops'
 var EXPAND_ALL            = 'expand_all'
@@ -51,22 +49,37 @@ function get_jstree() {
   return $('#outline').jstree(true);
 }
 
+function get_target_node(ev) {
+  console.log('get_target_node: ev.target='+ev.target);
+  var li = $(ev.target).closest('li');
+  var nd = get_jstree()._model.data[li[0].id];
+  return nd;
+}
+
+var es_opt = {
+  max: 2,
+  min: 0,
+  spin: function (ev, ui) {},
+};
+
+var judgment_opt = {
+  change: sel_on_change,
+};
+
+function attach_ui1(nd) {
+  console.log('attach_ui1: id='+nd.id);
+  $('#'+nd.id+' .estimation-scheme').spinner(es_opt);
+  $('#'+nd.id+' .judgment').selectmenu(judgment_opt);
+}
+
 function _attach_ui() {
   var timer = new Timer();
   timer.start();
   console.log('attach_ui: start!');
 
-  var sp_opt = {
-    max: 2,
-    min: 0,
-    spin: function (ev, ui) {},
-  };
-  $('input.estimation-scheme').spinner(sp_opt);
+  $('input.estimation-scheme').spinner(es_opt);
 
-  var j_opt = {
-    change: sel_on_change,
-  };
-  $('select.judgment').selectmenu(j_opt);
+  $('select.judgment').selectmenu(judgment_opt);
 
   console.log(timer.get()+' seconds for attach_ui');
 }
@@ -84,7 +97,7 @@ function redraw(jstree) {
   console.log('redraw: start!');
 
   jstree.redraw(true);
-  attach_ui();
+  //attach_ui();
 
   console.log(timer.get()+' seconds for redraw');
 
@@ -96,7 +109,7 @@ function redraw_node(jstree, node) {
   timer.start();
 
   jstree.redraw_node(node, false, false, false);
-  _attach_ui();
+  //attach_ui1(node);
 
   console.log(timer.get()+' seconds for redraw_node');
 
@@ -621,7 +634,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
   $('#outline').on('open_node.jstree', function (ev, data) {
     console.log('open_node');
 
-    attach_ui();
+    //attach_ui();
 
     var d = mkpost(data.node);
     d['opened'] = true;
@@ -642,7 +655,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
   }).on('ready.jstree', function (ev, data) {
     console.log('ready ('+global_timer.get()+')');
 
-    attach_ui();
+    //attach_ui();
 
     var jstree = data.instance;
 
@@ -951,8 +964,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
   }).bind('dblclick.jstree', function (ev, data) {
     if (ev.target) {
-      var li = $(ev.target).closest('li');
-      var nd = get_jstree()._model.data[li[0].id];
+      var nd = get_target_node(ev);
       var form = document['form_'+nd.id];
       //console.log('form', form);
       if (form) {
@@ -961,6 +973,11 @@ function treeview(data_url, vkind, vid, algo, meth) {
       var d = mkpost(nd);
       d['open_source'] = true;
       post_log(d);
+    }
+  }).bind('click.jstree', function (ev, data) {
+    if (ev.target) {
+      var nd = get_target_node(ev);
+      attach_ui1(nd);
     }
   });
 

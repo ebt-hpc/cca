@@ -129,8 +129,9 @@ button {
 }
 
 .estimation-scheme {
-    width: 8px;
+    width: 14px;
     font-size: 80% !important;
+    text-align: center;
 }
 
 .es {

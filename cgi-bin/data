@@ -214,7 +214,7 @@ TEXT_FMT = '''
 %(others)s
 <td>
 <label class="es">ES</label>:
-<input class="estimation-scheme" name="value" value="2"></input>
+<input class="estimation-scheme" disabled="true" name="value" value="2"></input>
 <label class="es">,</label>
 </td>
 %(ess)s
