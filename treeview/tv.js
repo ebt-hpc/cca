@@ -956,6 +956,18 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
             },
           },
+          "open_text_view" : {
+            "label"  : "Open Text View",
+            "icon"   : ICONS_DIR+"/openfile.gif",
+            "action" : function (obj) {
+              try {
+                var url = 'texttree?' + data_url.split('?')[1];
+                console.log('opening '+url);
+                window.open().location.href = url;
+              } catch (exn) {
+              }
+            },
+          },
         };
       }
     },

@@ -21,6 +21,14 @@ body {
     /* font-family: monospace; */
 }
 
+.cat {
+    /* font-weight: lighter; */
+    font-style: italic;
+    color: #000000;
+    font-size: 100%;
+    /* font-family: monospace; */
+}
+
 .marker-call {
     font-weight: bold;
     font-style: normal;

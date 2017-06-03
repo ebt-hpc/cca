@@ -94,22 +94,25 @@ def get_nid_range_tbl(OUTLINE_DIR, proj, ver):
             tbl = json.load(f)
     else:
         try:
-            for fn in os.listdir(dpath):
-                if fn != 'index.json':
-                    with open(os.path.join(dpath, fn), 'r') as f:
+            for (d, dns, fns) in os.walk(dpath):
+                for fn in fns:
+                    if fn != 'index.json':
+                        with open(os.path.join(d, fn), 'r') as f:
+                            try:
+                                d = json.load(f)
 
-                        d = json.load(f)
+                                leftmost_id = d.get('leftmost_id', None)
+                                id = d.get('id', None)
 
-                        leftmost_id = d.get('leftmost_id', None)
-                        id = d.get('id', None)
+                                if leftmost_id and id:
+                                    leftmost_i = int(leftmost_id)
+                                    i = int(id)
 
-                        if leftmost_id and id:
-                            leftmost_i = int(leftmost_id)
-                            i = int(id)
+                                    fid = d.get('fid', None)
 
-                            fid = d.get('fid', None)
-
-                            tbl[fid] = (leftmost_i, i)
+                                    tbl[fid] = (leftmost_i, i)
+                            except:
+                                pass
 
             with open(cache_path, 'w') as jsonf:
                 json.dump(tbl, jsonf)

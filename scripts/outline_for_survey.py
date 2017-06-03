@@ -1177,6 +1177,14 @@ class Node(dp.base):
                 break
         return b
 
+    def get_block_cat(self):
+        cat = None
+        for c in self.cats:
+            if c.endswith('-block'):
+                cat = c
+                break
+        return cat
+
     def is_constr_head(self, child):
         b = all([self.is_construct(),
                  self.get_start_line() == child.get_start_line(),
@@ -2263,7 +2271,7 @@ class Outline(dp.base):
                 loc = node.loc
                 start_line = node.get_start_line()
                 if node.is_block():
-                    d['code'] = '<block>'
+                    d['code'] = '<span class="cat">%s</span>' % node.get_block_cat()
                 else:
                     try:
                         code = line_text_tbl[loc][start_line]
