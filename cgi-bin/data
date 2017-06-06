@@ -27,7 +27,7 @@ import json
 from pymongo import MongoClient, ASCENDING, DESCENDING
 import re
 from urllib import urlencode, quote_plus
-from datetime import datetime
+from time import time
 
 from common import DEFAULT_USER, OUTLINE_DIR, TARGET_DIR, MONGO_PORT
 from common import EXPAND_TARGET_LOOPS, EXPAND_RELEVANT_LOOPS, EXPAND_ALL, COLLAPSE_ALL
@@ -477,9 +477,9 @@ if proj and ver and fid:
             tree_data_path = os.path.join(ver_path, fid+'.json') #!!!!! obsoleted
 
         with open(tree_data_path, 'r') as treef:
-            #st = datetime.now()
+            #st = time()
             tree_data = json.load(treef, object_hook=hook)
-            #TIME_TBL['time0'] = (datetime.now() - st).total_seconds()
+            #TIME_TBL['time0'] = time() - st
 
     except Exception, e:
         tree_data['failure'] = str(e)
@@ -493,7 +493,7 @@ if proj and ver and fid:
             pass
 
         try:
-            #st = datetime.now()
+            #st = time()
 
             stat_data = compute_state(user, proj, ver)
 
@@ -510,7 +510,7 @@ if proj and ver and fid:
             if last_nid:
                 tree_data['last_nid'] = last_nid
 
-            #TIME_TBL['time1'] = (datetime.now() - st).total_seconds()
+            #TIME_TBL['time1'] = time() - st
 
         except Exception, e:
             #tree_data['failure'] = str(e)
@@ -530,14 +530,11 @@ else:
     tree_data['failure'] = 'not specified: %s' % ', '.join(bad)
 
 
-TEMPL = '''Content-Type: application/json
-
-%s
-'''
-
-#st = datetime.now()
+#st = time()
 #json_str = json.dumps(tree_data)
-#TIME_TBL['time2'] = (datetime.now() - st).total_seconds()
+#TIME_TBL['time2'] = time() - st
 #print(TEMPL % json.dumps(TIME_TBL))
 
-print(TEMPL % json.dumps(tree_data))
+print('Content-Type: application/json')
+print('')
+sys.stdout.write(json.dumps(tree_data))

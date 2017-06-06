@@ -39,7 +39,7 @@ ver:  %(ver)s
 '''
 
 
-def render(data, lv=''):
+def render(data, lv='', out=sys.stdout):
 
     indent = lv
 
@@ -50,12 +50,12 @@ def render(data, lv=''):
 
     if data.has_key('code'):
         if cat.endswith('-block'):
-            print('%s<%s>' % (indent, cat))
+            out.write('%s<%s>\n' % (indent, cat))
         else:
-            print('%s%s' % (indent, data['code']))
+            out.write('%s%s\n' % (indent, data['code']))
 
     elif cat == 'file':
-        print('%s' % data['loc'])
+        out.write('%s\n' % data['loc'])
 
     opened = False
     if data.has_key('state'):
@@ -68,12 +68,12 @@ def render(data, lv=''):
         if nc == 0:
             pass
         elif nc == 1:
-            render(children[0], lv=(lv+' '))
+            render(children[0], lv=(lv+' '), out=out)
         else:
             li = nc - 1
             for i in range(li):
-                render(children[i], lv=(lv+'|'))
-            render(children[li], lv=(lv+' '))
+                render(children[i], lv=(lv+'|'), out=out)
+            render(children[li], lv=(lv+' '), out=out)
 
 ###
 

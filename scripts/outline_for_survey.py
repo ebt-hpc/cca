@@ -2471,7 +2471,7 @@ class Outline(dp.base):
 
                         try:
                             with open(json_path, 'w') as jsonf:
-                                json.dump(json_d, jsonf)
+                                jsonf.write(json.dumps(json_d))
 
                         except Exception, e:
                             self.warning(str(e))
@@ -2489,7 +2489,7 @@ class Outline(dp.base):
             }
             try:
                 with open(os.path.join(lver_dir, 'index.json'), 'w') as vif:
-                    json.dump(vitbl, vif)
+                    vif.write(json.dumps(vitbl))
 
             except Exception, e:
                 self.warning(str(e))
@@ -2502,7 +2502,7 @@ class Outline(dp.base):
         }
         try:
             with open(os.path.join(outline_dir, 'index.json'), 'w') as pif:
-                json.dump(pitbl, pif)
+                pif.write(json.dumps(pitbl))
 
         except Exception, e:
             self.warning(str(e))
