@@ -858,7 +858,8 @@ module F (Stat : Parser_aux.STATE_T) = struct
               self#incr_noncomment_margin_count;
               may_be_incomplete_line := false
             end;
-            margin_char_context <- PA.CH_NONE
+            margin_char_context <- PA.CH_NONE;
+            char_context <- PA.CH_NONE
           end
           else if margin_char_context <> PA.CH_NONE then begin
             DEBUG_MSG "comment margin?";
