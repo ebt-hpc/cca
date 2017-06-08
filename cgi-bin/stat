@@ -52,9 +52,9 @@ else:
 
     data['failure'] = mesg
 
-TEMPL = '''Content-Type: application/json
 
-%s
-'''
+HEAD = 'Content-Type: application/json'
 
-print(TEMPL % json.dumps(data))
+print(HEAD)
+print('')
+sys.stdout.write(json.dumps(data))

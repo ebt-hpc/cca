@@ -68,8 +68,9 @@ var judgment_opt = {
 
 function attach_ui1(nd) {
   console.log('attach_ui1: id='+nd.id);
-  $('#'+nd.id+' .estimation-scheme').spinner(es_opt);
-  $('#'+nd.id+' .judgment').selectmenu(judgment_opt);
+  var id = '#'+nd.id;
+  $(id+' > a .estimation-scheme').spinner(es_opt);
+  $(id+' > a .judgment').selectmenu(judgment_opt);
 }
 
 function _attach_ui() {
@@ -192,7 +193,8 @@ function _collapse_all($node) {
 
 function set_node_data(d, node) {
   d['nid'] = node.id;
-  d['leftmost_nid'] = node.original.leftmost_id;
+  d['idx'] = node.original.idx;
+  d['leftmost_idx'] = node.original.leftmost_idx;
   d['path'] = node.original.loc;
   d['lnum'] = node.original.start_line;
 
@@ -990,6 +992,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
     if (ev.target) {
       var nd = get_target_node(ev);
       attach_ui1(nd);
+      ev.stopPropagation();
     }
   });
 

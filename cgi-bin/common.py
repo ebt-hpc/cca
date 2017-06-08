@@ -42,7 +42,7 @@ TOPIC_DIR_NAME   = 'topic'
 DESC_DIR_NAME = 'descriptions'
 README_LINKS_DIR_NAME = 'readme_links'
 
-NID_RANGE_CACHE_NAME = 'nid_range.json'
+IDX_RANGE_CACHE_NAME = 'idx_range.json'
 
 OUTLINE_DIR = os.path.join(BASE_DIR, OUTLINE_DIR_NAME)
 TOPIC_DIR   = os.path.join(BASE_DIR, TOPIC_DIR_NAME)
@@ -79,15 +79,86 @@ NO_BAR_FMT = '''
 
 TIME_FMT = '<span class="datetime">%s</span>'
 
+NID_SEP = '-'
 
-def nid_to_int(nid):
-    return int(nid)
 
-def get_nid_range_tbl(OUTLINE_DIR, proj, ver):
+class NodeManager(object):
+    def __init__(self):
+        self._node_tbl = {} # nid -> index
+        self._node_list = []
+        self._node_count = 0
+        self._parent_tbl = {} # nid -> node
+        self._orig_nid_tbl = {} # nid -> nid list
+
+    def __len__(self):
+        return len(self._node_list)
+
+    def reg(self, node):
+        self._node_list.append(node)
+        nid = node['id']
+        self._node_tbl[nid] = self._node_count
+        self._node_count += 1
+        for c in node['children']:
+            self._parent_tbl[c['id']] = node
+
+        orig_nid = nid.split(NID_SEP)[-1]
+        if orig_nid != nid:
+            try:
+                self._orig_nid_tbl[orig_nid].append(nid)
+            except KeyError:
+                self._orig_nid_tbl[orig_nid] = [nid]
+
+    def get_nid_list(self, nid):
+        l = []
+        try:
+            l = self._orig_nid_tbl[nid]
+        except KeyError:
+            pass
+        return l
+
+    def get(self, nid):
+        i = self._node_tbl[nid]
+        node = self._node_list[i]
+        return node
+
+    def geti(self, idx):
+        node = None
+        try:
+            node = self._node_list[int(idx)-1]
+        except:
+            pass
+        return node
+
+    def iter_subtree(self, node, f):
+        ri = node['idx']
+        lmi = node['leftmost_idx']
+        for i in range(lmi, ri+1):
+            try:
+                nd = self._node_list[i]
+                f(nd)
+            except:
+                pass
+
+    def iter_parents(self, node, f, itself=False):
+
+        if itself:
+            f(node)
+
+        nid = node['id']
+
+        while True:
+            parent = self._parent_tbl.get(nid, None)
+            if parent:
+                f(parent)
+                nid = parent['id']
+            else:
+                break
+
+def get_idx_range_tbl(OUTLINE_DIR, proj, ver):
     dpath = os.path.join(OUTLINE_DIR, proj, 'v', ver)
-    cache_path = os.path.join(dpath, NID_RANGE_CACHE_NAME)
+    cache_path = os.path.join(dpath, IDX_RANGE_CACHE_NAME)
 
-    tbl = {} # fid -> (leftmost_i, i)
+    tbl = {} # fid -> (leftmost_idx, idx)
 
     if os.path.exists(cache_path):
         with open(cache_path, 'r') as f:
@@ -101,16 +172,12 @@ def get_nid_range_tbl(OUTLINE_DIR, proj, ver):
                             try:
                                 d = json.load(f)
 
-                                leftmost_id = d.get('leftmost_id', None)
-                                id = d.get('id', None)
+                                leftmost_idx = d.get('leftmost_idx', None)
+                                idx = d.get('idx', None)
 
-                                if leftmost_id and id:
-                                    leftmost_i = int(leftmost_id)
-                                    i = int(id)
-
+                                if leftmost_idx and idx:
                                     fid = d.get('fid', None)
-
-                                    tbl[fid] = (leftmost_i, i)
+                                    tbl[fid] = (leftmost_idx, idx)
                             except:
                                 pass
 
@@ -125,8 +192,8 @@ def get_nid_range_tbl(OUTLINE_DIR, proj, ver):
 
 def compute_state(user, proj, ver):
     data = {}
-    leftmost_tbl = {} # nid -> leftmost_nid
-    node_stat_tbl = {} # nid -> {'judgment','checked','opened','relevant',..}
+    leftmost_tbl = {} # idx -> leftmost_idx
+    node_stat_tbl = {} # idx -> {'judgment','checked','opened','relevant',..}
 
     try:
         cli = MongoClient('localhost', MONGO_PORT)
@@ -150,14 +217,14 @@ def compute_state(user, proj, ver):
         ).sort('time', ASCENDING)
 
         def clear_opened(filt=None, key=None, clear_root=False):
-            for (nid, stat) in node_stat_tbl.iteritems():
+            for (idx, stat) in node_stat_tbl.iteritems():
                 cond = True
                 if filt:
                     (st, ed) = filt
                     if clear_root:
-                        cond = nid_to_int(st) <= nid_to_int(nid) <= nid_to_int(ed)
+                        cond = st <= idx <= ed
                     else:
-                        cond = nid_to_int(st) <= nid_to_int(nid) < nid_to_int(ed)
+                        cond = st <= idx < ed
                 
                 if cond:
                     if stat.has_key('opened'):
@@ -179,11 +246,11 @@ def compute_state(user, proj, ver):
                             del stat[sname]
 
         def clear_key(key, filt):
-            for (nid, stat) in node_stat_tbl.iteritems():
+            for (idx, stat) in node_stat_tbl.iteritems():
                 cond = True
                 if filt:
                     (st, ed) = filt
-                    cond = nid_to_int(st) <= nid_to_int(nid) < nid_to_int(ed)
+                    cond = st <= idx < ed
 
                 if cond:
                     if stat.has_key(key):
@@ -191,18 +258,18 @@ def compute_state(user, proj, ver):
 
 
         for record in records:
-            nid          = record.get('nid', None)
-            leftmost_nid = record.get('leftmost_nid', None)
+            idx          = record.get('idx', None)
+            leftmost_idx = record.get('leftmost_idx', None)
 
-            if nid and leftmost_nid:
-                if not leftmost_tbl.has_key(nid):
-                    leftmost_tbl[nid] = leftmost_nid
+            if idx and leftmost_idx:
+                if not leftmost_tbl.has_key(idx):
+                    leftmost_tbl[idx] = leftmost_idx
 
                 try:
-                    stat = node_stat_tbl[nid]
+                    stat = node_stat_tbl[idx]
                 except KeyError:
                     stat = {}
-                    node_stat_tbl[nid] = stat
+                    node_stat_tbl[idx] = stat
 
                 def check_bool(key, filt=None):
                     if record.get(key, False):
@@ -229,7 +296,7 @@ def compute_state(user, proj, ver):
                     stat['estimation_scheme'] = record['estimation_scheme']
 
 
-                filt = (leftmost_nid, nid)
+                filt = (leftmost_idx, idx)
 
                 check_bool('checked', filt=filt)
                 check_bool('opened')
@@ -257,12 +324,12 @@ def compute_state(user, proj, ver):
 
         # clean up
         to_be_deleted = []
-        for (nid, stat) in node_stat_tbl.iteritems():
+        for (idx, stat) in node_stat_tbl.iteritems():
             if len(stat) == 0:
-                to_be_deleted.append(nid)
+                to_be_deleted.append(idx)
 
-        for nid in to_be_deleted:
-            del node_stat_tbl[nid]
+        for idx in to_be_deleted:
+            del node_stat_tbl[idx]
 
         data['node_stat'] = node_stat_tbl
 
@@ -368,7 +435,8 @@ def get_progress(TARGET_DIR, user, proj=None, ver=None, nolabel=False):
             progress = NO_BAR_FMT % prefix
 
     except Exception, e:
-        raise
+        #raise
+        pass
 
     return progress
 

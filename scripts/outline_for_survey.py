@@ -28,6 +28,7 @@ from urllib import pathname2url, urlencode, urlopen
 import re
 import csv
 import codecs
+from time import time
 
 import pathsetup
 import dp
@@ -49,8 +50,9 @@ from virtuoso import VIRTUOSO_PW, VIRTUOSO_PORT
 
 OMITTED = ['execution-part','do-block']
 
-
 QN_SEP = ','
+
+NID_SEP = '-'
 
 LEADING_DIGITS_PAT = re.compile(r'^\d+')
 
@@ -826,8 +828,32 @@ class IdGenerator(dp.base):
         self._count += 1
         return i
 
+class IndexGenerator(dp.base):
+    def __init__(self, init=0):
+        self._count = init
+
+    def gen(self):
+        i = self._count
+        self._count += 1
+        return i
+
 def node_list_to_string(l):
     return '\n'.join([str(x) for x in l])
+
+def index(data):
+    igen = IndexGenerator(init=1)
+    def scan(d):
+        children = d['children']
+        for c in children:
+            scan(c)
+        i = igen.gen()
+        d['idx'] = i
+        if children:
+            d['leftmost_idx'] = children[0]['leftmost_idx']
+        else:
+            d['leftmost_idx'] = i
+
+    scan(data)
 
 class Node(dp.base):
     def __init__(self, ver, loc, uri, cat='',
@@ -1202,6 +1228,8 @@ class Node(dp.base):
     def to_dict(self, ancl, ntbl,
                 elaborate=None,
                 idgen=None,
+                collapsed_caller_tbl={},
+                expanded_callee_tbl={},
                 parent_tbl=None,
                 is_marked=None,
                 omitted=set()):
@@ -1241,7 +1269,11 @@ class Node(dp.base):
             if self.is_constr_tail(children_l[-1]):
                 children_l = children_l[:-1]
 
-        if self.cats & CALLS:
+        is_caller = self.cats & CALLS
+
+        is_filtered_out = False
+
+        if is_caller:
             ancl_ = [self] + ancl
 
             cand = filter(lambda c: c.loc == self.loc, children_l)
@@ -1288,13 +1320,15 @@ class Node(dp.base):
                                                                                    b,
                                                                                    hit,
                                                                                    max_lv))
-
                 return b
 
             # if self._callee_name in TARGET_NAMES:
             #     print('!!! 0 children_l=%s' % (node_list_to_string(children_l)))
 
+            before = len(children_l)
             children_l = filter(filt, children_l)
+            if before > len(children_l):
+                is_filtered_out = True
 
             # if self._callee_name in TARGET_NAMES:
             #     print('!!! 1 children_l=%s' % (node_list_to_string(children_l)))
@@ -1316,6 +1350,8 @@ class Node(dp.base):
             x = c.to_dict(ancl_, ntbl,
                           elaborate=elaborate,
                           idgen=idgen,
+                          collapsed_caller_tbl=collapsed_caller_tbl,
+                          expanded_callee_tbl=expanded_callee_tbl,
                           parent_tbl=parent_tbl,
                           is_marked=is_marked,
                           omitted=omitted)
@@ -1330,6 +1366,13 @@ class Node(dp.base):
         #                                 len(self._children),
         #                                 '&'.join([c.cat for c in self._children]),
         #                                 len(children)))
+
+        if is_caller and children != []:
+            try:
+                l = expanded_callee_tbl[self._callee_name]
+                expanded_callee_tbl[self._callee_name] = l + [x for x in children if x not in l]
+            except KeyError:
+                expanded_callee_tbl[self._callee_name] = children
 
         d = {
             'cat'       : self.cat,
@@ -1354,16 +1397,19 @@ class Node(dp.base):
         if idgen:
             nid = idgen.gen()
             d['id'] = nid
-            if children:
-                d['leftmost_id'] = d['children'][0]['leftmost_id']
-            else:
-                d['leftmost_id'] = nid
 
             if parent_tbl != None:
                 for c in d.get('children', []):
                     cid = c['id']
                     #print('!!! parent_tbl: %s(%s) -> %s(%s)' % (cid, c['cat'], nid, d['cat']))
                     parent_tbl[cid] = nid
+
+            if is_caller and self._children != [] and children == [] and is_filtered_out:
+                v = (d, len(ancl))
+                try:
+                    collapsed_caller_tbl[self._callee_name].append(v)
+                except KeyError:
+                    collapsed_caller_tbl[self._callee_name] = [v]
 
         if elaborate:
             if self.cats & omitted:
@@ -2347,6 +2393,9 @@ class Outline(dp.base):
             nid_tbl = {}
             parent_tbl = {}
 
+            root_collapsed_caller_tbl = {}
+            root_expanded_callee_tbl = {}
+
             self.message('converting trees into JSON for "%s"...' % lver)
 
             for loc in loc_tbl.keys():
@@ -2359,9 +2408,17 @@ class Outline(dp.base):
                     if not fid:
                         fid = root.get_fid()
 
+                    collapsed_caller_tbl = {}
+                    root_collapsed_caller_tbl[root] = collapsed_caller_tbl
+
+                    expanded_callee_tbl = {}
+                    root_expanded_callee_tbl[root] = expanded_callee_tbl
+
                     ds.append(root.to_dict([root], {},
                                            elaborate=elaborate,
                                            idgen=idgen,
+                                           collapsed_caller_tbl=collapsed_caller_tbl,
+                                           expanded_callee_tbl=expanded_callee_tbl,
                                            parent_tbl=parent_tbl,
                                            is_marked=is_marked,
                                            omitted=omitted))
@@ -2371,13 +2428,8 @@ class Outline(dp.base):
                 for d in ds:
                     parent_tbl[d['id']] = nid
 
-                leftmost_id = nid
-                if ds:
-                    leftmost_id = ds[0]['leftmost_id']
-
                 loc_d = {
                     'id'          : nid,
-                    'leftmost_id' : leftmost_id,
                     'text'        : loc,
                     'loc'         : loc,
                     'children'    : ds,
@@ -2390,6 +2442,73 @@ class Outline(dp.base):
 
                 json_ds.append(loc_d)
 
+            def copy_dict(d, hook=(lambda x: x), info={}):
+                children = [copy_dict(c, hook=hook, info=info) for c in d['children']]
+                try:
+                    info['count'] += 1
+                except KeyError:
+                    pass
+                copied = dict.copy(d)
+                hook(copied)
+                copied['children'] = children
+                return copied
+
+            print('* root_collapsed_caller_tbl:')
+            for (r, collapsed_caller_tbl) in root_collapsed_caller_tbl.iteritems():
+                 print('root=%s:' % r)
+                 for (callee, d_lv_list) in collapsed_caller_tbl.iteritems():
+
+                     print(' callee=%s' % callee)
+
+                     expanded_callee_tbl = root_expanded_callee_tbl.get(r, {})
+                     callee_dl = expanded_callee_tbl.get(callee, [])
+                     if callee_dl:
+                         print(' -> skip')
+                         continue
+
+                     callee_dl = []
+
+                     for (r_, tbl) in root_expanded_callee_tbl.iteritems():
+                         callee_dl = tbl.get(callee, [])
+                         if callee_dl:
+                             print('callee dicts found in %s' % r_)
+                             break
+
+                     if callee_dl:
+                         copied_dl = []
+
+                         print('  %d callee dicts found' % len(callee_dl))
+
+                         max_lv = 0
+                         selected = None
+                         for (d, lv) in d_lv_list:
+                             if lv > max_lv:
+                                 max_lv = lv
+                                 selected = d
+                             print('    nid=%s lv=%d' % (d['id'], lv))
+
+                         selected_id = selected['id']
+                         print('    -> selected %s' % selected_id)
+
+                         try:
+                             base = '%s%s' % (selected_id, NID_SEP)
+
+                             def conv_id(i):
+                                 return base+i
+
+                             def hook(x):
+                                 x['id'] = conv_id(x['id'])
+
+                             for callee_d in callee_dl:
+                                 info = {'count':0}
+                                 copied = copy_dict(callee_d, hook=hook, info=info)
+                                 copied_dl.append(copied)
+                                 print('%d nodes copied' % info['count'])
+
+                             selected['children'] = copied_dl
+
+                         except Exception, e:
+                             self.warning(str(e))
 
             if metrics_dir:
                 if ensure_dir(metrics_dir):
@@ -2466,6 +2585,15 @@ class Outline(dp.base):
                     if ensure_dir(lver_loc_dir):
 
                         json_path = os.path.join(lver_loc_dir, json_file_name)
+
+                        if dp.debug_flag:
+                            self.debug('indexing for "%s"...' % json_path)
+                            st = time()
+
+                        index(json_d)
+
+                        if dp.debug_flag:
+                            self.debug('done. (%0.3f sec)' % (time() - st))
 
                         self.message('dumping JSON into "%s"...' % json_path)
 

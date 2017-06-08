@@ -32,7 +32,7 @@ import codecs
 from common import OUTLINE_DIR, TOPIC_DIR, TARGET_DIR
 from common import DESC_DIR, README_LINKS_DIR
 from common import DEFAULT_USER, MONGO_PORT, TIME_FMT
-from common import get_nid_range_tbl, BASE_URL
+from common import get_idx_range_tbl, BASE_URL
 
 import common
 
@@ -268,13 +268,13 @@ def is_target_ver(proj, ver):
 
 
 
-def find_fid(proj, ver, nid):
-    tbl = get_nid_range_tbl(OUTLINE_DIR, proj, ver)
+def find_fid(proj, ver, idx):
+    tbl = get_idx_range_tbl(OUTLINE_DIR, proj, ver)
 
     result = None
 
     for (fid, (lmi, i)) in tbl.iteritems():
-        if lmi <= nid <= i:
+        if lmi <= idx <= i:
             result = fid
             break
 
@@ -292,6 +292,7 @@ def get_last_judgment(user):
             'ver':{'$exists':True},
             'path':{'$exists':True},
             'nid':{'$exists':True},
+            'idx':{'$exists':True},
             'judgment':{'$exists':True},
         }
 
@@ -308,7 +309,7 @@ def get_last_judgment(user):
             result = 'Last Judgment: %s:%s:%s %s' % (proj, ver, path, time)
 
             try:
-                i = int(record['nid'])
+                i = int(record['idx'])
 
                 fid = find_fid(proj, ver, i)
 

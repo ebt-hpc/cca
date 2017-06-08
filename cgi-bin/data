@@ -31,17 +31,12 @@ from time import time
 
 from common import DEFAULT_USER, OUTLINE_DIR, TARGET_DIR, MONGO_PORT
 from common import EXPAND_TARGET_LOOPS, EXPAND_RELEVANT_LOOPS, EXPAND_ALL, COLLAPSE_ALL
-from common import compute_state, get_nid_range_tbl
+from common import NodeManager, compute_state, get_idx_range_tbl
 
 
 MARKER_CALLEE_PAT = re.compile('^.*(dgemm|timer).*$')
 
 ###
-
-def iter_tree(node, f):
-    for child in node['children']:
-        iter_tree(child, f)
-    f(node)
 
 def open_node(node):
     try:
@@ -52,51 +47,24 @@ def open_node(node):
 
     nstat['opened'] = True
 
+def expand_all(node_mgr, node):
+    node_mgr.iter_subtree(node, open_node)
 
-def iter_subtree(node_tbl, node, f):
-    r = int(node['id'])
-    lm = int(node['leftmost_id'])
-    for i in range(lm, r+1):
-        nid = str(i)
-        try:
-            nd = node_tbl[nid]
-            f(nd)
-        except Exception, e:
-            pass
-
-def iter_parents(parent_tbl, node, f, itself=False):
-
-    if itself:
-        f(node)
-
-    nid = node['id']
-
-    while True:
-        parent = parent_tbl.get(nid, None)
-        if parent:
-            f(parent)
-            nid = parent['id']
-        else:
-            break
-
-def expand_all(node_tbl, node):
-    iter_subtree(node_tbl, node, open_node)
-
-def expand_loops(node_tbl, parent_tbl, node, key):
+def expand_loops(node_mgr, node, key):
 
     def proc(nd):
         if nd.get(key, False):
-            iter_parents(parent_tbl, nd, open_node, itself=True)
-            expand_all(node_tbl, nd)
+            node_mgr.iter_parents(nd, open_node, itself=True)
+            expand_all(node_mgr, nd)
 
-    iter_subtree(node_tbl, node, proc)
+    node_mgr.iter_subtree(node, proc)
 
 
-def expand_target_loops(node_tbl, parent_tbl, node):
-    expand_loops(node_tbl, parent_tbl, node, 'target')
+def expand_target_loops(node_mgr, node):
+    expand_loops(node_mgr, node, 'target')
 
-def expand_relevant_loops(node_tbl, parent_tbl, node):
-    expand_loops(node_tbl, parent_tbl, node, 'relevant')
+def expand_relevant_loops(node_mgr, node):
+    expand_loops(node_mgr, node, 'relevant')
 
 def check_node(node):
     node['checked'] = True
@@ -150,36 +118,43 @@ def handle_estimation_scheme(node, lv):
     text = text.replace(prev0, prev).replace(curr, curr1)
     node['text'] = text
     
-def setup_target(node_tbl, target_data):
+def setup_target(node_mgr, target_data):
     targets = []
     for nid in target_data:
         try:
-            node = node_tbl[nid]
-            node['target'] = True
-            targets.append(nid)
+            nid_list = node_mgr.get_nid_list(nid)
 
-            rep = 'class="target_node"'
-            node['text'] = node['text'].replace('class="node"', rep)
+            if nid_list:
+                MESSAGE_LIST.append('setup_target: %s -> [%s]' % (nid, ','.join(nid_list)))
+
+            nid_list.append(nid)
+            
+            for i in nid_list:
+                node = node_mgr.get(i)
+                node['target'] = True
+                targets.append(i)
+                rep = 'class="target_node"'
+                node['text'] = node['text'].replace('class="node"', rep)
 
         except KeyError:
             pass
 
     return targets
 
-def apply_stat(node_tbl, parent_tbl, node_stat_tbl):
+def apply_stat(node_mgr, node_stat_tbl):
 
-    for (nid, stat) in node_stat_tbl.iteritems():
+    for (idx, stat) in node_stat_tbl.iteritems():
         try:
-            node = node_tbl[nid]
+            node = node_mgr.geti(idx)
 
             if stat.get(EXPAND_TARGET_LOOPS, False):
-                expand_target_loops(node_tbl, parent_tbl, node)
+                expand_target_loops(node_mgr, node)
 
             if stat.get(EXPAND_RELEVANT_LOOPS, False):
-                expand_relevant_loops(node_tbl, parent_tbl, node)
+                expand_relevant_loops(node_mgr, node)
 
             if stat.get(EXPAND_ALL, False):
-                expand_all(node_tbl, node)
+                expand_all(node_mgr, node)
 
             if stat.get('checked', False):
                 check_node(node)
@@ -187,7 +162,8 @@ def apply_stat(node_tbl, parent_tbl, node_stat_tbl):
                 uncheck_node(node)
 
             if stat.get('opened', False):
-                open_node(node)
+                #open_node(node)
+                node_mgr.iter_parents(node, open_node, itself=True)
 
             if stat.get('comment', None):
                 handle_comment(node, stat['comment'])
@@ -257,18 +233,18 @@ def get_last_nid(user, proj, ver, fid):
             'ver':ver,
             #'judgment':{'$exists':True},
             'nid':{'$exists':True},
+            'idx':{'$exists':True},
         }
 
         records = col.find(query).sort('time', DESCENDING)
 
-        nid_range_tbl = get_nid_range_tbl(OUTLINE_DIR, proj, ver)
+        idx_range_tbl = get_idx_range_tbl(OUTLINE_DIR, proj, ver)
 
-        (lmi, i) = nid_range_tbl[fid]
+        (lmi, i) = idx_range_tbl[fid]
 
         for record in records:
-            nid = int(record['nid'])
-            if lmi < nid < i:
-                result = str(nid)
+            if lmi < record['idx'] < i:
+                result = record['nid']
                 break
 
     except Exception, e:
@@ -291,9 +267,7 @@ ver  = form.getvalue('ver', None)
 path = form.getvalue('path', None)
 fid  = form.getvalue('fid', None)
 
-
-node_tbl = {} # nid -> node
-parent_tbl = {} # nid -> node
+node_mgr = NodeManager()
 
 def make_metrics_line_per_lv(lv, i, others, bf, perc, display):
     lv_id = mklvid(i, lv)
@@ -311,7 +285,6 @@ tree_data = {}
 target_data = {}
 
 if proj and ver and fid:
-    #TIME_TBL = {}
 
     pid = re.sub(r'_git$', '.git', proj)
 
@@ -403,12 +376,11 @@ if proj and ver and fid:
 
     def hook(obj):
         if obj.has_key('id'):
-            nid = obj['id']
-            node_tbl[nid] = obj
-            for c in obj['children']:
-                parent_tbl[c['id']] = obj
+            node_mgr.reg(obj)
 
             link_form = ''
+
+            nid = obj['id']
 
             if nid != '#':
                 link_form = get_link_form(obj)
@@ -479,7 +451,7 @@ if proj and ver and fid:
         with open(tree_data_path, 'r') as treef:
             #st = time()
             tree_data = json.load(treef, object_hook=hook)
-            #TIME_TBL['time0'] = time() - st
+            #tree_data['time0'] = time() - st
 
     except Exception, e:
         tree_data['failure'] = str(e)
@@ -498,19 +470,19 @@ if proj and ver and fid:
             stat_data = compute_state(user, proj, ver)
 
             if target_data:
-                ts = setup_target(node_tbl, target_data)
+                ts = setup_target(node_mgr, target_data)
                 tree_data['targets'] = ts
 
             if stat_data.get('node_stat', None):
-                apply_stat(node_tbl, parent_tbl, stat_data['node_stat'])
+                apply_stat(node_mgr, stat_data['node_stat'])
 
-            tree_data['text'] = '%s (%d nodes)' % (tree_data['text'], len(node_tbl))
+            tree_data['text'] = '%s (%d nodes)' % (tree_data['text'], len(node_mgr))
 
             last_nid = get_last_nid(user, proj, ver, fid)
             if last_nid:
                 tree_data['last_nid'] = last_nid
 
-            #TIME_TBL['time1'] = time() - st
+            #tree_data['time1'] = time() - st
 
         except Exception, e:
             #tree_data['failure'] = str(e)
@@ -529,11 +501,6 @@ else:
 
     tree_data['failure'] = 'not specified: %s' % ', '.join(bad)
 
-
-#st = time()
-#json_str = json.dumps(tree_data)
-#TIME_TBL['time2'] = time() - st
-#print(TEMPL % json.dumps(TIME_TBL))
 
 print('Content-Type: application/json')
 print('')

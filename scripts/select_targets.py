@@ -63,7 +63,7 @@ def dump(ptbl, rtbl, filename_suffix='', target_dir=TARGET_DIR):
 
             try:
                 with open(path, 'w') as f:
-                    json.dump(nids, f)
+                    f.write(json.dumps(nids))
 
             except Exception, e:
                 dp.warning(str(e))
@@ -74,7 +74,7 @@ def dump(ptbl, rtbl, filename_suffix='', target_dir=TARGET_DIR):
                 rpath = os.path.join(pdir, 'roots-%s.json' % ver)
                 try:
                     with open(rpath, 'w') as rf:
-                        json.dump(root_file_l, rf)
+                        rf.write(json.dumps(root_file_l))
 
                 except Exception, e:
                     dp.warning(str(e))
@@ -356,6 +356,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--suffix', dest='suffix', metavar='SUFFIX', 
                         type=str, default='', help='specify suffix of output file')
 
+    parser.add_argument('-o', '--out-dir', dest='outdir', metavar='DIR', 
+                        type=str, default=TARGET_DIR, help='specify output directory')
+
     parser.add_argument('metrics_file', default='metrics.csv', nargs='?',
                         metavar='FILE', type=str, help='metrics file')
 
@@ -374,7 +377,8 @@ if __name__ == '__main__':
                         args.clf,
                         model=args.model,
                         filt=filt,
-                        filename_suffix=args.suffix)
+                        filename_suffix=args.suffix,
+                        target_dir=args.outdir)
 
     else:
         dp.message('sampling target loops...')
