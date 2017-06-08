@@ -54,7 +54,7 @@ META = [
 
 JUDGMENTS = [
     'judgment_M',
-    'judgment_T',
+#    'judgment_T',
 #    'judgment_X',
 ]
 
