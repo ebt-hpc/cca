@@ -157,7 +157,7 @@ def is_compiler_directive(cats):
     return b
 
 def is_relevant(cats):
-    b = cats & RELEVANT_NODES:
+    b = cats & RELEVANT_NODES
     return b
 
 #
