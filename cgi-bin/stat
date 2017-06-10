@@ -21,6 +21,7 @@
 
 __author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
 
+import sys
 import json
 
 from common import DEFAULT_USER, MONGO_PORT, compute_state

@@ -124,9 +124,6 @@ def setup_target(node_mgr, target_data):
         try:
             nid_list = node_mgr.get_nid_list(nid)
 
-            if nid_list:
-                MESSAGE_LIST.append('setup_target: %s -> [%s]' % (nid, ','.join(nid_list)))
-
             nid_list.append(nid)
             
             for i in nid_list:
