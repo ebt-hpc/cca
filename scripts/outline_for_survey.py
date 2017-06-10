@@ -157,9 +157,7 @@ def is_compiler_directive(cats):
     return b
 
 def is_relevant(cats):
-    b = False
-    if cats & RELEVANT_NODES:
-        b = True
+    b = cats & RELEVANT_NODES:
     return b
 
 #
@@ -1195,6 +1193,14 @@ class Node(dp.base):
                 break
         return b
 
+    def is_pp(self):
+        b = False
+        for c in self.cats:
+            if c.startswith('pp-'):
+                b = True
+                break
+        return b
+
     def is_block(self):
         b = False
         for c in self.cats:
@@ -1214,6 +1220,7 @@ class Node(dp.base):
     def is_constr_head(self, child):
         b = all([self.is_construct(),
                  self.get_start_line() == child.get_start_line(),
+                 not child.is_pp(),
                  not child.is_construct(),
                  not child.is_block()])
         return b
@@ -1955,33 +1962,29 @@ class Outline(dp.base):
 
             parent_constr = row.get('parent_constr', None)
 
-            sp_flag = True
-            if sp:
-                sp_node = Node(ver, loc, sp, cat=row['sp_cat'],
-                               sub=sub, pu_name=pu_name, vpu_name=vpu_name)
-                if not parent_constr:
-                    sp_flag = False
-                    self.add_edge(lang, sp_node, constr_node, mark=mark)
-
-            main_flag = True
-            if main:
-                main_node = Node(ver, loc, main, cat='main-program', prog=prog)
-                if not parent_constr and not sp:
-                    main_flag = False
-                    self.add_edge(lang, main_node, constr_node, mark=mark)
-
-            parent_cat = row.get('parent_cat', None)
-            if parent_constr and sp_flag and main_flag:
+            if parent_constr:
                 parent_sub = row.get('parent_sub', None)
                 parent_prog = row.get('parent_prog', None)
                 parent_pu_name = row.get('parent_pu_name', None)
                 parent_vpu_name = row.get('parent_vpu_name', None)
+                parent_cat = row.get('parent_cat', None)
                 parent_node = Node(ver, loc, parent_constr, cat=parent_cat,
                                    prog=parent_prog, sub=parent_sub,
                                    pu_name=parent_pu_name,vpu_name=parent_vpu_name)
                 self.add_edge(lang, parent_node, constr_node, mark=mark)
                 if is_relevant(parent_node.cats):
                     self._relevant_nodes.add(parent_node)
+
+            elif sp:
+                sp_node = Node(ver, loc, sp, cat=row['sp_cat'],
+                               sub=sub, pu_name=pu_name, vpu_name=vpu_name)
+                sp_flag = False
+                self.add_edge(lang, sp_node, constr_node, mark=mark)
+
+            elif main:
+                main_node = Node(ver, loc, main, cat='main-program', prog=prog)
+                main_flag = False
+                self.add_edge(lang, main_node, constr_node, mark=mark)
 
         #
 
@@ -2010,6 +2013,7 @@ class Outline(dp.base):
                 dtv_node = Node(ver, loc, dtv, cat=cat,
                                 prog=prog, sub=sub,
                                 pu_name=pu_name, vpu_name=vpu_name)
+
                 self._relevant_nodes.add(dtv_node)
 
                 parent_constr = row.get('constr', None)
