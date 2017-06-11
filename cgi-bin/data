@@ -24,6 +24,7 @@ __author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
 import os
 import sys
 import json
+import simplejson
 from pymongo import MongoClient, ASCENDING, DESCENDING
 import re
 from urllib import urlencode, quote_plus
@@ -350,13 +351,10 @@ if proj and ver and fid:
         if aref_ranges:
             params['aref_ranges'] = json.dumps(aref_ranges)
 
-        fl = []
-        fl.append('<form style="display:inline;" name="form_%s" method="POST" action="openviewer" target="_blank">' % obj['id'])
+        form = '<form style="display:inline;" name="form_%s" method="POST" action="openviewer" target="_blank">' % obj['id']
         for kv in params.iteritems():
-            fl.append("<input type='hidden' name='%s' value='%s'>" % kv)
-        fl.append('</form>')
-
-        form = ''.join(fl)
+            form += "<input type='hidden' name='%s' value='%s'>" % kv
+        form += '</form>'
 
         return form
 
@@ -447,7 +445,7 @@ if proj and ver and fid:
 
         with open(tree_data_path, 'r') as treef:
             #st = time()
-            tree_data = json.load(treef, object_hook=hook)
+            tree_data = simplejson.load(treef, object_hook=hook)
             #tree_data['time0'] = time() - st
 
     except Exception, e:
