@@ -52,7 +52,7 @@ OMITTED = ['execution-part','do-block']
 
 QN_SEP = ','
 
-NID_SEP = '-'
+NID_SEP = '_'
 
 LEADING_DIGITS_PAT = re.compile(r'^\d+')
 
@@ -822,7 +822,7 @@ class IdGenerator(dp.base):
         self._count = 0
 
     def gen(self):
-        i = '%s%d' % (self._prefix, self._count)
+        i = '%s%x' % (self._prefix, self._count)
         self._count += 1
         return i
 

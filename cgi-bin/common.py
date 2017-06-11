@@ -79,7 +79,7 @@ NO_BAR_FMT = '''
 
 TIME_FMT = '<span class="datetime">%s</span>'
 
-NID_SEP = '-'
+NID_SEP = '_'
 
 
 class NodeManager(object):
