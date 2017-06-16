@@ -29,6 +29,7 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 import re
 from urllib import urlencode, quote_plus
 from time import time
+import msgpack
 
 from common import DEFAULT_USER, OUTLINE_DIR, TARGET_DIR, MONGO_PORT
 from common import EXPAND_TARGET_LOOPS, EXPAND_RELEVANT_LOOPS, EXPAND_ALL, COLLAPSE_ALL
@@ -93,8 +94,9 @@ def handle_comment(node, c):
 def handle_judgment(node, j):
     node['judgment'] = j
     
+    _x = 'value="NotYet"'
     x = 'value="%s"' % j
-    node['text'] = node['text'].replace(' selected', '').replace(x, x+' selected')
+    node['text'] = node['text'].replace(_x+' selected', _x).replace(x, x+' selected')
 
     if node.get('target', False):
         if j != 'NotYet':
@@ -115,8 +117,13 @@ def handle_estimation_scheme(node, lv):
     curr = 'class="on_level %s"' % lv_id
     prev0 = prev+' style="display:table-cell;"'
     curr1 = curr+' style="display:table-cell;"'
-    text = node['text'].replace('value="%s"' % prev_lv, 'value="%s"' % lv)
+
+    text = node['text'].replace('prev="%s"' % prev_lv, 'prev="%s"' % lv)
+    _x = 'value="%s"' % prev_lv
+    x = 'value="%s"' % lv
+    text = text.replace(_x+' selected', _x).replace(x, x+' selected')
     text = text.replace(prev0, prev).replace(curr, curr1)
+
     node['text'] = text
     
 def setup_target(node_mgr, target_data):
@@ -175,6 +182,8 @@ def apply_stat(node_mgr, node_stat_tbl):
         except KeyError:
             pass
 
+#
+
 TEXT_FMT0 = '''
 <span class="%(code_style)s">%(code)s</span>
 [<span class="code">%(pu)s</span>:%(fname)s:%(start)s-%(end)s]
@@ -182,22 +191,26 @@ TEXT_FMT0 = '''
 '''.replace('\n', '')
 
 TEXT_FMT = '''
-<table class="node">
-<tr>
-<td>%(text)s</td>
+<div class="node">
+
+<div>
+%(text)s
 %(others)s
-<td>
-<label class="es">ES</label>:
-<input class="estimation-scheme" disabled="true" name="value" value="2"></input>
-<label class="es">,</label>
-</td>
+</div>
+
+<select id="es_%(nid)s" class="estimation-scheme" prev="2">
+<option value="2" selected>ES2</option>
+<option value="1">ES1</option>
+<option value="0">ES0</option>
+</select>
+
 %(ess)s
-<td>
-<select class="judgment">
-<option value="NotYet" selected>Not Completed Yet</option>
+
+<select id="j_%(nid)s" class="judgment">
+<option value="NotYet" selected>Loop Type</option>
 <option value="NonKernel">Not a Kernel</option>
 <optgroup label="A Kernel:">
-<option value="M1">&nbsp;&nbsp;M1: Low B/F & for DGEMM</option>
+<option value="M1">&nbsp;&nbsp;M1: Low B/F & DGEMM</option>
 <option value="M2">&nbsp;&nbsp;M2: Low B/F & for Cache Blocking</option>
 <option value="M3">&nbsp;&nbsp;M3: Low B/F & Simple Loop Body</option>
 <option value="M4">&nbsp;&nbsp;M4: Low B/F & Complex Loop Body</option>
@@ -207,17 +220,23 @@ TEXT_FMT = '''
 </optgroup>
 <option value="Ignored">Ignored</option>
 </select>
-</td>
-</tr>
-</table>
+
+</div>
 '''.replace('\n', '')
 
 METRICS_LINE_FMT = '''
-<td %(attr)s>%(others)s</td>
-<td %(attr)s><span class="byte">B</span>/<span class="flops">F</span>:%(bf)s</td>
-<td %(attr)s><div class="bar"><div class="barValue" style="width:%(perc)s%%;"></div></div></td>
+<div %(attr)s>
+%(others)s<span class="byte">B</span>/<span class="flops">F</span>:%(bf)s&nbsp;
+</div>
+
+<div %(attr)s>
+<div class="bar"><div class="barValue" style="width:%(perc)s%%;"></div></div>
+</div>
+
+<div %(attr)s>&nbsp;</div>
 '''.replace('\n', '')
 
+#
 
 def get_last_nid(user, proj, ver, fid):
     result = None
@@ -269,7 +288,7 @@ node_mgr = NodeManager()
 
 def make_metrics_line_per_lv(lv, i, others, bf, perc, display):
     lv_id = mklvid(i, lv)
-    attr = 'class="on_level %s"%s' % (lv_id, ' style="display:table-cell;"' if display else '')
+    attr = 'class="on_level %s"%s' % (lv_id, ' style="display:inline;"' if display else '')
     others[lv].sort();
     line = METRICS_LINE_FMT % { 'attr'   : attr,
                                 'others' : ''.join(others[lv]),
@@ -288,13 +307,30 @@ if proj and ver and fid:
 
     pi_tbl = {}
     vi_tbl = {}
+
+    path_list = []
+    fid_list = []
+
     proj_dir = os.path.join(OUTLINE_DIR, proj)
+
+    ver_path = os.path.join(proj_dir, 'v', ver)
+
     try:
         with open(os.path.join(proj_dir, 'index.json'), 'r') as pif:
             pi_tbl = json.load(pif)
 
         with open(os.path.join(proj_dir, 'v', ver, 'index.json'), 'r') as vif:
             vi_tbl = json.load(vif)
+
+    except Exception, e:
+        pass
+
+    try:
+        with open(os.path.join(ver_path, 'path_list.json'), 'r') as plf:
+            path_list = simplejson.load(plf)
+
+        with open(os.path.join(ver_path, 'fid_list.json'), 'r') as flf:
+            fid_list = simplejson.load(flf)
 
     except Exception, e:
         pass
@@ -327,11 +363,11 @@ if proj and ver and fid:
         return encoded
 
     def get_link_form(obj):
-        path = obj['loc']
+        path = path_list[obj['loc']]
         encoded_path = get_encoded_path(path)
 
         if vkind == 'GITREV':
-            url = mkurl_git(encoded_path, obj['fid'], vid)
+            url = mkurl_git(encoded_path, fid_list[obj['fid']], vid)
         else:
             url = url0 + path
 
@@ -340,8 +376,8 @@ if proj and ver and fid:
         params['path'] = path
         params['src']  = url
 
-        startl = obj.get('start_line', None)
-        endl   = obj.get('end_line', None)
+        startl = obj.get('sl', None)
+        endl   = obj.get('el', None)
 
         if startl and endl:
             params['startl'] = startl
@@ -349,7 +385,7 @@ if proj and ver and fid:
 
         aref_ranges = obj.get('aref_ranges', None)
         if aref_ranges:
-            params['aref_ranges'] = json.dumps(aref_ranges)
+            params['aref_ranges'] = aref_ranges
 
         form = '<form style="display:inline;" name="form_%s" method="POST" action="openviewer" target="_blank">' % obj['id']
         for kv in params.iteritems():
@@ -361,8 +397,8 @@ if proj and ver and fid:
     def get_code_style(obj):
         style = 'code'
 
-        if obj.has_key('callee_name'):
-            m = MARKER_CALLEE_PAT.match(obj['callee_name'])
+        if obj.has_key('callee'):
+            m = MARKER_CALLEE_PAT.match(obj['callee'])
             if m:
                 style = 'marker-call'
 
@@ -386,9 +422,9 @@ if proj and ver and fid:
                     'code'       : obj['code'],
                     'code_style' : get_code_style(obj),
                     'pu'         : obj['pu'],
-                    'fname'      : os.path.basename(obj['loc']),
-                    'start'      : obj['start_line'],
-                    'end'        : obj['end_line'],
+                    'fname'      : os.path.basename(path_list[obj['loc']]),
+                    'start'      : obj['sl'],
+                    'end'        : obj['el'],
                     'form'       : link_form,
                 }
 
@@ -426,7 +462,8 @@ if proj and ver and fid:
                         make_metrics_line_per_lv(2, nid, others_lv, bff, perc, True),
                     ]
 
-                    text = TEXT_FMT % { 'text'   : text,
+                    text = TEXT_FMT % { 'nid'    : nid,
+                                        'text'   : text,
                                         'others' : others, 
                                         'ess'    : ''.join(lvs),
                     }
@@ -436,20 +473,16 @@ if proj and ver and fid:
 
         return obj
 
+    if path_list and fid_list:
+        try:
+            tree_data_path = os.path.join(ver_path, path, fid+'.msg')
 
-    try:
-        ver_path = os.path.join(OUTLINE_DIR, proj, 'v', ver)
-        tree_data_path = os.path.join(ver_path, path, fid+'.json')
-        if not os.path.exists(tree_data_path):
-            tree_data_path = os.path.join(ver_path, fid+'.json') #!!!!! obsoleted
+            with open(tree_data_path, 'r') as treef:
+                st = time()
+                tree_data = msgpack.unpack(treef, object_hook=hook)
 
-        with open(tree_data_path, 'r') as treef:
-            #st = time()
-            tree_data = simplejson.load(treef, object_hook=hook)
-            #tree_data['time0'] = time() - st
-
-    except Exception, e:
-        tree_data['failure'] = str(e)
+        except Exception, e:
+            tree_data['failure'] = str(e)
 
     if tree_data:
         try:
@@ -497,6 +530,6 @@ else:
     tree_data['failure'] = 'not specified: %s' % ', '.join(bad)
 
 
-print('Content-Type: application/json')
-print('')
+sys.stdout.write('Content-Type: application/json')
+sys.stdout.write('\n\n')
 sys.stdout.write(json.dumps(tree_data))

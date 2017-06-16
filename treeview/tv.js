@@ -1,4 +1,9 @@
-//
+/**
+   Outline tree viewer for CCA/EBT.
+   @author Masatomo Hashimoto <m.hashimoto@riken.jp>
+   @copyright 2013-2017 RIKEN
+   @licence Apache-2.0
+*/
 
 var EXPAND_TARGET_LOOPS   = 'expand_target_loops'
 var EXPAND_RELEVANT_LOOPS = 'expand_relevant_loops'
@@ -14,11 +19,23 @@ var VER = $('#ver').text();
 var PID = PROJ.replace(/_git$/, '.git');
 
 
+function Timer() {
+  this.start_time = 0;
+}
+Timer.prototype.start = function () {
+  this.start_time = window.performance.now();
+}
+Timer.prototype.get = function () {
+  return (window.performance.now() - this.start_time);
+}
+
+var global_timer = new Timer();
+
+
 function get_window_height() {
   var h = window.innerHeight ? window.innerHeight : $(window).height();
   return h;
 }
-
 
 function scrollTo(id) {
   var pos = $('#'+id).position();
@@ -32,63 +49,19 @@ function scrollTo(id) {
   }
 }
 
-function Timer() {
-  this.start_time = 0;
-  this.start = function () {
-    this.start_time = Date.now();
-  };
-  this.get = function () {
-    return (Date.now() - this.start_time) / 1000;  
-  };
-}
-
-var global_timer = new Timer();
-
-
 function get_jstree() {
   return $('#outline').jstree(true);
 }
 
-function get_target_node(ev) {
+function get_target_node(ev, jstree) {
+  if (!jstree) {
+    jstree = get_jstree();
+  }
   console.log('get_target_node: ev.target='+ev.target);
   var li = $(ev.target).closest('li');
-  var nd = get_jstree()._model.data[li[0].id];
+  var nd = jstree._model.data[li[0].id];
   return nd;
 }
-
-var es_opt = {
-  max: 2,
-  min: 0,
-  spin: function (ev, ui) {},
-};
-
-var judgment_opt = {
-  change: sel_on_change,
-};
-
-function attach_ui1(nd) {
-  console.log('attach_ui1: id='+nd.id);
-  var id = '#'+nd.id;
-  $(id+' > a .estimation-scheme').spinner(es_opt);
-  $(id+' > a .judgment').selectmenu(judgment_opt);
-}
-
-function _attach_ui() {
-  var timer = new Timer();
-  timer.start();
-  console.log('attach_ui: start!');
-
-  $('input.estimation-scheme').spinner(es_opt);
-
-  $('select.judgment').selectmenu(judgment_opt);
-
-  console.log(timer.get()+' seconds for attach_ui');
-}
-
-function attach_ui() {
-  setTimeout(_attach_ui, 0);
-}
-
 
 function redraw(jstree) {
 
@@ -98,22 +71,28 @@ function redraw(jstree) {
   console.log('redraw: start!');
 
   jstree.redraw(true);
-  //attach_ui();
 
-  console.log(timer.get()+' seconds for redraw');
+  console.log(timer.get()+' ms for redraw');
 
 }
 
-function redraw_node(jstree, node) {
+function redraw_node(node, jstree, callback) { // redraw_node(node[, jstree[, callback]])
 
-  var timer = new Timer();
-  timer.start();
+  window.requestAnimationFrame(function (timestamp) {
+    console.log('redraw_node: id='+node.id);
 
-  jstree.redraw_node(node, false, false, false);
-  //attach_ui1(node);
+    if (!jstree) {
+      jstree = get_jstree();
+    }
 
-  console.log(timer.get()+' seconds for redraw_node');
+    jstree.redraw_node(node, false, false, false);
 
+    if (callback) {
+      callback();
+    }
+
+    console.log('redraw_node: done. ('+(window.performance.now() - timestamp)+' ms)');
+  });
 }
 
 function findPos(obj) {
@@ -136,7 +115,7 @@ function clear_search() {
   for (var i = 0; i < n; i++) {
     nd = nds[i];
     nd.state.selected = false;
-    redraw_node(jstree, nd);
+    redraw_node(nd, jstree);
   }
   jstree.search_result = {'kw':'','nodes':[],'idx':0};
 }
@@ -267,15 +246,7 @@ function post_log(rec) {
       }
     },
   });
-}
 
-function set_judgment(node, judgment) {
-
-  var x = ['value="',judgment,'"'].join('');
-  var text = node.text.replace(' selected', '').replace(x, x+' selected');
-  node.text = text;
-
-  //console.log(node);
 }
 
 function get_top_node(jstree) {
@@ -284,16 +255,11 @@ function get_top_node(jstree) {
   return m[root.children[0]];
 }
 
-function get_node_tbl() { // get_node_tbl([jstree])
-  var jstree;
-
-  if (arguments.length > 0) {
-    jstree = arguments[0];
-  } else {
+function get_node_tbl(jstree) { // get_node_tbl([jstree])
+  if (!jstree) {
     jstree = get_jstree();
   }
   return get_top_node(jstree).original.node_tbl;
-
 }
 
 function setup_targets(jstree) {
@@ -345,9 +311,16 @@ function is_relevant(node) {
   return b;
 }
 
-function handle_judgment(node, node_tbl, m, judgment) {
-  var jstree = get_jstree();
+function set_judgment(node, judgment) {
 
+  var x = ['value="',judgment,'"'].join('');
+  var text = node.text.replace(' selected', '').replace(x, x+' selected');
+  node.text = text;
+
+  //console.log(node);
+}
+
+function handle_judgment(node, node_tbl, jstree, m, judgment) {
   var base_nodes;
 
   //console.log('handle_judgment', node);
@@ -396,10 +369,11 @@ function handle_judgment(node, node_tbl, m, judgment) {
 
   for (var i in nodes) {
     set_judgment(nodes[i], judgment);
-    if (not_completed)
+    if (not_completed) {
       remove_completed_mark(nodes[i]);
-    else
+    } else {
       put_completed_mark(nodes[i]);
+    }
   }
 
   return nodes;
@@ -453,7 +427,7 @@ function is_visible(m, node) {
   return visible;
 }
 
-function sel_on_change(ev, ui) {
+function j_sel_on_change(ev, ui) {
   var j = ui.item.value;
   var li = $(ev.target).closest('li');
   var jstree = get_jstree();
@@ -468,7 +442,7 @@ function sel_on_change(ev, ui) {
   var n_visible_nodes = 0;
   for (var i in nds) {
     if (is_visible(m, nds[i])) {
-      redraw_node(jstree, nds[i]);
+      redraw_node(nds[i], jstree);
       n_visible_nodes += 1;
     }
   }
@@ -491,33 +465,14 @@ function handle_estimation_scheme(node, prev_lv, lv) {
   var prev0 = prev+' style="display:table-cell;"';
   var curr1 = curr+' style="display:table-cell;"';
 
-  //console.log(prev0, '->', prev);
-  //console.log(curr, '->', curr1);
+  console.log(prev0, '->', prev);
+  console.log(curr, '->', curr1);
 
+  var x = ['value="', lv, '"'].join('');
   node.text = 
-    node.text.replace(['value="',prev_lv,'"'].join(''), ['value="',lv,'"'].join(''))
-    .replace(new RegExp(prev0, 'g'), prev).replace(new RegExp(curr, 'g'), curr1);
-
-}
-
-function spin_on_change(ev, ui) {
-  var prev_lv = ev.target.getAttribute('value');
-  var lv = ui.value;
-
-  var li = $(ev.target).closest('li');
-  var jstree = get_jstree();
-  var m = jstree._model.data;
-  var nd = m[li[0].id];  
-
-  handle_estimation_scheme(nd, prev_lv, lv);
-
-  //redraw(jstree);
-  redraw_node(jstree, nd);
-
-  var d = mkpost(nd);
-  d['estimation_scheme'] = lv;
-
-  post_log(d);
+    node.text.replace(['prev="',prev_lv,'"'].join(''), ['prev="',lv,'"'].join(''))
+    .replace(new RegExp(prev0, 'g'), prev).replace(new RegExp(curr, 'g'), curr1)
+    .replace(' selected', '').replace(x, x+' selected');
 
 }
 
@@ -614,7 +569,7 @@ function set_comment(node) {
     var icon = '<i class="jstree-icon comment-icon" id="c_'+node.id+'" role="presentation"></i>';
     node.text = node.text + icon;
   }
-  redraw_node(get_jstree(), node);
+  redraw_node(node);
   $('#dialog').dialog('close');
 
   var d = mkpost(node);
@@ -628,6 +583,7 @@ function set_dialog_message(mes) {
   var s = '<div id="message">'+mes+'</div>';
   $(s).appendTo('#dialog');
 }
+
 
 
 function treeview(data_url, vkind, vid, algo, meth) {
@@ -657,7 +613,14 @@ function treeview(data_url, vkind, vid, algo, meth) {
   }).on('ready.jstree', function (ev, data) {
     console.log('ready ('+global_timer.get()+')');
 
-    //attach_ui();
+    $('select.estimation-scheme').on('click.jstree', function (ev, data) {
+      return false;
+    });
+
+    $('select.judgment').on('click.jstree', function (ev, data) {
+      console.log('!!!');
+      return false;
+    });
 
     var jstree = data.instance;
 
@@ -752,14 +715,13 @@ function treeview(data_url, vkind, vid, algo, meth) {
     },
 
     "conditionalselect" : function (node, event) {
-      //console.log('activated', node);
-
-      var d = mkpost(node);
+      //console.log('activated ', node);
 
       var c = event.target.getAttribute('class');
 
       if (c == 'jstree-icon jstree-checkbox') {
         //console.log('check');
+        var d = mkpost(node);
         var jstree = get_jstree();
         if (jstree.is_checked(node)) {
           jstree.uncheck_node(node);
@@ -768,9 +730,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
           jstree.check_node(node);
           d['checked'] = true;
         }
-
         post_log(d);
-
       }
 
       return false;
@@ -988,12 +948,65 @@ function treeview(data_url, vkind, vid, algo, meth) {
       d['open_source'] = true;
       post_log(d);
     }
-  }).bind('click.jstree', function (ev, data) {
-    if (ev.target) {
-      var nd = get_target_node(ev);
-      attach_ui1(nd);
-      ev.stopPropagation();
+  }).bind('change', function (ev, data) {
+    console.log('change: ev.target=', ev.target);
+
+    var sel = $(ev.target);
+    var nd = get_target_node(ev);
+    var jstree = get_jstree();
+
+    switch (ev.target.className) {
+    case 'estimation-scheme':
+      var prev_lv = sel.attr('prev');
+      var lv = sel.val();
+
+      console.log('prev_lv=',prev_lv);
+      console.log('lv=',lv);
+
+      handle_estimation_scheme(nd, prev_lv, lv);
+
+      redraw_node(nd, jstree, function () {
+        $('#es_'+nd.id).on('click.jstree', function (ev, data) {
+          console.log('resetting handler for estimation-scheme');
+          return false;
+        });
+      });
+
+      var d = mkpost(nd);
+      d['estimation_scheme'] = lv;
+      post_log(d);
+
+      break;
+
+    case 'judgment':
+      var j = sel.val();
+      var node_tbl = get_node_tbl(jstree);
+      var m = jstree._model.data;
+
+      var nds = handle_judgment(nd, node_tbl, jstree, m, j);
+
+      var n_visible_nodes = 0, ni;
+      for (var i in nds) {
+        ni = nds[i];
+        if (is_visible(m, ni)) {
+          redraw_node(ni, jstree, function () {
+            $('#j_'+ni.id).on('click.jstree', function (ev, data) {
+              console.log('resetting handler for judgment');
+              return false;
+            });
+          });
+          n_visible_nodes += 1;
+        }
+      }
+      console.log(n_visible_nodes+' visible nodes redrawn');
+
+      var d = mkpost(nds);
+      d['judgment'] = j;
+      post_log(d);
+
+      break;
     }
+
   });
 
   var to = false;
@@ -1083,10 +1096,10 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
           for (var i = 0; i < need_to_redraw.length; i++) {
             //console.log(need_to_redraw[i]);
-            redraw_node(jstree, need_to_redraw[i]);
+            redraw_node(need_to_redraw[i], jstree);
           }
           for (var i = 0; i < nodes.length; i++) {
-            redraw_node(jstree, nodes[i]);
+            redraw_node(nodes[i], jstree);
           }
 
           //console.log(nodes);
@@ -1169,7 +1182,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
   });
 
 
-  $(document).on('mouseover', function (ev) {
+  $(document)/*.on('mouseover', function (ev) {
 
     var mes;
 
@@ -1214,8 +1227,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
       $(ev.target).prop('title', mes);
     }
 
-  }).on('spin', '.estimation-scheme', spin_on_change)
-    .tooltip({
+  })*/.tooltip({
       position: {
         my: "center bottom-20",
         at: "center top",
@@ -1231,11 +1243,11 @@ function treeview(data_url, vkind, vid, algo, meth) {
         }
       },
       items: "[title]",
-      content: function() {
+      /*content: function() {
         if ($(this).is("[title]")) {
           return $(this).attr("title");
         }
-      },
+      },*/
       show: null,
       close: function(ev, ui) {
         ui.tooltip.hover(

@@ -41,22 +41,24 @@ HTML_TEMPL = '''<html>
 <title>%(proj)s[%(ver)s][%(src)s] Tree</title>
 
 <link rel="stylesheet" href="%(base_url)s/jstree/dist/themes/default/style.min.css" />
-<link rel="stylesheet" href="%(base_url)s/demo.css" />
 <link rel="stylesheet" href="%(base_url)s/survey.css" />
 <link rel="stylesheet" href="%(base_url)s/jquery-ui/jquery-ui.min.css" />
 </head>
 <body>
 
-<h1 id="user">%(user)s</h1>
+<!--<h1 id="user">%(user)s</h1>-->
+
 <h2 id="proj">%(proj)s</h2>
 
 <div id="searchPanel">
-<table id="searchPanel" style="border-radius:20px 0px 0px 20px;float:right;background:#CADFF4;">
+<table style="border-radius:20px 0px 0px 20px;float:right;background:#CADFF4;">
 <tr>
 <td><label>&nbsp;&nbsp;</label></td>
 <td><button id="jumpToTarget">Jump to Target</button></td>
 <td><label style="margin:3px;">&nbsp;&nbsp;&nbsp;&nbsp;Search:</label></td>
-<td><input type="text" id="search" value="" class="input" /></td>
+<td>
+<input class="search type="text" size="24" id="search" value=""></input>
+</td>
 <td><button id="clearButton">Clear</button></td>
 <td><div class="hits" id="count">0</div></td>
 </tr>
@@ -64,11 +66,11 @@ HTML_TEMPL = '''<html>
 </div>
 
 <h3 id="ver">%(ver)s</h3>
-
+<!--
 <div id="progressbar" style="display:none">
 <div class="progressbar-label">Rendering...</div>
 </div>
-
+-->
 <div id="dialog"><p></p></div>
 
 <div id="outline"></div>
@@ -79,6 +81,11 @@ HTML_TEMPL = '''<html>
 <script src="%(base_url)s/tv.js"></script>
 <script>
 $(function () {
+  var ua = window.navigator.userAgent.toLowerCase();
+  if (ua.indexOf("safari") != -1 && ua.indexOf("chrome") == -1) {
+    console.log("detected Safari");
+    $("#search").focus().blur();
+  }
   treeview("%(url)s", %(ver_kind)s, %(vid)s, %(hash_algo)s, %(hash_meth)s);
 });
 </script>

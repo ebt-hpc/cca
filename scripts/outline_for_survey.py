@@ -29,6 +29,7 @@ import re
 import csv
 import codecs
 from time import time
+import msgpack
 
 import pathsetup
 import dp
@@ -47,6 +48,8 @@ import Git2
 from virtuoso import VIRTUOSO_PW, VIRTUOSO_PORT
 
 ###
+
+MARKER_CALLEE_PAT = re.compile('^.*(dgemm|timer).*$')
 
 OMITTED = ['execution-part','do-block']
 
@@ -69,14 +72,14 @@ SUBPROGS = set([
     'function-module-subprogram',
 ])
 
-CALLS = set(['call-stmt','function-reference','part-name'])
+LOOPS = set(['do-construct','do-stmt','end-do-stmt','do-block'])
 
-RELEVANT_NODES = set(['do-construct','do-stmt','end-do-stmt','do-block']) | CALLS
+CALLS = set(['call-stmt','function-reference','part-name'])
 
 GITREV_PREFIX = NS_TBL['gitrev_ns']
 
 OUTLINE_DIR = 'outline'
-OUTLINE_FILE_FMT = '%s.json'
+OUTLINE_FILE_FMT = '%s.msg'
 
 TOPIC_DIR = 'topic'
 TOPIC_FILE_FMT = '%s.json'
@@ -154,10 +157,6 @@ def is_compiler_directive(cats):
         if cat[0:4] in ('omp-', 'acc-', 'ocl-', 'xlf-', 'dec-'):
             b = True
             break
-    return b
-
-def is_relevant(cats):
-    b = cats & RELEVANT_NODES
     return b
 
 #
@@ -847,9 +846,9 @@ def index(data):
         i = igen.gen()
         d['idx'] = i
         if children:
-            d['leftmost_idx'] = children[0]['leftmost_idx']
+            d['lmi'] = children[0]['lmi']
         else:
-            d['leftmost_idx'] = i
+            d['lmi'] = i
 
     scan(data)
 
@@ -857,6 +856,7 @@ class Node(dp.base):
     def __init__(self, ver, loc, uri, cat='',
                  prog=None, sub=None,
                  callee_name=None, pu_name=None, vpu_name=None):
+
         self.relevant = False
         self.ver = ver
         self.loc = loc
@@ -929,6 +929,15 @@ class Node(dp.base):
 
         return s
 
+    def is_relevant(self):
+        b = False
+        if self.cats & LOOPS:
+            b = True
+        elif self.cats & CALLS:
+            m = MARKER_CALLEE_PAT.match(self._callee_name)
+            if m:
+                b = True
+        return b
 
     def count_parent_loops_in_container(self):
         if self._nparent_loops_in_container == None:
@@ -1382,12 +1391,12 @@ class Node(dp.base):
                 expanded_callee_tbl[self._callee_name] = children
 
         d = {
-            'cat'       : self.cat,
-            'loc'       : self.loc,
-            'pu'        : self.get_pu(),
-            'start_line': self.get_start_line(),
-            'end_line'  : self.get_end_line(),
-            'children'  : children,
+            'cat'      : self.cat,
+            'loc'      : self.loc,
+            'pu'       : self.get_pu(),
+            'sl'       : self.get_start_line(),
+            'el'       : self.get_end_line(),
+            'children' : children,
         }
 
         vpu = self.get_vpu()
@@ -1395,7 +1404,7 @@ class Node(dp.base):
             d['vpu'] = vpu
 
         if self._callee_name:
-            d['callee_name'] = self._callee_name
+            d['callee'] = self._callee_name
 
         ty = self.get_type()
         if ty:
@@ -1909,7 +1918,8 @@ class Outline(dp.base):
 
                 self.add_edge(lang, constr_node, call_node, mark=mark)
 
-                self._relevant_nodes.add(call_node)
+                if call_node.is_relevant():
+                    self._relevant_nodes.add(call_node)
 
                 callee      = row['callee']
                 callee_loc  = row['callee_loc']
@@ -1957,7 +1967,7 @@ class Outline(dp.base):
                                prog=prog, sub=sub,
                                pu_name=pu_name, vpu_name=vpu_name)
 
-            if is_relevant(constr_node.cats):
+            if constr_node.is_relevant():
                 self._relevant_nodes.add(constr_node)
 
             parent_constr = row.get('parent_constr', None)
@@ -1972,7 +1982,7 @@ class Outline(dp.base):
                                    prog=parent_prog, sub=parent_sub,
                                    pu_name=parent_pu_name,vpu_name=parent_vpu_name)
                 self.add_edge(lang, parent_node, constr_node, mark=mark)
-                if is_relevant(parent_node.cats):
+                if parent_node.is_relevant():
                     self._relevant_nodes.add(parent_node)
 
             elif sp:
@@ -2067,7 +2077,8 @@ class Outline(dp.base):
                                  pu_name=pu_name,
                                  vpu_name=vpu_name)
 
-                self._relevant_nodes.add(call_node)
+                if call_node.is_relevant():
+                    self._relevant_nodes.add(call_node)
 
                 parent_constr = row.get('constr', None)
                 if parent_constr:
@@ -2186,7 +2197,7 @@ class Outline(dp.base):
         fn = TOPIC_FILE_FMT % self._proj_id
         return fn
 
-    def gen_json_file_name(self, fid):
+    def gen_data_file_name(self, fid):
         fn = OUTLINE_FILE_FMT % fid
         return fn
 
@@ -2199,7 +2210,7 @@ class Outline(dp.base):
         for m in ms:
             v = mtbl[m]
             k = metrics.abbrv_tbl[m]
-            d[k] = str(v)
+            d[k] = v
         return d
 
     def gen_topic(self, lang,
@@ -2232,6 +2243,58 @@ class Outline(dp.base):
                 row.append(tbl[k])
         return row
 
+    def gen_index_tables(self):
+        path_list_tbl = {} # ver -> path list
+        fid_list_tbl = {}  # ver -> fid list
+
+        path_idx_tbl_tbl = {} # ver -> path -> idx
+        fid_idx_tbl_tbl = {}  # ver -> fid -> idx
+
+        vers = set()
+
+        for ((ver, path), fid) in self._fid_tbl.iteritems():
+            vers.add(ver)
+            try:
+                path_list = path_list_tbl[ver]
+            except KeyError:
+                path_list = []
+                path_list_tbl[ver] = path_list
+
+            try:
+                fid_list = fid_list_tbl[ver]
+            except KeyError:
+                fid_list = []
+                fid_list_tbl[ver] = fid_list
+
+            try:
+                path_idx_tbl = path_idx_tbl_tbl[ver]
+            except KeyError:
+                path_idx_tbl = {}
+                path_idx_tbl_tbl[ver] = path_idx_tbl
+
+            try:
+                fid_idx_tbl = fid_idx_tbl_tbl[ver]
+            except KeyError:
+                fid_idx_tbl = {}
+                fid_idx_tbl_tbl[ver] = fid_idx_tbl
+
+            if path not in path_list:
+                path_idx = len(path_list)
+                path_list.append(path)
+                path_idx_tbl[path] = path_idx
+
+            if fid not in fid_list:
+                fid_idx = len(fid_list)
+                fid_list.append(fid)
+                fid_idx_tbl[fid] = fid_idx
+
+        self._path_list_tbl = path_list_tbl
+        self._fid_list_tbl = fid_list_tbl
+
+        self._path_idx_tbl_tbl = path_idx_tbl_tbl
+        self._fid_idx_tbl_tbl = fid_idx_tbl_tbl
+
+
     def gen_data(self, lang, outdir='.', extract_metrics=True, omitted=set()):
 
         outline_dir = os.path.join(outdir, self._outline_dir)
@@ -2244,6 +2307,8 @@ class Outline(dp.base):
             self.extract_metrics()
 
         tree = self.get_tree(lang)
+
+        self.gen_index_tables()
 
         root_tbl = {} # ver -> loc -> root (contains loop) list
 
@@ -2283,6 +2348,12 @@ class Outline(dp.base):
             if ver not in self._conf.versionURIs:
                 continue
 
+            path_idx_tbl = self._path_idx_tbl_tbl.get(ver, {})
+            fid_idx_tbl = self._fid_idx_tbl_tbl.get(ver, {})
+
+            path_list = self._path_list_tbl.get(ver, [])
+            fid_list = self._fid_list_tbl.get(ver, [])
+
             lver = get_lver(ver)
 
             loc_tbl = root_tbl[ver]
@@ -2317,8 +2388,10 @@ class Outline(dp.base):
 
             def elaborate(node, d):
                 fid = node.get_fid()
-                d['fid'] = fid
                 loc = node.loc
+                d['fid'] = fid_idx_tbl[fid]
+                d['loc'] = path_idx_tbl[loc]
+
                 start_line = node.get_start_line()
                 if node.is_block():
                     d['code'] = '<span class="cat">%s</span>' % node.get_block_cat()
@@ -2352,14 +2425,14 @@ class Outline(dp.base):
                             if df.has_key('fid'):
                                 del df['fid']
 
-                    d['aref_ranges'] = aref_ranges
+                    d['aref_ranges'] = json.dumps(aref_ranges)
                     
                 try:
                     mtbl = self.get_metrics_tbl(lang, mkey)
 
-                    bf0 = mtbl[metrics.BF[0]]
-                    bf1 = mtbl[metrics.BF[1]]
-                    bf2 = mtbl[metrics.BF[2]]
+                    bf0 = round(mtbl[metrics.BF[0]], 2)
+                    bf1 = round(mtbl[metrics.BF[1]], 2)
+                    bf2 = round(mtbl[metrics.BF[2]], 2)
 
                     if bf0 > 0 or bf1 > 0 or bf2 > 0:
                         self.debug('%s: %s -> %3.2f|%3.2f|%3.2f' % (node.cat, mkey, bf0, bf1, bf2))
@@ -2381,7 +2454,7 @@ class Outline(dp.base):
                         d['relevant'] = True
 
                         nid = d['id']
-                        reg_nid(d['loc'], d['start_line'], nid)
+                        reg_nid(d['loc'], d['sl'], nid)
 
                         if node not in nodes:
                             row = self.mkrow(lver, loc, node.sub, start_line, mtbl, nid)
@@ -2435,9 +2508,9 @@ class Outline(dp.base):
                 loc_d = {
                     'id'          : nid,
                     'text'        : loc,
-                    'loc'         : loc,
+                    'loc'         : path_idx_tbl[loc],
                     'children'    : ds,
-                    'fid'         : fid,
+                    'fid'         : fid_idx_tbl[fid],
                     'cat'         : 'file',
                     'type'        : 'file',
                 }
@@ -2567,31 +2640,42 @@ class Outline(dp.base):
 
             lver_dir = os.path.join(outline_v_dir, lver)
 
-            #fid_tbl = {} # fid -> path !!!!! obsoleted
             path_tbl = {} # path -> fid
 
             if ensure_dir(lver_dir):
+                try:
+                    with open(os.path.join(lver_dir, 'path_list.json'), 'w') as plf:
+                        plf.write(json.dumps(path_list))
+
+                except Exception, e:
+                    self.warning(str(e))
+
+                try:
+                    with open(os.path.join(lver_dir, 'fid_list.json'), 'w') as flf:
+                        flf.write(json.dumps(fid_list))
+
+                except Exception, e:
+                    self.warning(str(e))
 
                 for json_d in json_ds:
                     json_d['node_tbl'] = relevant_node_tbl
                     json_d['state'] = { 'opened' : True }
 
-                    fid = json_d['fid']
-                    loc = json_d['loc']
+                    fid = fid_list[json_d['fid']]
+                    loc = path_list[json_d['loc']]
 
-                    #fid_tbl[fid] = json_d['loc'] #!!!!! obsoleted
-                    path_tbl[json_d['loc']] = fid
+                    path_tbl[loc] = fid
 
-                    json_file_name = self.gen_json_file_name(fid)
+                    data_file_name = self.gen_data_file_name(fid)
 
                     lver_loc_dir = os.path.join(lver_dir, loc)
 
                     if ensure_dir(lver_loc_dir):
 
-                        json_path = os.path.join(lver_loc_dir, json_file_name)
+                        data_path = os.path.join(lver_loc_dir, data_file_name)
 
                         if dp.debug_flag:
-                            self.debug('indexing for "%s"...' % json_path)
+                            self.debug('indexing for "%s"...' % data_path)
                             st = time()
 
                         index(json_d)
@@ -2599,11 +2683,11 @@ class Outline(dp.base):
                         if dp.debug_flag:
                             self.debug('done. (%0.3f sec)' % (time() - st))
 
-                        self.message('dumping JSON into "%s"...' % json_path)
+                        self.message('dumping object into "%s"...' % data_path)
 
                         try:
-                            with open(json_path, 'w') as jsonf:
-                                jsonf.write(json.dumps(json_d))
+                            with open(data_path, 'wb') as f:
+                                msgpack.pack(json_d, f)
 
                         except Exception, e:
                             self.warning(str(e))
@@ -2615,7 +2699,6 @@ class Outline(dp.base):
             vid = get_localname(ver) if is_gitrev else self.get_ver_dir_name(ver)
 
             vitbl = {
-                #'fid_tbl' : fid_tbl, #!!!!! obsoleted
                 'path_tbl': path_tbl,
                 'vid'     : vid,
             }
@@ -2677,8 +2760,8 @@ def test(proj):
     for ver in root_tbl.keys():
         lver = get_lver(ver)
 
-        if lver != 'base':
-            continue
+        # if lver != 'base':
+        #     continue
 
         loc_tbl = root_tbl[ver]
         for loc in loc_tbl.keys():

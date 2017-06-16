@@ -131,7 +131,7 @@ class NodeManager(object):
 
     def iter_subtree(self, node, f):
         ri = node['idx']
-        lmi = node['leftmost_idx']
+        lmi = node['lmi']
         for i in range(lmi, ri+1):
             try:
                 nd = self._node_list[i]
@@ -172,7 +172,7 @@ def get_idx_range_tbl(OUTLINE_DIR, proj, ver):
                             try:
                                 d = json.load(f)
 
-                                leftmost_idx = d.get('leftmost_idx', None)
+                                leftmost_idx = d.get('lmi', None)
                                 idx = d.get('idx', None)
 
                                 if leftmost_idx and idx:
@@ -468,4 +468,4 @@ def get_last_judged(users):
 
 
 if __name__ == '__main__':
-    print
+    print('')
