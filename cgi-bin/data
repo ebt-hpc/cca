@@ -151,6 +151,8 @@ def apply_stat(node_mgr, node_stat_tbl):
     for (idx, stat) in node_stat_tbl.iteritems():
         try:
             node = node_mgr.geti(idx)
+            if not node:
+                continue
 
             if stat.get(EXPAND_TARGET_LOOPS, False):
                 expand_target_loops(node_mgr, node)
