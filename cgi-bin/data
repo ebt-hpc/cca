@@ -115,8 +115,8 @@ def handle_estimation_scheme(node, lv):
     lv_id = mklvid(nid, lv);
     prev = 'class="on_level %s"' % prev_lv_id
     curr = 'class="on_level %s"' % lv_id
-    prev0 = prev+' style="display:table-cell;"'
-    curr1 = curr+' style="display:table-cell;"'
+    prev0 = prev+' style="display:inline;"'
+    curr1 = curr+' style="display:inline;"'
 
     text = node['text'].replace('prev="%s"' % prev_lv, 'prev="%s"' % lv)
     _x = 'value="%s"' % prev_lv

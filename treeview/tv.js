@@ -974,6 +974,10 @@ function treeview(data_url, vkind, vid, algo, meth) {
           console.log('resetting handler for estimation-scheme');
           return false;
         });
+        $('#j_'+nd.id).on('click.jstree', function (ev, data) {
+          console.log('resetting handler for judgment');
+          return false;
+        });
       });
 
       var d = mkpost(nd);
@@ -994,6 +998,10 @@ function treeview(data_url, vkind, vid, algo, meth) {
         ni = nds[i];
         if (is_visible(m, ni)) {
           redraw_node(ni, jstree, function () {
+            $('#es_'+ni.id).on('click.jstree', function (ev, data) {
+              console.log('resetting handler for estimation-scheme');
+              return false;
+            });
             $('#j_'+ni.id).on('click.jstree', function (ev, data) {
               console.log('resetting handler for judgment');
               return false;
