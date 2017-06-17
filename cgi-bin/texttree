@@ -25,19 +25,18 @@ import os
 import sys
 import requests
 import json
+import simplejson
 
 from common import OUTLINE_DIR, DEFAULT_USER, BASE_URL
 
 ###
-
-HEAD = '''Content-Type: text/plain
-'''
 
 TEMPL = '''user: %(user)s
 proj: %(proj)s
 ver:  %(ver)s
 '''
 
+path_list = []
 
 def render(data, lv='', out=sys.stdout):
 
@@ -55,7 +54,13 @@ def render(data, lv='', out=sys.stdout):
             out.write('%s%s\n' % (indent, data['code']))
 
     elif cat == 'file':
-        out.write('%s\n' % data['loc'])
+        loci = data['loc']
+        try:
+            loc = path_list[loci]
+        except:
+            loc = '[%d]' % loci
+
+        out.write('%s\n' % loc)
 
     opened = False
     if data.has_key('state'):
@@ -107,23 +112,31 @@ if proj and ver:
                         'fid'  : fid,
     }
 
-    proj_dir = os.path.join(OUTLINE_DIR, proj)
+    proj_path = os.path.join(OUTLINE_DIR, proj)
+
+    ver_path = os.path.join(proj_path, 'v', ver)
+
     try:
-        with open(os.path.join(proj_dir, 'index.json'), 'r') as pif:
+        with open(os.path.join(ver_path, 'path_list.json'), 'r') as plf:
+            path_list = simplejson.load(plf)
 
-            pi_tbl = json.load(pif)
+    except Exception, e:
+        pass
 
-            with open(os.path.join(proj_dir, 'v', ver, 'index.json'), 'r') as vif:
-                vi_tbl = json.load(vif)
+    try:
+        with open(os.path.join(proj_path, 'index.json'), 'r') as pif:
 
-                fid_tbl = vi_tbl.get('fid_tbl', {}) #!!!!! obsoleted
+            pi_tbl = simplejson.load(pif)
+
+            with open(os.path.join(ver_path, 'index.json'), 'r') as vif:
+                vi_tbl = simplejson.load(vif)
 
                 content = TEMPL % {
                     'user' : user,
                     'proj' : proj,
                     'ver'  : ver,
                     'base_url' : BASE_URL,
-                    'src'  : path or fid_tbl.get(fid, '???'),
+                    'src'  : path,
                     'url'  : json_url,
 
                     'vid' : '"'+vi_tbl.get('vid', ver)+'"',
@@ -140,6 +153,8 @@ if proj and ver:
 if not err and json_url_params:
     r = requests.get(json_url, params=json_url_params)
     tree_data = r.json()
-    print(HEAD)
-    print(content)
+    sys.stdout.write('Content-Type: text/plain')
+    sys.stdout.write('\n\n')
+    sys.stdout.write(content)
+    sys.stdout.write('\n')
     render(tree_data)

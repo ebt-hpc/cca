@@ -313,15 +313,15 @@ if proj and ver and fid:
     path_list = []
     fid_list = []
 
-    proj_dir = os.path.join(OUTLINE_DIR, proj)
+    proj_path = os.path.join(OUTLINE_DIR, proj)
 
-    ver_path = os.path.join(proj_dir, 'v', ver)
+    ver_path = os.path.join(proj_path, 'v', ver)
 
     try:
-        with open(os.path.join(proj_dir, 'index.json'), 'r') as pif:
+        with open(os.path.join(proj_path, 'index.json'), 'r') as pif:
             pi_tbl = json.load(pif)
 
-        with open(os.path.join(proj_dir, 'v', ver, 'index.json'), 'r') as vif:
+        with open(os.path.join(ver_path, 'index.json'), 'r') as vif:
             vi_tbl = json.load(vif)
 
     except Exception, e:
