@@ -173,9 +173,9 @@ function _collapse_all($node) {
 function set_node_data(d, node) {
   d['nid'] = node.id;
   d['idx'] = node.original.idx;
-  d['leftmost_idx'] = node.original.leftmost_idx;
+  d['lmi'] = node.original.lmi;
   d['path'] = node.original.loc;
-  d['lnum'] = node.original.start_line;
+  d['lnum'] = node.original.sl;
 
   if (!d['lnum']) {
     d['lnum'] = 0;
@@ -340,7 +340,7 @@ function handle_judgment(node, node_tbl, jstree, m, judgment) {
 
   for (var bi in base_nodes) {
     var nd = base_nodes[bi];
-    var lnum = nd.original.start_line.toString();
+    var lnum = nd.original.sl.toString();
     var nids0;
     try {
       nids0 = node_tbl[nd.original.loc][lnum];
@@ -397,9 +397,9 @@ function get_link(obj, vkind, vid, algo, meth) {
     'src'  : url,
   }
 
-  if (obj.start_line && obj.end_line) {
-    params['startl'] = obj.start_line;
-    params['endl'] = obj.end_line;
+  if (obj.sl && obj.el) {
+    params['startl'] = obj.sl;
+    params['endl'] = obj.el;
   }
 
   var head = true;
@@ -521,7 +521,7 @@ function cmp_lns(lns0, lns1) {
 }
 
 function get_lns(mdata, node) {
-  var lns = [node.original.start_line], ps = node.parents, pid, po, pinfo;
+  var lns = [node.original.sl], ps = node.parents, pid, po, pinfo;
   var cur = (node.original.loc, node.original.pu);
   for (var i in ps) {
     pid = ps[i];
@@ -530,7 +530,7 @@ function get_lns(mdata, node) {
       pinfo = (po.loc, po.pu);
       if (pinfo != cur) {
         cur = pinfo;
-        lns.splice(0, 0, parseInt(po.start_line));
+        lns.splice(0, 0, parseInt(po.sl));
       }
     }
   }

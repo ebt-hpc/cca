@@ -97,7 +97,7 @@ else:
             lnum = nd.get('lnum', None)
 
             idx = nd.get('idx', None)
-            leftmost_idx = nd.get('leftmost_idx', None)
+            leftmost_idx = nd.get('lmi', None)
 
             time = datetime.datetime.now().isoformat() # !!! should be UTC!
             #time = datetime.datetime.utcnow().isoformat()
@@ -126,7 +126,7 @@ else:
             if idx:
                 log['idx'] = idx
             if leftmost_idx:
-                log['leftmost_idx'] = leftmost_idx
+                log['lmi'] = leftmost_idx
 
             if path:
                 log['path'] = path

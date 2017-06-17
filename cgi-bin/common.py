@@ -259,7 +259,7 @@ def compute_state(user, proj, ver):
 
         for record in records:
             idx          = record.get('idx', None)
-            leftmost_idx = record.get('leftmost_idx', None)
+            leftmost_idx = record.get('lmi', None)
 
             if idx and leftmost_idx:
                 if not leftmost_tbl.has_key(idx):
