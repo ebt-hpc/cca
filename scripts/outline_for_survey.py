@@ -2642,6 +2642,8 @@ class Outline(dp.base):
 
             path_tbl = {} # path -> fid
 
+            idx_range_tbl = {} # fidi -> (lmi * idx)
+
             if ensure_dir(lver_dir):
                 try:
                     with open(os.path.join(lver_dir, 'path_list.json'), 'w') as plf:
@@ -2661,10 +2663,13 @@ class Outline(dp.base):
                     json_d['node_tbl'] = relevant_node_tbl
                     json_d['state'] = { 'opened' : True }
 
-                    fid = fid_list[json_d['fid']]
-                    loc = path_list[json_d['loc']]
+                    fidi = json_d['fid']
+                    loci = json_d['loc']
 
-                    path_tbl[loc] = fid
+                    fid = fid_list[fidi]
+                    loc = path_list[loci]
+
+                    path_tbl[loci] = fidi
 
                     data_file_name = self.gen_data_file_name(fid)
 
@@ -2679,6 +2684,11 @@ class Outline(dp.base):
                             st = time()
 
                         index(json_d)
+
+                        idx = json_d.get('idx', None)
+                        lmi = json_d.get('lmi', None)
+                        if idx and lmi:
+                            idx_range_tbl[fidi] = (lmi, idx)
 
                         if dp.debug_flag:
                             self.debug('done. (%0.3f sec)' % (time() - st))
@@ -2705,6 +2715,13 @@ class Outline(dp.base):
             try:
                 with open(os.path.join(lver_dir, 'index.json'), 'w') as vif:
                     vif.write(json.dumps(vitbl))
+
+            except Exception, e:
+                self.warning(str(e))
+
+            try:
+                with open(os.path.join(lver_dir, 'idx_range.json'), 'w') as irf:
+                    irf.write(json.dumps(idx_range_tbl))
 
             except Exception, e:
                 self.warning(str(e))

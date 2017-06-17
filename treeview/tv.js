@@ -63,6 +63,16 @@ function get_target_node(ev, jstree) {
   return nd;
 }
 
+function reset_select_listeners() {
+  $('select.estimation-scheme').on('click.jstree', function (ev, data) {
+    return false;
+  });
+
+  $('select.judgment').on('click.jstree', function (ev, data) {
+    return false;
+  });
+}
+
 function redraw(jstree) {
 
   var timer = new Timer();
@@ -71,6 +81,7 @@ function redraw(jstree) {
   console.log('redraw: start!');
 
   jstree.redraw(true);
+  reset_select_listeners();
 
   console.log(timer.get()+' ms for redraw');
 
@@ -462,8 +473,8 @@ function handle_estimation_scheme(node, prev_lv, lv) {
   var prev = ['class="on_level ',prev_lv_id,'"'].join('');
   var curr = ['class="on_level ',lv_id,'"'].join('');
 
-  var prev0 = prev+' style="display:table-cell;"';
-  var curr1 = curr+' style="display:table-cell;"';
+  var prev0 = prev+' style="display:inline;"';
+  var curr1 = curr+' style="display:inline;"';
 
   console.log(prev0, '->', prev);
   console.log(curr, '->', curr1);
@@ -613,14 +624,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
   }).on('ready.jstree', function (ev, data) {
     console.log('ready ('+global_timer.get()+')');
 
-    $('select.estimation-scheme').on('click.jstree', function (ev, data) {
-      return false;
-    });
-
-    $('select.judgment').on('click.jstree', function (ev, data) {
-      console.log('!!!');
-      return false;
-    });
+    reset_select_listeners();
 
     var jstree = data.instance;
 

@@ -23,7 +23,7 @@ __author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
 
 import os
 import sys
-import json
+import simplejson
 
 from common import OUTLINE_DIR, TARGET_DIR, DEFAULT_USER, BASE_URL
 
@@ -54,7 +54,7 @@ HTML_TEMPL = '''<html>
 </head>
 <body>
 
-<h1>%(user)s</h1>
+<!--<h1>%(user)s</h1>-->
 <h2>%(proj)s</h2>
 <h3>%(ver)s</h3>
 
@@ -75,7 +75,7 @@ def is_target(proj, ver, path):
     p = os.path.join(TARGET_DIR, proj, 'roots-%s.json' % ver)
     try:
         with open(p, 'r') as f:
-            paths = json.load(f)
+            paths = simplejson.load(f)
             if path not in paths:
                 b = False
 
@@ -100,55 +100,63 @@ target_only = form.getvalue('target_only', False)
 
 content = 'FAILED'
 
+ver_path = os.path.join(OUTLINE_DIR, proj, 'v', ver)
+
 if proj and ver:
+    path_list = []
+    fid_list = []
+
     try:
-        with open(os.path.join(OUTLINE_DIR, proj, 'v', ver, 'index.json'), 'r') as f:
-            vi_tbl = json.load(f)
+        with open(os.path.join(ver_path, 'path_list.json'), 'r') as plf:
+            path_list = simplejson.load(plf)
 
-            d = {
-                'user' : user,
-                'proj' : proj, 
-                'ver'  : ver,
-            }
-            links = []
-
-            path_tbl = vi_tbl.get('path_tbl', {})
-            if path_tbl:
-                for (path, fid) in path_tbl.iteritems():
-                    d['path'] = path
-                    d['fid'] = fid
-
-                    cond = True
-                    if target_only:
-                        cond = is_target(proj, ver, path)
-
-                    if cond:
-                        links.append(LINK_FMT % d)
-
-            else: #!!!!! obsoleted
-                fid_tbl = vi_tbl.get('fid_tbl', {})
-                for (fid, path) in fid_tbl.iteritems():
-                    d['fid'] = fid
-                    d['path'] = path
-
-                    cond = True
-                    if target_only:
-                        cond = is_target(proj, ver, path)
-
-                    if cond:
-                        links.append(LINK_FMT % d)
-
-            content = HTML_TEMPL % {
-                'user'     : user,
-                'proj'     : proj,
-                'ver'      : ver,
-                'base_url' : BASE_URL,
-                'content'  : '\n'.join(links),
-            }
+        with open(os.path.join(ver_path, 'fid_list.json'), 'r') as flf:
+            fid_list = simplejson.load(flf)
 
     except Exception, e:
         content = str(e)
 
+    if path_list and fid_list:
+        try:
+            with open(os.path.join(ver_path, 'index.json'), 'r') as f:
+                vi_tbl = simplejson.load(f)
+
+                d = {
+                    'user' : user,
+                    'proj' : proj, 
+                    'ver'  : ver,
+                }
+                links = []
+
+                path_tbl = vi_tbl.get('path_tbl', {})
+
+                if path_tbl:
+                    for (pathi, fidi) in path_tbl.iteritems():
+                        path = path_list[int(pathi)]
+                        d['path'] = path
+                        d['fid'] = fid_list[fidi]
+
+                        cond = True
+                        if target_only:
+                            cond = is_target(proj, ver, path)
+
+                        if cond:
+                            links.append((path, LINK_FMT % d))
+
+                links.sort(key=lambda x: x[0])
+
+                links = [x[1] for x in links]
+
+                content = HTML_TEMPL % {
+                    'user'     : user,
+                    'proj'     : proj,
+                    'ver'      : ver,
+                    'base_url' : BASE_URL,
+                    'content'  : '\n'.join(links),
+                }
+
+        except Exception, e:
+            content = str(e)
 
 
-print(TEMPL % content)
+sys.stdout.write(TEMPL % content)

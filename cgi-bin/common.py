@@ -25,6 +25,7 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 import os
 import sys
 import json
+import simplejson
 
 #
 
@@ -162,15 +163,15 @@ def get_idx_range_tbl(OUTLINE_DIR, proj, ver):
 
     if os.path.exists(cache_path):
         with open(cache_path, 'r') as f:
-            tbl = json.load(f)
+            tbl = simplejson.load(f)
     else:
         try:
             for (d, dns, fns) in os.walk(dpath):
                 for fn in fns:
-                    if fn != 'index.json':
+                    if fn not in ('index.json', 'fid_list.json', 'path_list.json'):
                         with open(os.path.join(d, fn), 'r') as f:
                             try:
-                                d = json.load(f)
+                                d = simplejson.load(f)
 
                                 leftmost_idx = d.get('lmi', None)
                                 idx = d.get('idx', None)
@@ -182,7 +183,7 @@ def get_idx_range_tbl(OUTLINE_DIR, proj, ver):
                                 pass
 
             with open(cache_path, 'w') as jsonf:
-                json.dump(tbl, jsonf)
+                jsonf.write(json.dumps(tbl))
 
         except:
             pass
