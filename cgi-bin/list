@@ -33,6 +33,7 @@ from common import OUTLINE_DIR, TOPIC_DIR, TARGET_DIR
 from common import DESC_DIR, README_LINKS_DIR
 from common import DEFAULT_USER, MONGO_PORT, TIME_FMT
 from common import get_idx_range_tbl, BASE_URL
+from common import get_ver_path, get_path_list, get_fid_list
 
 import common
 
@@ -183,7 +184,8 @@ LAST_JUDGMENT_FMT = '''<table class="noframe"><tr>
 <input type="hidden" name="user" value="%(user)s">
 <input type="hidden" name="proj" value="%(proj)s">
 <input type="hidden" name="ver" value="%(ver)s">
-<button class="src" type="submit" name="fid" value="%(fid)s">
+<input type="hidden" name="path" value="%(root_path)s">
+<button class="src" type="submit" name="fid" value="%(root_fid)s">
 %(proj)s : %(ver)s : %(path)s
 </button>
 </form>
@@ -268,14 +270,14 @@ def is_target_ver(proj, ver):
 
 
 
-def find_fid(proj, ver, idx):
-    tbl = get_idx_range_tbl(OUTLINE_DIR, proj, ver)
+def find_root(proj, ver, idx):
+    tbl = get_idx_range_tbl(proj, ver)
 
     result = None
 
-    for (fid, (lmi, i)) in tbl.iteritems():
+    for (fidi, (lmi, i, pathi)) in tbl.iteritems():
         if lmi <= idx <= i:
-            result = fid
+            result = (pathi, int(fidi))
             break
 
     return result
@@ -303,20 +305,27 @@ def get_last_judgment(user):
         for record in records:
             proj = record['proj']
             ver = record['ver']
-            path = record['path']
+            pathi = record['path']
             time = record['time']
+
+            ver_path = get_ver_path(proj, ver)
+            path_list = get_path_list(ver_path)
+            fid_list = get_fid_list(ver_path)
+
+            path = path_list[pathi]
+            record['path'] = path
 
             result = 'Last Judgment: %s:%s:%s %s' % (proj, ver, path, time)
 
             try:
                 i = int(record['idx'])
 
-                fid = find_fid(proj, ver, i)
+                (pathi, fidi) = find_root(proj, ver, i)
 
-                if fid:
-                    record['fid'] = fid
-                    record['time'] = TIME_FMT % time
-                    result = LAST_JUDGMENT_FMT % record
+                record['root_path'] = path_list[pathi]
+                record['root_fid'] = fid_list[fidi]
+                record['time'] = TIME_FMT % time
+                result = LAST_JUDGMENT_FMT % record
 
             except:
                 raise
@@ -477,7 +486,6 @@ html = HTML_TEMPL % { 'user':user,
                       'last_judgment':last_judgment,
 }
 
-print('Content-Type: text/html')
-print
-
+sys.stdout.write('Content-Type: text/html')
+sys.stdout.write('\n\n')
 print(html.encode('utf-8'))

@@ -34,6 +34,8 @@ import msgpack
 from common import DEFAULT_USER, OUTLINE_DIR, TARGET_DIR, MONGO_PORT
 from common import EXPAND_TARGET_LOOPS, EXPAND_RELEVANT_LOOPS, EXPAND_ALL, COLLAPSE_ALL
 from common import NodeManager, compute_state, get_idx_range_tbl
+from common import get_proj_index, get_ver_index, get_path_list, get_fid_list
+from common import get_proj_path, get_ver_path
 
 
 MARKER_CALLEE_PAT = re.compile('^.*(dgemm|timer).*$')
@@ -240,7 +242,7 @@ METRICS_LINE_FMT = '''
 
 #
 
-def get_last_nid(user, proj, ver, fid):
+def get_last_nid(user, proj, ver, root_fidi):
     result = None
     try:
         cli = MongoClient('localhost', MONGO_PORT)
@@ -257,9 +259,9 @@ def get_last_nid(user, proj, ver, fid):
 
         records = col.find(query).sort('time', DESCENDING)
 
-        idx_range_tbl = get_idx_range_tbl(OUTLINE_DIR, proj, ver)
+        idx_range_tbl = get_idx_range_tbl(proj, ver)
 
-        (lmi, i) = idx_range_tbl[fid]
+        (lmi, i, _) = idx_range_tbl[str(root_fidi)]
 
         for record in records:
             if lmi < record['idx'] < i:
@@ -307,38 +309,17 @@ if proj and ver and fid:
 
     pid = re.sub(r'_git$', '.git', proj)
 
-    pi_tbl = {}
-    vi_tbl = {}
+    proj_path = get_proj_path(proj)
+    ver_path = get_ver_path(proj, ver)
 
-    path_list = []
-    fid_list = []
-
-    proj_path = os.path.join(OUTLINE_DIR, proj)
-
-    ver_path = os.path.join(proj_path, 'v', ver)
-
-    try:
-        with open(os.path.join(proj_path, 'index.json'), 'r') as pif:
-            pi_tbl = json.load(pif)
-
-        with open(os.path.join(ver_path, 'index.json'), 'r') as vif:
-            vi_tbl = json.load(vif)
-
-    except Exception, e:
-        pass
-
-    try:
-        with open(os.path.join(ver_path, 'path_list.json'), 'r') as plf:
-            path_list = simplejson.load(plf)
-
-        with open(os.path.join(ver_path, 'fid_list.json'), 'r') as flf:
-            fid_list = simplejson.load(flf)
-
-    except Exception, e:
-        pass
+    pi_tbl = get_proj_index(proj_path)
+    vi_tbl = get_ver_index(ver_path)
 
     vkind = pi_tbl.get('ver_kind', 'REL')
     vid = vi_tbl.get('vid', ver)
+
+    path_list = get_path_list(ver_path)
+    fid_list = get_fid_list(ver_path)
 
     common_params = {
         'ver'  : ver,
@@ -389,7 +370,7 @@ if proj and ver and fid:
         if aref_ranges:
             params['aref_ranges'] = aref_ranges
 
-        form = '<form style="display:inline;" name="form_%s" method="POST" action="openviewer" target="_blank">' % obj['id']
+        form = '<form style="display:none;" name="form_%s" method="POST" action="openviewer" target="_blank">' % obj['id']
         for kv in params.iteritems():
             form += "<input type='hidden' name='%s' value='%s'>" % kv
         form += '</form>'
@@ -487,9 +468,10 @@ if proj and ver and fid:
             tree_data['failure'] = str(e)
 
     if tree_data:
+        node_mgr.set_offset(tree_data['lmi'])
         try:
             with open(os.path.join(TARGET_DIR, proj, ver+'.json'), 'r') as targetf:
-                target_data = json.load(targetf)
+                target_data = simplejson.load(targetf)
 
         except Exception, e:
             pass
@@ -508,7 +490,7 @@ if proj and ver and fid:
 
             tree_data['text'] = '%s (%d nodes)' % (tree_data['text'], len(node_mgr))
 
-            last_nid = get_last_nid(user, proj, ver, fid)
+            last_nid = get_last_nid(user, proj, ver, tree_data['fid'])
             if last_nid:
                 tree_data['last_nid'] = last_nid
 

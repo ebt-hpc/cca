@@ -1024,6 +1024,8 @@ function treeview(data_url, vkind, vid, algo, meth) {
   var to = false;
   $('#search').keypress(function (ev) {
     if (ev.which == 13) {
+      $('#search').blur();
+
       if (to) {
         clearTimeout(to);
       }
@@ -1132,7 +1134,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
         }
 
-      }, 500);
+      }, 200);
     }
   });
 

@@ -837,13 +837,13 @@ class IndexGenerator(dp.base):
 def node_list_to_string(l):
     return '\n'.join([str(x) for x in l])
 
-def index(data):
-    igen = IndexGenerator(init=1)
+def index(idx_gen, data):
+
     def scan(d):
         children = d['children']
         for c in children:
             scan(c)
-        i = igen.gen()
+        i = idx_gen.gen()
         d['idx'] = i
         if children:
             d['lmi'] = children[0]['lmi']
@@ -2659,6 +2659,8 @@ class Outline(dp.base):
                 except Exception, e:
                     self.warning(str(e))
 
+                idx_gen = IndexGenerator(init=1)
+
                 for json_d in json_ds:
                     json_d['node_tbl'] = relevant_node_tbl
                     json_d['state'] = { 'opened' : True }
@@ -2683,12 +2685,12 @@ class Outline(dp.base):
                             self.debug('indexing for "%s"...' % data_path)
                             st = time()
 
-                        index(json_d)
+                        index(idx_gen, json_d)
 
                         idx = json_d.get('idx', None)
                         lmi = json_d.get('lmi', None)
                         if idx and lmi:
-                            idx_range_tbl[fidi] = (lmi, idx)
+                            idx_range_tbl[fidi] = (lmi, idx, loci)
 
                         if dp.debug_flag:
                             self.debug('done. (%0.3f sec)' % (time() - st))

@@ -90,9 +90,13 @@ class NodeManager(object):
         self._node_count = 0
         self._parent_tbl = {} # nid -> node
         self._orig_nid_tbl = {} # nid -> nid list
+        self._offset = 1
 
     def __len__(self):
         return len(self._node_list)
+
+    def set_offset(self, ofs):
+        self._offset = ofs
 
     def reg(self, node):
         self._node_list.append(node)
@@ -125,7 +129,7 @@ class NodeManager(object):
     def geti(self, idx):
         node = None
         try:
-            node = self._node_list[int(idx)-1]
+            node = self._node_list[int(idx) - self._offset]
         except:
             pass
         return node
@@ -133,7 +137,7 @@ class NodeManager(object):
     def iter_subtree(self, node, f):
         ri = node['idx']
         lmi = node['lmi']
-        for i in range(lmi, ri+1):
+        for i in range(lmi-self._offset, ri+1-self._offset):
             try:
                 nd = self._node_list[i]
                 f(nd)
@@ -155,8 +159,50 @@ class NodeManager(object):
             else:
                 break
 
-def get_idx_range_tbl(OUTLINE_DIR, proj, ver):
-    dpath = os.path.join(OUTLINE_DIR, proj, 'v', ver)
+def get_proj_path(proj):
+    return os.path.join(OUTLINE_DIR, proj)
+
+def get_ver_path(proj, ver):
+    return os.path.join(OUTLINE_DIR, proj, 'v', ver)
+
+def get_path_list(ver_path):
+    path_list = []
+    try:
+        with open(os.path.join(ver_path, 'path_list.json'), 'r') as plf:
+            path_list = simplejson.load(plf)
+    except Exception, e:
+        pass
+    return path_list
+
+def get_fid_list(ver_path):
+    fid_list = []
+    try:
+        with open(os.path.join(ver_path, 'fid_list.json'), 'r') as flf:
+            fid_list = simplejson.load(flf)
+    except Exception, e:
+        pass
+    return fid_list
+
+def get_proj_index(proj_path):
+    pi_tbl = {}
+    try:
+        with open(os.path.join(proj_path, 'index.json'), 'r') as pif:
+            pi_tbl = simplejson.load(pif)
+    except Exception, e:
+        pass
+    return pi_tbl
+
+def get_ver_index(ver_path):
+    vi_tbl = {}
+    try:
+        with open(os.path.join(ver_path, 'index.json'), 'r') as vif:
+            vi_tbl = simplejson.load(vif)
+    except Exception, e:
+        pass
+    return vi_tbl
+
+def get_idx_range_tbl(proj, ver):
+    dpath = get_ver_path(proj, ver)
     cache_path = os.path.join(dpath, IDX_RANGE_CACHE_NAME)
 
     tbl = {} # fid -> (leftmost_idx, idx)
