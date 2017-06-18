@@ -137,7 +137,7 @@ div.barValue {
 }
 
 input.search {
-    margin:0em auto 0em auto;
+    margin:0em 0em 0em 0em;
     display:block;
     padding:4px;
     border:1px solid silver;
@@ -147,10 +147,25 @@ input.search {
     border-radius:4px;
 }
 
+#prevButton {
+    margin-right: 0px;
+}
+#nectButton {
+    margin-left: 0px;
+}
+
+.hit {
+    width: 48px;
+    font-style: normal;
+    color: #999999;
+    font-size: 90%;
+    text-align: right;
+}
+
 .hits {
     width: 48px;
     font-style: normal;
-    color: #aaaaaa;
+    color: #999999;
     font-size: 90%;
 }
 

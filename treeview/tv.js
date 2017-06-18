@@ -595,6 +595,60 @@ function set_dialog_message(mes) {
   $(s).appendTo('#dialog');
 }
 
+function set_cur(idx) {
+  $('#cur').text((idx+1)+' /');
+}
+
+function jump_to_prev() {
+  console.log('jump_to_prev');
+  var jstree = get_jstree();
+
+  if (jstree.search_result) {
+    var idx = jstree.search_result['idx'] - 1;
+    var nds = jstree.search_result['nodes'];
+
+    if (nds.length > 0) {
+      if (idx < 0) {
+        idx = nds.length - 1;
+      }
+      //console.log(idx, nds[idx].original.code);
+
+      jstree.search_result['idx'] = idx;
+      var elem = document.getElementById(nds[idx].id);
+      if (elem) {
+        scrollTo(nds[idx].id);
+        set_cur(idx);
+      }
+    }
+  }
+}
+
+function jump_to_next() {
+  console.log('jump_to_next');
+  var jstree = get_jstree();
+
+  if (jstree.search_result) {
+
+    var nds = jstree.search_result['nodes'];
+
+    if (nds.length > 0) {
+
+      var idx = jstree.search_result['idx'] + 1;
+
+      if (idx >= nds.length) {
+        idx = 0;
+      }
+      //console.log(idx, nds[idx].original.code);
+
+      jstree.search_result['idx'] = idx;
+      var elem = document.getElementById(nds[idx].id);
+      if (elem) {
+        scrollTo(nds[idx].id);
+        set_cur(idx);
+      }
+    }
+  }
+}
 
 
 function treeview(data_url, vkind, vid, algo, meth) {
@@ -1036,7 +1090,8 @@ function treeview(data_url, vkind, vid, algo, meth) {
         var kw = $('#search').val().toLowerCase();
 
         if (kw == '') {
-          $('#count').text('0');
+          $('#count').text('');
+          $('#cur').text('');
           clear_search();
           return;
 
@@ -1053,10 +1108,10 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
             jstree.search_result['idx'] = idx;
             var elem = document.getElementById(nds[idx].id);
-            if (elem)
+            if (elem) {
               //elem.scrollIntoView();
               scrollTo(nds[idx].id);
-
+            }
             return;
 
           } else {
@@ -1089,7 +1144,10 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
         var count = nodes.length;
 
-        if (count > 0) {
+        if (count == 0) {
+          $('#count').text(0);
+
+        } else if (count > 0) {
           
           var need_to_redraw = [];
 
@@ -1130,6 +1188,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
           if (elem) {
             //elem.scrollIntoView();
             scrollTo(nodes[0].id);
+            set_cur(0);
           }
 
         }
@@ -1141,15 +1200,26 @@ function treeview(data_url, vkind, vid, algo, meth) {
   get_jstree().search_result = {'kw':'','nodes':[],'idx':0};
 
   $('#clearButton').on('click', function () {
+    console.log('clearButton: click');
     $('#search').val('');
-    $('#count').text('0');
+    $('#count').text('');
+    $('#cur').text('');
 
     //$('#outline').jstree(true).clear_search();
-
     //$('#outline').jstree(true).deselect_all();
 
     clear_search();
 
+  });
+
+  $('#prevButton').on('click', function () {
+    console.log('prevButton: click');
+    jump_to_prev();
+  });
+
+  $('#nextButton').on('click', function () {
+    console.log('nextButton: click');
+    jump_to_next();
   });
 
   $('#jumpToTarget').on('click', function () {

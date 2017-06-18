@@ -59,8 +59,11 @@ HTML_TEMPL = '''<html>
 <td>
 <input class="search type="text" size="24" id="search" value=""></input>
 </td>
+<td style="padding-right:0px;"><button id="prevButton">&lt;</button></td>
+<td style="padding-left:0px;"><button id="nextButton">&gt;</button></td>
 <td><button id="clearButton">Clear</button></td>
-<td><div class="hits" id="count">0</div></td>
+<td><div class="hit" id="cur"></div></td>
+<td><div class="hits" id="count"></div></td>
 </tr>
 </table>
 </div>
