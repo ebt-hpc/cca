@@ -49,7 +49,7 @@ from virtuoso import VIRTUOSO_PW, VIRTUOSO_PORT
 
 ###
 
-MARKER_CALLEE_PAT = re.compile('^.*(dgemm|timer).*$')
+MARKER_CALLEE_PAT = re.compile('^.*(dgemm|timer|start|begin).*$')
 
 OMITTED = ['execution-part','do-block']
 
@@ -937,6 +937,8 @@ class Node(dp.base):
             m = MARKER_CALLEE_PAT.match(self._callee_name)
             if m:
                 b = True
+            else:
+                b = self._callee_name.startswith('mpi_')
         return b
 
     def count_parent_loops_in_container(self):
@@ -2077,7 +2079,7 @@ class Outline(dp.base):
                                  pu_name=pu_name,
                                  vpu_name=vpu_name)
 
-                if call_node.is_relevant():
+                if True or call_node.is_relevant():
                     self._relevant_nodes.add(call_node)
 
                 parent_constr = row.get('constr', None)
