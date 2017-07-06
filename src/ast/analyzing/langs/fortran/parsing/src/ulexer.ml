@@ -627,10 +627,13 @@ module F (Stat : Parser_aux.STATE_T) = struct
     val mutable amp_count               = 0
     val mutable noncomment_margin_count = 0
     val mutable letter_cont_field_count = 0
-    val mutable free_form_cont_count    = 0
+    val mutable free_cont_count    = 0
     val mutable incomplete_line_count   = 0
 
+    val mutable marginal_complete_free_cont_count = 0
+
     val mutable paren_level = 0
+    val mutable _paren_level = ""
 
     val mutable pp_branch_level = 0
     val pp_branch_stack = Stack.create()
@@ -643,7 +646,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
                         ms_open_paren = false; 
                         ms_open_char  = PA.CH_NONE;
                       }
+    val mutable last_in_margin = false
     val mutable margin_paren_level = 0
+    val mutable _margin_paren_level = ""
     val mutable margin_char_context = PA.CH_NONE
 
     val mutable letter_cont_field_flag = false
@@ -665,10 +670,13 @@ module F (Stat : Parser_aux.STATE_T) = struct
       | PA.CH_NONE -> false
       | _ -> true
 
-    method free_form_cont_count = free_form_cont_count
-    method incr_free_form_cont_count = 
-      free_form_cont_count <- free_form_cont_count + 1
-
+    method marginal_complete_free_cont_count = marginal_complete_free_cont_count
+    method incr_marginal_complete_free_cont_count =
+      marginal_complete_free_cont_count <- marginal_complete_free_cont_count + 1
+ 
+    method free_cont_count = free_cont_count
+    method incr_free_cont_count =
+      free_cont_count <- free_cont_count + 1
 
     method letter_cont_field_count = letter_cont_field_count
     method incr_letter_cont_field_count = 
@@ -681,8 +689,78 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
     method noncomment_margin_count = noncomment_margin_count
 
-    method reset_margin_paren_level = margin_paren_level <- 0
+    method clear_last_in_margin =
+      if last_in_margin then begin
+        DEBUG_MSG "cleared";
+        last_in_margin <- false
+      end
 
+    method reset_paren_level =
+      DEBUG_MSG "called";
+      paren_level <- 0;
+      _paren_level <- ""
+
+    method reset_margin_paren_level =
+      DEBUG_MSG "called";
+      margin_paren_level <- 0;
+      _margin_paren_level <- ""
+
+    method incr_paren_level =
+      let lv = paren_level + 1 in
+      let _lv = _paren_level^"(" in
+      DEBUG_MSG "%s:%d -> %s:%d" _paren_level paren_level _lv lv;
+      paren_level <- lv;
+      _paren_level <- _lv
+
+    method incr_margin_paren_level =
+      let lv = margin_paren_level + 1 in
+      let _lv = _margin_paren_level^"(" in
+      DEBUG_MSG "%s:%d -> %s:%d" _margin_paren_level margin_paren_level _lv lv;
+      margin_paren_level <- lv;
+      _margin_paren_level <- _lv
+
+    method decr_paren_level =
+      let lv = paren_level - 1 in
+      let _lv = _paren_level^")" in
+      DEBUG_MSG "%s:%d -> %s:%d" _paren_level paren_level _lv lv;
+      paren_level <- lv;
+      _paren_level <- _lv
+
+    method decr_margin_paren_level =
+      let lv = margin_paren_level - 1 in
+      let _lv = _margin_paren_level^")" in
+      DEBUG_MSG "%s:%d -> %s:%d" _margin_paren_level margin_paren_level _lv lv;
+      margin_paren_level <- lv;
+      _margin_paren_level <- _lv
+
+    method check_paren_level =
+      let len0 = String.length _paren_level in
+      let s = _paren_level ^ _margin_paren_level in
+      DEBUG_MSG "_paren_level=%s" _paren_level;
+      DEBUG_MSG "_margin_paren_level=%s" _margin_paren_level;
+      let b =
+        if _paren_level = "" then
+          true
+        else
+          let lv = ref 0 in
+          try
+            String.iteri
+              (fun i c ->
+                begin
+                  match c with
+                  | '(' -> incr lv
+                  | ')' -> decr lv
+                  | _ -> ()
+                end;
+                if i >= len0 && !lv = 0 then
+                  raise Exit
+              ) s;
+            false
+          with
+            Exit -> true
+      in
+      DEBUG_MSG "%B" b;
+      b
 
     method margin_stat = margin_stat
 
@@ -712,7 +790,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
         margin_stat.ms_in_margin <- false;
         margin_stat.ms_open_paren <- false;
         margin_stat.ms_open_char <- PA.CH_NONE;
-        DEBUG_MSG "cleared"
+        DEBUG_MSG "margin_stat cleared";
+        last_in_margin <- true;
+        DEBUG_MSG "last_in_margin -> true";
       end
 
     method enter_char cc = 
@@ -776,23 +856,15 @@ module F (Stat : Parser_aux.STATE_T) = struct
       
     method enter_paren =
       if margin_stat.ms_in_margin then
-        let lv = margin_paren_level + 1 in
-        DEBUG_MSG "level (in margin): %d -> %d" margin_paren_level lv;
-        margin_paren_level <- lv
+        self#incr_margin_paren_level
       else
-        let lv = paren_level + 1 in
-        DEBUG_MSG "level: %d -> %d" paren_level lv;
-        paren_level <- lv
+        self#incr_paren_level
 
     method exit_paren =
       if margin_stat.ms_in_margin then
-        let lv = margin_paren_level - 1 in
-        DEBUG_MSG "level (in margin): %d -> %d" margin_paren_level lv;
-        margin_paren_level <- lv
+        self#decr_margin_paren_level
       else
-        let lv = paren_level - 1 in
-        DEBUG_MSG "level: %d -> %d" paren_level lv;
-        paren_level <- lv
+        self#decr_paren_level
 
     method check_cont =
       let may_be_incomplete_line =
@@ -817,8 +889,8 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
 
     method check_at_initial_line =
-      DEBUG_MSG "paren_level=%d margin_paren_level=%d sep_in_margin=%B"
-        paren_level margin_paren_level self#sep_in_margin;
+      DEBUG_MSG "paren_level=%d last_in_margin=%B margin_paren_level=%d sep_in_margin=%B"
+        paren_level last_in_margin margin_paren_level self#sep_in_margin;
       let may_be_incomplete_line = ref self#check_cont in
       let may_be_comment_margin = ref false in
 
@@ -872,11 +944,10 @@ module F (Stat : Parser_aux.STATE_T) = struct
           else
             ()
 
-        end (* margin_paren_level = 0 *)
+        end
         else begin (* margin_paren_level <> 0 *)
           DEBUG_MSG "comment margin?";
           may_be_comment_margin := true;
-          margin_paren_level <- 0
         end
 
       end
@@ -889,8 +960,10 @@ module F (Stat : Parser_aux.STATE_T) = struct
         else if self#sep_in_margin then begin
           check_sep()
         end;
-        paren_level <- 0;
-        margin_paren_level <- 0;
+        if last_in_margin && not !may_be_comment_margin && not self#check_paren_level then begin
+          DEBUG_MSG "margin contains non-comment characters and they never close parentheses";
+          self#incr_marginal_complete_free_cont_count
+        end;
         margin_char_context <- PA.CH_NONE;
       end;
 
@@ -1054,6 +1127,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
     method is_false_fixed_source_form =
       let b =
+        marginal_complete_free_cont_count > 0 ||
         (fixed_comment_count = 0) && 
         (
          (exclam_comment_count > 0 && amp_count > 0 && marginal_amp_count <> amp_count) ||
@@ -1066,6 +1140,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     method to_string =
       Printf.sprintf ("\n"^^
                       "lnum:%d pos:%d\n"^^
+                      "marginal complete free conts: %d\n"^^
                       "effective lines      : %d\n"^^
                       "!comments            : %d\n"^^
                       "fixed form comments  : %d\n"^^
@@ -1084,10 +1159,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
                       "blank_line_flag    : %B\n"^^
                       "free_cont_flag     : %B"
                      ) 
-        lnum pos 
+        lnum pos
+        marginal_complete_free_cont_count
         effective_line_count exclam_comment_count fixed_comment_count long_line_count
         marginal_amp_count amp_count noncomment_margin_count
-        letter_cont_field_count free_form_cont_count incomplete_line_count
+        letter_cont_field_count free_cont_count incomplete_line_count
         paren_level margin_paren_level pp_branch_level
         (PA.char_context_to_string char_context)
         (PA.char_context_to_string margin_char_context)
@@ -1377,7 +1453,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#check_at_initial_line;
     genv#add_to_pos 1;
     genv#reset_stmt;
-    scan_stmt genv form lexbuf
+    scan_stmt ~is_head:true genv form lexbuf
 
 |   _ ->
     let s = Ulexing.utf8_lexeme lexbuf in
@@ -1391,7 +1467,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
       genv#add_to_pos 1;
       genv#reset_stmt;
       genv#add_to_stmt s;
-      scan_stmt genv form lexbuf
+      scan_stmt ~is_head:true genv form lexbuf
     end
 
   and scan_block_comment_tab genv form = lexer
@@ -1399,7 +1475,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#check_at_initial_line;
     genv#add_to_pos 1;
     genv#reset_stmt;
-    scan_stmt genv form lexbuf
+    scan_stmt ~is_head:true genv form lexbuf
 
 |   _ -> scan_block_comment_tab genv form lexbuf
 
@@ -1415,7 +1491,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#check_at_initial_line;
     genv#add_to_pos 1;
     genv#reset_stmt;
-    scan_stmt genv form lexbuf
+    scan_stmt ~is_head:true genv form lexbuf
 
 |   '0' | white_space -> 
     let s = Ulexing.utf8_lexeme lexbuf in
@@ -1428,7 +1504,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
       genv#check_at_initial_line;
       genv#add_to_pos 1;
       genv#reset_stmt;
-      scan_stmt genv form lexbuf
+      scan_stmt ~is_head:true genv form lexbuf
     end
 
 |   eof -> form
@@ -1496,7 +1572,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#check_at_initial_line;
     genv#add_to_pos 1;
     genv#reset_stmt;
-    scan_stmt genv form lexbuf
+    scan_stmt ~is_head:true genv form lexbuf
 
 |   _ -> scan_block_comment_cont genv form lexbuf
 
@@ -1504,6 +1580,10 @@ module F (Stat : Parser_aux.STATE_T) = struct
   and scan_stmt ?(is_head=false) genv form = lexer
 |   line_terminator -> 
     DEBUG_MSG "LINE TERMINATOR";
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
     genv#clear_letter_cont_field;
     genv#add_to_lnum 1;
     genv#reset_pos;
@@ -1530,6 +1610,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
     scan_stmt genv form lexbuf
 
 |   ';' -> 
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
+    genv#clear_last_in_margin;
     genv#clear_letter_cont_field;
     check_pos genv;
     if genv#stmt_is_blank then begin (* *)
@@ -1555,7 +1640,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
       DEBUG_MSG "'&' found at pos %d (<= max_line_length(%d))"
         genv#pos max_line_length;
 
-      genv#incr_free_form_cont_count;
+      genv#incr_free_cont_count;
       genv#set_free_cont_flag
     end
     else
@@ -1566,6 +1651,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
 |   char_start_single -> 
     DEBUG_MSG "CHAR_START(SINGLE QUOTE) [%dL] pos=%d" genv#lnum genv#pos;
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
+    genv#clear_last_in_margin;
     genv#clear_letter_cont_field;
     genv#add_to_pos (Ulexing.lexeme_length lexbuf);
     genv#add_to_stmt (Ulexing.utf8_lexeme lexbuf);
@@ -1574,6 +1664,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
 |   char_start_double -> 
     DEBUG_MSG "CHAR_START(DOUBLE QUOTE) [%dL] pos=%d" genv#lnum genv#pos;
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
+    genv#clear_last_in_margin;
     genv#clear_letter_cont_field;
     genv#add_to_pos (Ulexing.lexeme_length lexbuf);
     genv#add_to_stmt (Ulexing.utf8_lexeme lexbuf);
@@ -1581,6 +1676,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
     scan_char_double genv form lexbuf
 
 |   cH_desc -> 
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
+    genv#clear_last_in_margin;
     genv#clear_letter_cont_field;
     let cH = Ulexing.utf8_lexeme lexbuf in
     let len = Ulexing.lexeme_length lexbuf in
@@ -1617,6 +1717,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
 |   eof -> form
 
 |   letter ->
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
+    genv#clear_last_in_margin;
     let s = Ulexing.utf8_lexeme lexbuf in
     let hollerith_num =
       if (s = "h" || s = "H") && genv#stmt <> "" && is_head then begin
@@ -1661,6 +1766,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
       possibly_free genv form lexbuf
     end
     else begin
+      if is_head then begin
+        genv#reset_paren_level;
+        genv#reset_margin_paren_level;
+      end;
+      genv#clear_last_in_margin;
       genv#clear_letter_cont_field;
       check_pos genv;
       genv#add_to_stmt s;
@@ -1669,6 +1779,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
     end
 
 |   ',' | '+' | '-' | '*' | '/' ->
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
+    genv#clear_last_in_margin;
     genv#clear_letter_cont_field;
     let s = Ulexing.utf8_lexeme lexbuf in
     check_pos genv;
@@ -1680,6 +1795,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
     scan_stmt genv form lexbuf
 
 |   "//" ->
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
+    genv#clear_last_in_margin;
     genv#clear_letter_cont_field;
     let s = Ulexing.utf8_lexeme lexbuf in
     check_pos genv;
@@ -1691,6 +1811,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
     scan_stmt genv form lexbuf
 
 |   _ -> 
+    if is_head then begin
+      genv#reset_paren_level;
+      genv#reset_margin_paren_level;
+    end;
+    genv#clear_last_in_margin;
     genv#clear_letter_cont_field;
     let s = Ulexing.utf8_lexeme lexbuf in
     check_pos genv;
