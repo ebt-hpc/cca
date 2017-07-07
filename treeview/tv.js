@@ -18,6 +18,7 @@ var VER = $('#ver').text();
 
 var PID = PROJ.replace(/_git$/, '.git');
 
+var HISTORY_LENGTH = 3
 
 function Timer() {
   this.start_time = 0;
@@ -291,6 +292,13 @@ function setup_targets(jstree) {
   }
 }
 
+function add_to_history(jstree, x) {
+  jstree.history.unshift(x);
+  if (jstree.history.length > HISTORY_LENGTH) {
+    jstree.history.pop();
+  }
+}
+
 function recover_last_view(jstree) {
   var root, m, last_nid;
   root = jstree.get_node('#');
@@ -298,7 +306,59 @@ function recover_last_view(jstree) {
   last_nid = m[root.children[0]].original.last_nid;
   console.log('last_nd:', last_nid);
   if (last_nid) {
+    add_to_history(jstree, last_nid);
     scrollTo(last_nid);
+  }
+}
+
+function jump_to_callee(node, open_source) {
+  if (node.children.length == 0) {
+    var jstree, root, m, callees_tbl, callee_name, callees;
+    jstree = get_jstree();
+    root = jstree.get_node('#');
+    m = jstree._model.data;
+    callees_tbl = m[root.children[0]].original.callees_tbl;
+    callee_name = node.original.callee;
+    callees = callees_tbl[callee_name];
+    console.log('callees: '+callee_name+' -> ',callees);
+    if (callees) {
+      var dialog = $('#dialog').dialog('option', {
+        autoOpen : true,
+        title    : 'Jump or open?',
+        width    : 350,
+        buttons  : {
+          'Jump to callee': function () {
+            $(this).dialog('close');
+            add_to_history(jstree, node.id);
+            scrollTo(callees[0]);
+            //$(this).dialog('destroy');
+          },
+          'Open source' : function () {
+            $(this).dialog('close');
+            open_source();
+            //$(this).dialog('destroy');
+          },
+          Cancel: function () {
+            $(this).dialog('close');
+            //$(this).dialog('destroy');
+          }
+        },
+      });
+      var mes = '<p>';
+      mes += '<span class="ui-icon ui-icon-alert"';
+      mes += ' style="float:left;margin:3px 7px 50px 0;"></span>';
+      mes += 'You can also jump to <b>'+callee_name+'</b>.<br>';
+      mes += 'Jump to the callee or open the source?';
+      mes += '</p>';
+
+      set_dialog_message(mes);
+      dialog.dialog('open');
+
+    } else {
+      open_source();
+    }
+  } else {
+    open_source();
   }
 }
 
@@ -702,6 +762,8 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
     jstree.nnodes = count;
 
+    jstree.history = [];
+
     recover_last_view(jstree);
 
   }).jstree({
@@ -829,7 +891,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
               var dialog = $('#dialog').dialog('option', {
                 autoOpen : true,
                 width   : 400,
-                title   : 'Add Comment',
+                title   : 'Add comment',
                 buttons : {
                   "Submit": function () {
                     set_comment($node);
@@ -925,7 +987,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
                 var dialog = $('#dialog').dialog('option', {
                   autoOpen : true,
-                  title   : 'Expand All',
+                  title   : 'Expand all?',
                   width   : 350,
                   buttons : {
                     'Ok': function () {
@@ -976,6 +1038,15 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
             },
           },
+          "back" : {
+            "label"  : "Back",
+            "icon"   : ICONS_DIR+"/backward.gif",
+            "action" : function (obj) {
+              var jstree = get_jstree();
+              console.log('history:', jstree.history);
+              scrollTo(jstree.history[0]);
+            },
+          },
           "open_text_view" : {
             "label"  : "Open Text View",
             "icon"   : ICONS_DIR+"/openfile.gif",
@@ -997,14 +1068,18 @@ function treeview(data_url, vkind, vid, algo, meth) {
   }).bind('dblclick.jstree', function (ev, data) {
     if (ev.target) {
       var nd = get_target_node(ev);
-      var form = document['form_'+nd.id];
-      //console.log('form', form);
-      if (form) {
-        form.submit();
+
+      function open_source() {
+        var form = document['form_'+nd.id];
+        if (form) {
+          form.submit();
+        }
+        var d = mkpost(nd);
+        d['open_source'] = true;
+        post_log(d);
       }
-      var d = mkpost(nd);
-      d['open_source'] = true;
-      post_log(d);
+
+      jump_to_callee(nd, open_source);
     }
   }).bind('change', function (ev, data) {
     console.log('change: ev.target=', ev.target);
@@ -1086,7 +1161,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
       to = setTimeout(function () {
 
         var jstree = get_jstree();
-        console.log('search result: ', jstree.search_result);
+        console.log('search result:', jstree.search_result);
         var kw = $('#search').val().toLowerCase();
 
         if (kw == '') {

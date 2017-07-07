@@ -2475,6 +2475,8 @@ class Outline(dp.base):
             root_collapsed_caller_tbl = {}
             root_expanded_callee_tbl = {}
 
+            d_tbl = {}
+
             self.message('converting trees into JSON for "%s"...' % lver)
 
             for loc in loc_tbl.keys():
@@ -2493,14 +2495,17 @@ class Outline(dp.base):
                     expanded_callee_tbl = {}
                     root_expanded_callee_tbl[root] = expanded_callee_tbl
 
-                    ds.append(root.to_dict([root], {},
-                                           elaborate=elaborate,
-                                           idgen=idgen,
-                                           collapsed_caller_tbl=collapsed_caller_tbl,
-                                           expanded_callee_tbl=expanded_callee_tbl,
-                                           parent_tbl=parent_tbl,
-                                           is_marked=is_marked,
-                                           omitted=omitted))
+                    d = root.to_dict([root], {},
+                                     elaborate=elaborate,
+                                     idgen=idgen,
+                                     collapsed_caller_tbl=collapsed_caller_tbl,
+                                     expanded_callee_tbl=expanded_callee_tbl,
+                                     parent_tbl=parent_tbl,
+                                     is_marked=is_marked,
+                                     omitted=omitted)
+                    ds.append(d)
+
+                    d_tbl[d['id']] = root
 
                 nid = idgen.gen()
 
@@ -2532,17 +2537,24 @@ class Outline(dp.base):
                 copied['children'] = children
                 return copied
 
-            print('* root_collapsed_caller_tbl:')
+            root_callees_tbl = {}
+
+            self.debug('* root_collapsed_caller_tbl:')
             for (r, collapsed_caller_tbl) in root_collapsed_caller_tbl.iteritems():
-                 print('root=%s:' % r)
+                 self.debug('root=%s:' % r)
                  for (callee, d_lv_list) in collapsed_caller_tbl.iteritems():
 
-                     print(' callee=%s' % callee)
+                     self.debug(' callee=%s' % callee)
+
+                     callees_tbl = {}
+                     root_callees_tbl[r] = callees_tbl
 
                      expanded_callee_tbl = root_expanded_callee_tbl.get(r, {})
                      callee_dl = expanded_callee_tbl.get(callee, [])
                      if callee_dl:
-                         print(' -> skip')
+                         callees_tbl[callee] = [d['id'] for d in callee_dl]
+                         self.debug('callees_tbl: %s -> [%s]' % (callee, ','.join(callees_tbl[callee])))
+                         self.debug(' -> skip')
                          continue
 
                      callee_dl = []
@@ -2550,13 +2562,13 @@ class Outline(dp.base):
                      for (r_, tbl) in root_expanded_callee_tbl.iteritems():
                          callee_dl = tbl.get(callee, [])
                          if callee_dl:
-                             print('callee dicts found in %s' % r_)
+                             self.debug('callee dicts found in %s' % r_)
                              break
 
                      if callee_dl:
                          copied_dl = []
 
-                         print('  %d callee dicts found' % len(callee_dl))
+                         self.debug('  %d callee dicts found' % len(callee_dl))
 
                          max_lv = 0
                          selected = None
@@ -2564,10 +2576,10 @@ class Outline(dp.base):
                              if lv > max_lv:
                                  max_lv = lv
                                  selected = d
-                             print('    nid=%s lv=%d' % (d['id'], lv))
+                             self.debug('    nid=%s lv=%d' % (d['id'], lv))
 
                          selected_id = selected['id']
-                         print('    -> selected %s' % selected_id)
+                         self.debug('    -> selected %s' % selected_id)
 
                          try:
                              base = '%s%s' % (selected_id, NID_SEP)
@@ -2582,10 +2594,12 @@ class Outline(dp.base):
                                  info = {'count':0}
                                  copied = copy_dict(callee_d, hook=hook, info=info)
                                  copied_dl.append(copied)
-                                 print('%d nodes copied' % info['count'])
+                                 self.debug('%d nodes copied' % info['count'])
 
                              selected['children'] = copied_dl
 
+                             callees_tbl[callee] = [d['id'] for d in copied_dl]
+                             self.debug('callees_tbl: %s -> [%s]' % (callee, ','.join(callees_tbl[callee])))
                          except Exception, e:
                              self.warning(str(e))
 
@@ -2666,6 +2680,17 @@ class Outline(dp.base):
                 for json_d in json_ds:
                     json_d['node_tbl'] = relevant_node_tbl
                     json_d['state'] = { 'opened' : True }
+
+                    for d in json_d['children']:
+                        try:
+                            r = d_tbl[d['id']]
+                            self.debug('r=%s' % r)
+                            callees_tbl = root_callees_tbl[r]
+                            if callees_tbl:
+                                self.debug('callees_tbl found')
+                                json_d['callees_tbl'] = callees_tbl
+                        except KeyError:
+                            pass
 
                     fidi = json_d['fid']
                     loci = json_d['loc']
