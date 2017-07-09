@@ -2542,12 +2542,13 @@ class Outline(dp.base):
             self.debug('* root_collapsed_caller_tbl:')
             for (r, collapsed_caller_tbl) in root_collapsed_caller_tbl.iteritems():
                  self.debug('root=%s:' % r)
+
+                 callees_tbl = {}
+                 root_callees_tbl[r] = callees_tbl
+
                  for (callee, d_lv_list) in collapsed_caller_tbl.iteritems():
 
                      self.debug(' callee=%s' % callee)
-
-                     callees_tbl = {}
-                     root_callees_tbl[r] = callees_tbl
 
                      expanded_callee_tbl = root_expanded_callee_tbl.get(r, {})
                      callee_dl = expanded_callee_tbl.get(callee, [])
