@@ -39,7 +39,9 @@ function get_window_height() {
 }
 
 function scrollTo(id) {
+  console.log('[scrollTo] id:', id);
   var pos = $('#'+id).position();
+  console.log('[scrollTo] pos:', pos);
   if (pos) {
     var top = pos.top;
     var left = pos.left;
@@ -74,12 +76,16 @@ function reset_select_listeners() {
   });
 }
 
-function redraw(jstree) {
+function redraw(jstree) { // redraw([jstree])
 
   var timer = new Timer();
   timer.start();
 
   console.log('redraw: start!');
+
+  if (!jstree) {
+    jstree = get_jstree()
+  }
 
   jstree.redraw(true);
   reset_select_listeners();
@@ -1259,10 +1265,13 @@ function treeview(data_url, vkind, vid, algo, meth) {
           
           jstree.search_result = {'kw':kw,'nodes':nodes,'idx':0};
 
-          var elem = document.getElementById(nodes[0].id);
+          var id0 = nodes[0].id;
+          console.log('id0:', id0);
+          var elem = document.getElementById(id0);
+          console.log('elem:', elem);
           if (elem) {
             //elem.scrollIntoView();
-            scrollTo(nodes[0].id);
+            scrollTo(id0);
             set_cur(0);
           }
 
