@@ -1267,13 +1267,14 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
           var id0 = nodes[0].id;
           console.log('id0:', id0);
-          var elem = document.getElementById(id0);
-          console.log('elem:', elem);
-          if (elem) {
-            //elem.scrollIntoView();
-            scrollTo(id0);
-            set_cur(0);
-          }
+
+          window.requestAnimationFrame(function (timestamp) {
+            var elem = document.getElementById(id0);
+            if (elem) {
+              scrollTo(id0);
+              set_cur(0);
+            }
+          });
 
         }
 
