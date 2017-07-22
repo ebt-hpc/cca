@@ -344,7 +344,7 @@ def create_argparser(desc):
                         choices=[2, 4, 8, 16, 32, 48, 64], default=4,
                         help='set available memory (GB)')
 
-    parser.add_argument('-p', '--port', dest='port', default=1111,
+    parser.add_argument('-p', '--port', dest='port', default=DEFAULT_PORT,
                         metavar='PORT', type=int, help='set port number')
 
     parser.add_argument('--proj', dest='proj', metavar='PROJ_ID', default=None,
