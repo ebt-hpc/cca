@@ -311,3 +311,9 @@ label.es {
     background-size: auto;
     background-position:50% 50%;
 }
+
+.link-icon {
+    background-image: url("icons/arrow_right.gif") !important;
+    background-size: auto;
+    background-position:50% 50%;
+}

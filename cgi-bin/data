@@ -451,6 +451,8 @@ if proj and ver and fid:
                                         'ess'    : ''.join(lvs),
                     }
 
+                if obj.has_key('nlinks'):
+                    text += '<i class="jstree-icon link-icon" id="l_%s" role="presentation"></i>' % nid;
 
                 obj['text'] = text
 

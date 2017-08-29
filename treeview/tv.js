@@ -317,15 +317,30 @@ function recover_last_view(jstree) {
   }
 }
 
-function jump_to_callee(node, open_source) {
+function jump_to_callee(node) {
   if (node.children.length == 0) {
-    var jstree, root, m, callees_tbl, callee_name, callees;
+    var jstree, callee_name, callees;
     jstree = get_jstree();
-    root = jstree.get_node('#');
-    m = jstree._model.data;
-    callees_tbl = m[root.children[0]].original.callees_tbl;
+    if (jstree.callees_tbl) {
+      callee_name = node.original.callee;
+      callees = jstree.callees_tbl[callee_name];
+      console.log('callees: '+callee_name+' -> ',callees);
+      if (callees) {
+        add_to_history(jstree, node.id);
+        scrollTo(callees[0]);
+      }
+    }
+  }
+}
+
+function jump_to_callee_or(node, open_source) {
+  if (node.children.length == 0) {
+    var jstree, callee_name, callees;
+    jstree = get_jstree();
     callee_name = node.original.callee;
-    callees = callees_tbl[callee_name];
+    if (jstree.callees_tbl) {
+      callees = jstree.callees_tbl[callee_name];
+    }
     console.log('callees: '+callee_name+' -> ',callees);
     if (callees) {
       var dialog = $('#dialog').dialog('option', {
@@ -353,7 +368,7 @@ function jump_to_callee(node, open_source) {
       var mes = '<p>';
       mes += '<span class="ui-icon ui-icon-alert"';
       mes += ' style="float:left;margin:3px 7px 50px 0;"></span>';
-      mes += 'You can also jump to <b>'+callee_name+'</b>.<br>';
+      mes += 'You can jump to a <b>'+callee_name+'</b>.<br>';
       mes += 'Jump to the callee or open the source?';
       mes += '</p>';
 
@@ -748,8 +763,10 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
     var jstree = data.instance;
 
-    // for checkbox
+    // for checkbox and callees_tbl
+    var root = jstree.get_node('#');
     var mdata = jstree._model.data;
+    jstree.callees_tbl = mdata[root.children[0]].original.callees_tbl;
     var node, o, count = 0;
     for (var nid in mdata) {
       count += 1
@@ -1075,17 +1092,21 @@ function treeview(data_url, vkind, vid, algo, meth) {
     if (ev.target) {
       var nd = get_target_node(ev);
 
-      function open_source() {
-        var form = document['form_'+nd.id];
-        if (form) {
-          form.submit();
+      if (ev.target.classList.contains('link-icon')) {
+        jump_to_callee(nd);
+      } else {
+        function open_source() {
+          var form = document['form_'+nd.id];
+          if (form) {
+            form.submit();
+          }
+          var d = mkpost(nd);
+          d['open_source'] = true;
+          post_log(d);
         }
-        var d = mkpost(nd);
-        d['open_source'] = true;
-        post_log(d);
+        jump_to_callee_or(nd, open_source);
       }
 
-      jump_to_callee(nd, open_source);
     }
   }).bind('change', function (ev, data) {
     console.log('change: ev.target=', ev.target);

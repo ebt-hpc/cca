@@ -837,7 +837,7 @@ class IndexGenerator(dp.base):
 def node_list_to_string(l):
     return '\n'.join([str(x) for x in l])
 
-def index(idx_gen, data):
+def index(idx_gen, data, callees_tbl):
 
     def scan(d):
         children = d['children']
@@ -849,6 +849,13 @@ def index(idx_gen, data):
             d['lmi'] = children[0]['lmi']
         else:
             d['lmi'] = i
+
+        if children == [] and callees_tbl:
+            callee_name = d.get('callee', None)
+            if callee_name:
+                callees = callees_tbl.get(callee_name, [])
+                if callees:
+                    d['nlinks'] = len(callees)
 
     scan(data)
 
@@ -2682,6 +2689,8 @@ class Outline(dp.base):
                     json_d['node_tbl'] = relevant_node_tbl
                     json_d['state'] = { 'opened' : True }
 
+                    callees_tbl = None
+
                     for d in json_d['children']:
                         try:
                             r = d_tbl[d['id']]
@@ -2713,7 +2722,7 @@ class Outline(dp.base):
                             self.debug('indexing for "%s"...' % data_path)
                             st = time()
 
-                        index(idx_gen, json_d)
+                        index(idx_gen, json_d, callees_tbl)
 
                         idx = json_d.get('idx', None)
                         lmi = json_d.get('lmi', None)
