@@ -38,15 +38,20 @@ function get_window_height() {
   return h;
 }
 
-function scrollTo(id) {
+function scrollTo(id, align_top) {
+  var align_top = typeof align_top !== 'undefined' ? align_top : false;
   console.log('[scrollTo] id:', id);
   var pos = $('#'+id).position();
   console.log('[scrollTo] pos:', pos);
   if (pos) {
     var top = pos.top;
     var left = pos.left;
-    var h = get_window_height();
-    top -= h / 2;
+    if (align_top) {
+      top -= 24;
+    } else {
+      var h = get_window_height();
+      top -= h / 2;
+    }
     //console.log('scrollTo:', id, '->', top, left);
     $('html,body').animate({scrollTop:top,scrollLeft:left}, 0);
   }
@@ -127,6 +132,9 @@ function findPos(obj) {
 
 function clear_search() {
   console.log('clear_search');
+  $('#count').text('');
+  $('#cur').text('');
+
   var jstree = get_jstree();
   var nds = jstree.search_result['nodes']
   var n = nds.length, nd;
@@ -327,7 +335,7 @@ function jump_to_callee(node) {
       console.log('callees: '+callee_name+' -> ',callees);
       if (callees) {
         add_to_history(jstree, node.id);
-        scrollTo(callees[0]);
+        scrollTo(callees[0], true);
       }
     }
   }
@@ -351,7 +359,7 @@ function jump_to_callee_or(node, open_source) {
           'Jump to callee': function () {
             $(this).dialog('close');
             add_to_history(jstree, node.id);
-            scrollTo(callees[0]);
+            scrollTo(callees[0], true);
             //$(this).dialog('destroy');
           },
           'Open source' : function () {
@@ -1192,8 +1200,6 @@ function treeview(data_url, vkind, vid, algo, meth) {
         var kw = $('#search').val().toLowerCase();
 
         if (kw == '') {
-          $('#count').text('');
-          $('#cur').text('');
           clear_search();
           return;
 
@@ -1308,8 +1314,6 @@ function treeview(data_url, vkind, vid, algo, meth) {
   $('#clearButton').on('click', function () {
     console.log('clearButton: click');
     $('#search').val('');
-    $('#count').text('');
-    $('#cur').text('');
 
     //$('#outline').jstree(true).clear_search();
     //$('#outline').jstree(true).deselect_all();

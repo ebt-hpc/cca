@@ -260,17 +260,22 @@ def clear_temp():
     return stat
 
 
-def reset_virtuoso(pw=DEFAULT_PW, port=DEFAULT_PORT):
+def reset_virtuoso(pw=DEFAULT_PW, port=DEFAULT_PORT, backup_fb=None):
     stat = 0
     if is_virtuoso_running():
         v = virtuoso.base(dbdir=FB_DIR, pw=pw, port=port)
         rc = v.shutdown_server()
         if rc != 0 or is_virtuoso_running():
-            stat = 1
-        else:
-            stat = clear_fb()
-    else:
-        stat = clear_fb()
+            return 1
+
+    if backup_fb:
+        try:
+            shutil.copytree(FB_DIR, backup_fb, symlinks=True)
+        except:
+            return 1
+
+    stat = clear_fb()
+
     return stat
         
 
@@ -340,6 +345,9 @@ def create_argparser(desc):
     parser.add_argument('-d', '--debug', dest='debug', action='store_true',
                         help='enable debug printing')
 
+    parser.add_argument('-k', '--keep-fb', dest='keep_fb', action='store_true',
+                        help='keep FB')
+
     parser.add_argument('-m', '--mem', dest='mem', metavar='GB', type=int,
                         choices=[2, 4, 8, 16, 32, 48, 64], default=4,
                         help='set available memory (GB)')
@@ -385,20 +393,20 @@ class AnalyzerBase(object):
     def analyze_facts(self, proj_dir, proj_id, ver, dest_root):
         pass
 
-    def analyze_dir(self, proj_dir, proj_id=None):
+    def analyze_dir(self, proj_dir, proj_id=None, keep_fb=False):
         log('analyzing "%s"...' % proj_dir)
 
         dest_root = get_dest_root(proj_dir)
 
         log('dest_root: "%s"' % dest_root)
 
-        if not ensure_dir(dest_root):
-            set_status('failed to create directory: "%s"' % dest_root)
-            return
-
         stat_path = os.path.join(dest_root, STAT_FILE_NAME)
 
         set_status = make_status_setter(stat_path)
+
+        if not ensure_dir(dest_root):
+            set_status('failed to create directory: "%s"' % dest_root)
+            return
 
         if proj_id == None:
             proj_id = os.path.basename(os.path.abspath(proj_dir))
@@ -424,18 +432,22 @@ class AnalyzerBase(object):
         if rc != 0:
             return
 
+        backup_fb = None
+        if keep_fb:
+            backup_fb = os.path.join(dest_root, 'fb')
+
         # analyze facts
         set_status('analyzing facts...')
         try:
             self.analyze_facts(proj_dir, proj_id, ver, dest_root)
         except Exception, e:
             set_status('failed to analyze facts: %s' % e)
-            reset_virtuoso(pw=self._pw, port=self._port)
+            reset_virtuoso(pw=self._pw, port=self._port, backup_fb=backup_fb)
             return
 
         # cleanup
         set_status('cleaning up temporary files...')
-        reset_virtuoso(pw=self._pw, port=self._port)
+        reset_virtuoso(pw=self._pw, port=self._port, backup_fb=backup_fb)
         clear_temp()
 
         set_status('finished.')

@@ -83,7 +83,7 @@ def main():
 
     a = Analyzer(mem=args.mem, pw=args.pw, port=args.port)
 
-    a.analyze_dir(args.proj_dir, proj_id=args.proj)
+    a.analyze_dir(args.proj_dir, proj_id=args.proj, keep_fb=args.keep_fb)
 
 
 if __name__ == '__main__':
