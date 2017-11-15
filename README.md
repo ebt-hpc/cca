@@ -1,19 +1,27 @@
 # CCA/EBT
 
-For improving the performance of an application, we have to comprehend
-the application's source code. In order to facilitate comrehension of
-source code written in Fortran, this utility analyzes its
-syntactic/semantic structures and then provides outline views of
-loop-nests and call trees decorated with source code metrics.
+For improving the performance of an application, we have to examine
+the application's source code.
+CCA/EBT extracts the syntactic/semantic structures from the source
+code written in Fortran, and then provides outline views of the
+loop-nests and the call trees decorated with source code metrics.
 
 
 ## Usage
 
-A docker image of CCA/EBT is readily available from a Docker Hub
+A docker image of CCA/EBT is available from a Docker Hub
 [repository](https://hub.docker.com/r/ebtxhpc/cca/).
-You can try it easily by way of a
-[helper script](https://raw.githubusercontent.com/ebt-hpc/docker-cca/master/ebt.py)
-([Python](https://www.python.org/) and [Docker](https://www.docker.com/) required).
+You can try it by way of a
+[helper script](https://raw.githubusercontent.com/ebt-hpc/docker-cca/master/ebt.py),
+which requires [Docker](https://www.docker.com/) and [Python (2.7)](https://www.python.org/).
+If you install Docker, you should follow the instructions provided for various platforms:
+[Mac (OSX Yosemite 10.10.3 or above)](https://docs.docker.com/docker-for-mac/install/),
+[Windows (requires Windows 10 Professional or Enterprise 64-bit)](https://docs.docker.com/docker-for-windows/install/),
+[Ubuntu](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/),
+[Debian](https://docs.docker.com/engine/installation/linux/docker-ce/debian/),
+[CentOS](https://docs.docker.com/engine/installation/linux/docker-ce/centos/), and
+[Fedora](https://docs.docker.com/engine/installation/linux/docker-ce/fedora/).
+
 
 ### Exapmles
 
