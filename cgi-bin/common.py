@@ -272,7 +272,11 @@ def compute_state(user, proj, ver):
                         cond = st <= idx <= ed
                     else:
                         cond = st <= idx < ed
-                
+
+                if (clear_root and st <= idx < ed) or (not clear_root and st <= idx <= ed):
+                    if stat.has_key(COLLAPSE_ALL):
+                        del stat[COLLAPSE_ALL]
+
                 if cond:
                     if stat.has_key('opened'):
                         b = True
@@ -304,6 +308,8 @@ def compute_state(user, proj, ver):
                         del stat[key]
 
 
+        collapse_all_tbl = {} # idx -> lmi
+
         for record in records:
             idx          = record.get('idx', None)
             leftmost_idx = record.get('lmi', None)
@@ -331,7 +337,8 @@ def compute_state(user, proj, ver):
                                 clear_key(key, filt)
                             if stat.has_key(key):
                                 del stat[key]
-
+                            else:
+                                stat[key] = False
 
                 if record.get('comment', None) != None:
                     stat['comment'] = record['comment']
@@ -366,12 +373,22 @@ def compute_state(user, proj, ver):
 
                 if stat.get(COLLAPSE_ALL, False):
                     clear_opened(filt=filt, clear_root=True)
-                    del stat[COLLAPSE_ALL]
+                    #del stat[COLLAPSE_ALL]
+                    collapse_all_to_be_deleted = [] # idx list
+                    for (i, li) in collapse_all_tbl.iteritems():
+                        if li <= leftmost_idx and idx < i:
+                            collapse_all_to_be_deleted.append(i)
+                    for i in collapse_all_to_be_deleted:
+                        del collapse_all_tbl[i]
+                    collapse_all_tbl[idx] = leftmost_idx
 
 
         # clean up
         to_be_deleted = []
         for (idx, stat) in node_stat_tbl.iteritems():
+            if stat.has_key(COLLAPSE_ALL):
+                if not collapse_all_tbl.has_key(idx):
+                    del stat[COLLAPSE_ALL]
             if len(stat) == 0:
                 to_be_deleted.append(idx)
 

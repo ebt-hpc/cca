@@ -46,7 +46,7 @@ HTML_TEMPL = '''<html>
 </head>
 <body>
 
-<!--<h1 id="user">%(user)s</h1>-->
+<h1 id="user" style="display:none">%(user)s</h1>
 
 <h2 id="proj">%(proj)s</h2>
 
@@ -77,6 +77,12 @@ HTML_TEMPL = '''<html>
 <div id="dialog"><p></p></div>
 
 <div id="outline"></div>
+
+<p style="visibility:hidden">FOOTER</p>
+<p style="visibility:hidden">FOOTER</p>
+<p style="visibility:hidden">FOOTER</p>
+<p style="visibility:hidden">FOOTER</p>
+<p style="visibility:hidden">FOOTER</p>
 
 <script src="%(base_url)s/jquery.min.js"></script>
 <script src="%(base_url)s/jquery-ui/jquery-ui.min.js"></script>

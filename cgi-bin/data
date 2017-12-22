@@ -51,8 +51,20 @@ def open_node(node):
 
     nstat['opened'] = True
 
+def close_node(node):
+    try:
+        nstat = node['state']
+    except KeyError:
+        nstat = {}
+        node['state'] = nstat
+
+    nstat['opened'] = False
+
 def expand_all(node_mgr, node):
     node_mgr.iter_subtree(node, open_node)
+
+def collapse_all(node_mgr, node):
+    node_mgr.iter_subtree(node, close_node)
 
 def expand_loops(node_mgr, node, key):
 
@@ -150,7 +162,10 @@ def setup_target(node_mgr, target_data):
 
 def apply_stat(node_mgr, node_stat_tbl):
 
-    for (idx, stat) in node_stat_tbl.iteritems():
+    idx_list = sorted(node_stat_tbl.keys(), reverse=True)
+
+    for idx in idx_list:
+        stat = node_stat_tbl[idx]
         try:
             node = node_mgr.geti(idx)
             if not node:
@@ -165,6 +180,9 @@ def apply_stat(node_mgr, node_stat_tbl):
             if stat.get(EXPAND_ALL, False):
                 expand_all(node_mgr, node)
 
+            if stat.get(COLLAPSE_ALL, False):
+                collapse_all(node_mgr, node)
+
             if stat.get('checked', False):
                 check_node(node)
             else:
@@ -173,6 +191,8 @@ def apply_stat(node_mgr, node_stat_tbl):
             if stat.get('opened', False):
                 #open_node(node)
                 node_mgr.iter_parents(node, open_node, itself=True)
+            elif stat.has_key('opened'):
+                close_node(node)
 
             if stat.get('comment', None):
                 handle_comment(node, stat['comment'])
