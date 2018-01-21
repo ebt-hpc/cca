@@ -95,7 +95,7 @@ It is called from a shell script `ast/analyzing/bin/parsesrc`.
 ### References
 
 1. Masatomo Hashimoto, Masaaki Terai, Toshiyuki Maeda, and Kazuo Minami. 2018. CCA/EBT: Code Comprehension Assistance Tool for Evidence-Based Performance Tuning. Poster to be presented at *International Conference on High Performance Computing in Asia-Pacific Region (HPC Asia 2018)*, P18.
-1. Masatomo Hashimoto, Masaaki Terai, Toshiyuki Maeda, and Kazuo Minami. 2017. An Empirical Study of Computation-Intensive Loops for Identifying and Classifying Loop Kernels. In *Proc 8th ACM/SPEC on International Conference on Performance Engineering (ICPE 2017)*, 361–372.
+1. Masatomo Hashimoto, Masaaki Terai, Toshiyuki Maeda, and Kazuo Minami. 2017. An Empirical Study of Computation-Intensive Loops for Identifying and Classifying Loop Kernels. In *Proc 8th ACM/SPEC International Conference on Performance Engineering (ICPE 2017)*, 361–372.
 1. Masatomo Hashimoto, Masaaki Terai, Toshiyuki Maeda, and Kazuo Minami. 2015. Extracting Facts from Performance Tuning History of Scientific Applications for Predicting Effective Optimization Patterns. In *Proc 12th IEEE/ACM Working Conference on Mining Software Repositories (MSR 2015)*, 13–23.
 
 ## License
