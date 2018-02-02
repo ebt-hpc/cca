@@ -1,7 +1,8 @@
 /**
    Outline tree viewer for CCA/EBT.
    @author Masatomo Hashimoto <m.hashimoto@riken.jp>
-   @copyright 2013-2017 RIKEN
+   @copyright 2013-2018 RIKEN
+   @copyright 2017-2018 Chiba Institute of Technology
    @licence Apache-2.0
 */
 

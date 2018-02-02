@@ -4,7 +4,8 @@
 '''
   A script for outlining Fortran programs
 
-  Copyright 2013-2017 RIKEN
+  Copyright 2013-2018 RIKEN
+  Copyright 2017-2018 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
