@@ -2,7 +2,7 @@
    Outline tree viewer for CCA/EBT.
    @author Masatomo Hashimoto <m.hashimoto@riken.jp>
    @copyright 2013-2018 RIKEN
-   @copyright 2017-2018 Chiba Institute of Technology
+   @copyright 2018 Chiba Institute of Technology
    @licence Apache-2.0
 */
 
@@ -648,34 +648,44 @@ function expand_all(node) {
   post_log(d);
 }
 
+function make_comment_id(nid) {
+  return 'c_'+nid;
+}
+
+function make_comment_icon(nid) {
+  var cid = make_comment_id(nid)
+  return '<i class="jstree-icon comment-icon" id="'+cid+'" role="presentation"></i>';
+}
 
 function set_comment(node) {
   var comment = $('#comment');
   comment.removeClass('ui-state-error');
 
   var c = comment.val();
-  console.log(node.id, c);
+  console.log('set_comment:', node.id, c);
   //console.log(node);
 
-  node.a_attr.title = c;
-
   if (c == '') {
-    var cid = 'c_'+node.id;
+    var cid = make_comment_id(node.id);
     //console.log('removing "'+cid+'"');
     $('#'+cid).remove();
-    var new_text = node.text.replace(new RegExp('<i.+'+cid+'.+</i>$'), '');
+    var new_text = node.text.replace(new RegExp('<i .+'+cid+'.+</i>'), '');
     //console.log(new_text);
     node.text = new_text;
   } else {
-    var icon = '<i class="jstree-icon comment-icon" id="c_'+node.id+'" role="presentation"></i>';
-    node.text = node.text + icon;
+    var icon = make_comment_icon(node.id);
+    if (node.text.indexOf('comment-icon') < 0) {
+      node.text = node.text + icon;
+    }
   }
+  node.a_attr.title = c;
+
   redraw_node(node);
   $('#dialog').dialog('close');
 
   var d = mkpost(node);
   d['comment'] = c;
-  d['has_comment'] = true;
+  d['has_comment'] = c != '';
   post_log(d);
 }
 
@@ -916,7 +926,6 @@ function treeview(data_url, vkind, vid, algo, meth) {
             "label" : "Add Comment",
             "icon"  : ICONS_DIR+"/Bubble.png",
             "action" : function (obj) {
-              //var comment = prompt('Enter Comment', '');
 
               var form;
 
@@ -961,7 +970,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
               var c = $node.a_attr.title;
               if (c)
-                $(comment).text(c);
+                $('#comment').text(c);
             },
           },
           EXPAND_TARGET_LOOPS : {
