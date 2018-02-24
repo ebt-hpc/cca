@@ -35,10 +35,11 @@ Outlines Fortran programs in `DIR`.
     $ ./ebt.py treeview start DIR
     
 Starts tree view service on port 18000 (default). You can access the
-viewer at [URL](http://localhost:18000/).
+viewer by entering [http://localhost:18000/](http://localhost:18000/)
+in a browser.
 Note that at least a loop that contains floating-point operations and
 array references should occur in the programs.
-Otherwise, no programs will be shown in the viewer.
+Otherwise, no program will be shown in the viewer.
 
     $ ./ebt.py treeview stop DIR
     
