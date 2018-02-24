@@ -975,13 +975,22 @@ GRAPH <%%(proj)s> {
     SELECT DISTINCT ?loop ?sig
     WHERE {
 
-      ?pn a f:PartName ;
-          src:parent ?aa .
+      ?loop a f:DoConstruct .
 
-      ?aa a f:ArrayAccess ;
-          f:name ?an ;
-          f:arrayRefSig0 ?asig0 ;
-          f:inDoConstruct ?loop .
+      {
+        SELECT DISTINCT ?pn ?aa ?an ?asig0 ?loop
+        WHERE {
+
+          ?pn a f:PartName ;
+              src:parent ?aa .
+
+          ?aa a f:ArrayAccess ;
+              f:name ?an ;
+              f:arrayRefSig0 ?asig0 ;
+              f:inDoConstruct ?loop .
+
+        } GROUP BY ?pn ?aa ?an ?asig0 ?loop
+      }
 
       OPTIONAL {
         ?assign a f:AssignmentStmt ;
@@ -1208,12 +1217,21 @@ GRAPH <%%(proj)s> {
     SELECT DISTINCT ?loop ?sig
     WHERE {
 
-      ?pn a f:PartName ;
-          src:parent ?aa .
+      ?loop a f:DoConstruct .
 
-      ?aa a f:ArrayAccess ;
-          f:name ?an ;
-          f:inDoConstruct ?loop .
+      {
+        SELECT DISTINCT ?pn ?aa ?an ?loop
+        WHERE {
+
+          ?pn a f:PartName ;
+              src:parent ?aa .
+
+          ?aa a f:ArrayAccess ;
+              f:name ?an ;
+              f:inDoConstruct ?loop .
+
+        } GROUP BY ?pn ?aa ?an ?loop
+      }
 
       OPTIONAL {
         ?aa f:arrayRefSig%%(level)d ?asig .

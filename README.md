@@ -14,7 +14,7 @@ A docker image of CCA/EBT is available from a Docker Hub
 You can try it by way of a
 [helper script](https://raw.githubusercontent.com/ebt-hpc/docker-cca/master/ebt.py),
 which requires [Docker](https://www.docker.com/) and [Python (2.7)](https://www.python.org/).
-If you install Docker, you should follow the instructions provided for various platforms:
+When you install Docker, you should follow the instructions provided for various platforms:
 [Mac (OSX Yosemite 10.10.3 or above)](https://docs.docker.com/docker-for-mac/install/),
 [Windows (requires Windows 10 Professional or Enterprise 64-bit)](https://docs.docker.com/docker-for-windows/install/),
 [Ubuntu](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/),
@@ -35,7 +35,10 @@ Outlines Fortran programs in `DIR`.
     $ ./ebt.py treeview start DIR
     
 Starts tree view service on port 18000 (default). You can access the
-viewer at the [URL](http://localhost:18000/).
+viewer at [URL](http://localhost:18000/).
+Note that at least a loop that contains floating-point operations and
+array references should occur in the programs.
+Otherwise, no programs will be shown in the viewer.
 
     $ ./ebt.py treeview stop DIR
     
@@ -61,7 +64,7 @@ provides the following:
 The parser export resulting *facts* such as ASTs and
 other syntactic information in [XML](https://www.w3.org/TR/xml11/) or
 [N-Triples](https://www.w3.org/2001/sw/RDFCore/ntriples/).
-In particular, facts in N-Triples format are loaded into an RDF store such as
+In particular, facts in N-Triples format are loaded into an RDF store
 [Virtuoso](https://github.com/openlink/virtuoso-opensource) to build a
 *factbase*, or a database of facts.
 Factbases are intended to be queried for code comprehension tasks.
