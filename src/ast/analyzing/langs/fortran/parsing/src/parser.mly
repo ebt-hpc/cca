@@ -688,6 +688,11 @@ partial_function_head:
          in
          Partial.mk_function_head (fr @ f :: (Ast.spec_opt_exec_opt_to_list se))
        }
+   | h=function_head EOP
+       { 
+         let sp, f, fn = h in
+         Partial.mk_function_head [f]
+       }         
 ;
 
 partial_subroutine_head:
@@ -699,6 +704,11 @@ partial_subroutine_head:
           | None -> []
          in
          Partial.mk_subroutine_head (fr @ s :: (Ast.spec_opt_exec_opt_to_list se))
+       }
+   | h=subroutine_head EOP
+       { 
+         let sp, s, sn = h in
+         Partial.mk_subroutine_head [s]
        }
 ;
 
