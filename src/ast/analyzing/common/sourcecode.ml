@@ -233,9 +233,15 @@ module Tree (L : Spec.LABEL_T) = struct
       method successors = successors
       method add_successor nd = Xset.add successors nd
 
-      val mutable binding = Binding.None
+      val mutable binding = Binding.NoBinding
       method binding = binding
       method set_binding b = binding <- b
+
+      val mutable bindings = []
+      method bindings = bindings
+      method add_binding (b : Binding.t) =
+        if not (List.mem b bindings) then
+          bindings <- b :: bindings
 
 
       method get_ident_use = L.get_ident_use lab

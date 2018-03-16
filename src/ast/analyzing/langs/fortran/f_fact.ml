@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -117,6 +118,7 @@ module F (L : Label.T) = struct
   let node_pair_filter options nd1 nd2 =
     (node_filter options nd1) && (node_filter options nd2)
 
+  let name_sep_pat = Str.regexp_string ";"
 
   class extractor options cache_path tree = object (self)
     inherit extractor_base options cache_path tree as super
@@ -148,10 +150,13 @@ module F (L : Label.T) = struct
 
               | Label.Annotation.Provide ns -> 
                   List.iter 
-                    (fun n -> 
-                      let en = self#mkextname n in
-                      self#add (en, p_is_a, Triple.c_external_name);
-                      self#add (entity, p_provides, en)
+                    (fun _n -> 
+                      List.iter
+                        (fun n ->
+                          let en = self#mkextname n in
+                          self#add (en, p_is_a, Triple.c_external_name);
+                          self#add (entity, p_provides, en)
+                        ) (Str.split name_sep_pat _n)
                     ) ns
 
               | Label.Annotation.Spec nspec -> begin
@@ -174,12 +179,13 @@ module F (L : Label.T) = struct
                       let mnd = get_nearest_surrounding_xxx L.is_module nd in
                       if Pinfo.Name.Spec.is_public nspec then begin
                         try
-                          let n =
-                            Tree.make_local_name (L.get_name (getlab mnd)) (L.get_name lab)
-                          in
-                          let en = self#mkextname n in
-                          self#add (en, p_is_a, Triple.c_external_name);
-                          self#add (entity, p_provides, en)
+                          List.iter
+                            (fun x ->
+                              let n = Tree.make_local_name (L.get_name (getlab mnd)) x in
+                              let en = self#mkextname n in
+                              self#add (en, p_is_a, Triple.c_external_name);
+                              self#add (entity, p_provides, en)
+                            ) (Str.split name_sep_pat (L.get_name lab))
                         with
                           _ -> ()
                       end
@@ -217,7 +223,10 @@ module F (L : Label.T) = struct
 
         begin
           try
-            self#add (entity, p_name, mklit (L.get_name lab))
+            List.iter
+              (fun n ->
+                self#add (entity, p_name, mklit n)
+              ) (Str.split name_sep_pat (L.get_name lab))
           with
             Not_found -> ()
         end;
@@ -261,12 +270,35 @@ module F (L : Label.T) = struct
             Not_found -> ()
         end;
 
+        let is_included =
+          try
+            nd#data#src_loc.Loc.filename <> tree#root#data#src_loc.Loc.filename
+          with
+            _ -> false
+        in
+        let loc_opt =
+          if is_included then
+            Some nd#data#src_loc
+          else
+            None
+        in
         begin
           let b = nd#data#binding in
           match b with
-          | B.Def(bid, use) -> self#add (entity, p_binding, self#mkbinding bid)
-          | B.Use bid -> self#add (entity, p_binding, self#mkbinding bid)
+          | B.Def(bid, use) -> self#add (entity, p_binding, self#mkbinding ~loc_opt bid)
+          | B.Use(bid, loc_opt) -> self#add (entity, p_binding, self#mkbinding ~loc_opt bid)
           | _ -> ()
+        end;
+        begin
+          List.iter
+            (fun b ->
+              match b with
+              | B.Def(bid, use) ->
+                  self#add (entity, p_binding, self#mkbinding ~loc_opt bid)
+              | B.Use(bid, loc_opt) ->
+                  self#add (entity, p_binding, self#mkbinding ~loc_opt bid)
+              | _ -> ()
+            ) nd#data#bindings
         end;
 
 	self#add_surrounding_xxx L.is_fragment nd entity p_in_fragment;

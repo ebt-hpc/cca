@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -1907,6 +1908,9 @@ let to_short_string ?(ignore_identifiers_flag=false) =
   | DEC                      -> mkstr2 262
 
   | DoBlock                  -> mkstr2 263
+
+  | FunctionStmtHead n   -> combo2 264 [n]
+  | SubroutineStmtHead n -> combo2 265 [n]
 
 let anonymize2 = anonymize ~more:true
 

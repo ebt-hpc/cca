@@ -1,5 +1,24 @@
+(*
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*)
+
+(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+
 (* 
- * A parser for Fortran (based on Fortran95)
+ * A parser for Fortran
  * 
  *
  * parser.mly
@@ -37,6 +56,8 @@ let f2003()    = env#current_source#set_spec_F2003
 let f2008()    = env#current_source#set_spec_F2008
 
 let get_nd(s, n) = n
+
+let name_sep_pat = Str.regexp_string ";"
 
 %}
 
@@ -78,7 +99,9 @@ let get_nd(s, n) = n
 %token <Ast.Partial.spec * Ast.node> END_TYPE_STMT
 
 %token <Ast.Partial.spec * Ast.node> FUNCTION_HEAD
+%token <Ast.Partial.spec * Ast.node> FUNCTION_STMT_HEAD
 %token <Ast.Partial.spec * Ast.node> SUBROUTINE_HEAD
+%token <Ast.Partial.spec * Ast.node> SUBROUTINE_STMT_HEAD
 
 %token <Ast.Partial.spec * Ast.node> PU_TAIL
 
@@ -446,7 +469,9 @@ let get_nd(s, n) = n
 %start partial_onlys
 %start partial_type_bound_proc_part
 %start partial_function_head
+%start partial_function_stmt_head
 %start partial_subroutine_head
+%start partial_subroutine_stmt_head
 %start partial_pu_tail
 
 %start ocl
@@ -477,7 +502,9 @@ let get_nd(s, n) = n
 %type <Ast.Partial.t> partial_onlys
 %type <Ast.Partial.t> partial_type_bound_proc_part
 %type <Ast.Partial.t> partial_function_head
+%type <Ast.Partial.t> partial_function_stmt_head
 %type <Ast.Partial.t> partial_subroutine_head
+%type <Ast.Partial.t> partial_subroutine_stmt_head
 %type <Ast.Partial.t> partial_pu_tail
 
 %type <Ast.node> ocl
@@ -695,6 +722,15 @@ partial_function_head:
        }         
 ;
 
+partial_function_stmt_head:
+   | fshd=function_stmt_head0 EOP
+       { 
+         let pnds, n_str = fshd in
+         let nd = mknode $startpos(fshd) $endpos(fshd) (L.FunctionStmtHead n_str) pnds in
+         Partial.mk_function_stmt_head nd
+       }
+;
+
 partial_subroutine_head:
    | fr_opt=ioption(fragment) s=subroutine_stmt se=specification_part__execution_part EOP 
        { 
@@ -709,6 +745,15 @@ partial_subroutine_head:
        { 
          let sp, s, sn = h in
          Partial.mk_subroutine_head [s]
+       }
+;
+
+partial_subroutine_stmt_head:
+   | sshd=subroutine_stmt_head EOP
+       { 
+         let pnds, n_str = sshd in
+         let nd = mknode $startpos(sshd) $endpos(sshd) (L.SubroutineStmtHead n_str) pnds in
+         Partial.mk_subroutine_stmt_head nd
        }
 ;
 
@@ -2745,7 +2790,7 @@ type_spec_node:
                  )
              in
              let lloc = Ast.lloc_of_nodes children in
-             let nd = new Ast.node ~lloc ~children Label.PpBranch in
+             let nd = new Ast.node ~lloc ~children L.PpBranch in
              nd
        }
 ;
@@ -6572,10 +6617,15 @@ subprogram:
 function_subprogram:
    | f=_function_subprogram e=end_function_stmt 
        { 
-         reloc $startpos $endpos f; 
-         f#add_children_r [e]; 
-         finalize_object_spec f#get_name f;
-         f 
+         reloc $startpos $endpos f;
+         f#add_children_r [e];
+         let names = Str.split name_sep_pat f#get_name in
+         let multi_bind = (List.length names) > 1 in
+         List.iter
+           (fun x ->
+             finalize_object_spec ~multi_bind x f;
+           ) names;
+         f
        }
 ;
 
@@ -6640,7 +6690,7 @@ function_head:
 
          let fname_list = Xset.to_list fnames in
 
-         List.iter register_function fname_list;
+         (*List.iter register_function fname_list;*)(* handled elsewhere *)
 
          let fname = Xlist.to_string (fun x -> x) ";" fname_list in
 
@@ -6661,7 +6711,7 @@ function_head:
                    )
                in
                let lloc = Ast.lloc_of_nodes children in
-               let nd = new Ast.node ~lloc ~children Label.PpBranchFunction in
+               let nd = new Ast.node ~lloc ~children L.PpBranchFunction in
                let sp = Ast.Partial.mkspec ~length:!len () in
                sp, nd
          in
@@ -6695,8 +6745,10 @@ name_or_macro_var:
 ;
 
 function_stmt_head:
-   | ps=prefix FUNCTION n_str=name_or_macro_var LPAREN ns=clist0(name)
+   | fshd=function_stmt_head0 LPAREN ns=clist0(name)
        { 
+         let pnds, n_str = fshd in
+
          env#enter_result_context;
 
          if env#at_BOPU then 
@@ -6710,14 +6762,13 @@ function_stmt_head:
            end_scope() (* cancel scope of main_program *)
          end;
 
-         register_function n_str;
+         List.iter
+           (fun x ->
+             register_function x
+           ) (Str.split name_sep_pat n_str);
+
          begin_function_subprogram_scope n_str;
 
-         let pnds = 
-           match ps with
-           | [] -> []
-           | _ -> [mknode $startpos(ps) $endpos(ps) L.Prefix ps]
-         in
          let params =
            match ns with
            | [] -> []
@@ -6726,6 +6777,38 @@ function_stmt_head:
                [mknode $startpos(ns) $endpos(ns) (L.DummyArgNameList n_str) ns]
          in
          n_str, pnds, params
+       }
+;
+
+function_stmt_head0:
+   | ps=prefix FUNCTION n_str=name_or_macro_var
+       { 
+         let pnds = 
+           match ps with
+           | [] -> []
+           | _ -> [mknode $startpos(ps) $endpos(ps) L.Prefix ps]
+         in
+         pnds, n_str
+       }
+   | spf=FUNCTION_STMT_HEAD
+       { 
+         let sp, f = spf in
+         let n =
+           try
+             f#get_name
+           with
+             Not_found ->
+               let l = ref [] in
+               let rec scan nd =
+                 if L.is_function_stmt_head nd#label then
+                   l := nd#get_name :: !l
+                 else
+                   List.iter scan nd#children
+               in
+               scan f;
+               String.concat ";" (List.rev !l)
+         in
+         [f], n
        }
 ;
 
@@ -6794,10 +6877,15 @@ end_function_stmt_head:
 subroutine_subprogram:
    | s=_subroutine_subprogram e=end_subroutine_stmt 
        { 
-         reloc $startpos $endpos s; 
-         s#add_children_r [e]; 
-         finalize_object_spec s#get_name s;
-         s 
+         reloc $startpos $endpos s;
+         s#add_children_r [e];
+         let names = Str.split name_sep_pat s#get_name in
+         let multi_bind = (List.length names) > 1 in
+         List.iter
+           (fun x ->
+             finalize_object_spec ~multi_bind x s;
+           ) names;
+         s
        }
 ;
 
@@ -6859,7 +6947,7 @@ subroutine_head:
 
          let sname_list = Xset.to_list snames in
 
-         List.iter register_subroutine sname_list;
+         (*List.iter register_subroutine sname_list;*)(* handled elsewhere *)
 
          let sname = Xlist.to_string (fun x -> x) ";" sname_list in
 
@@ -6880,7 +6968,7 @@ subroutine_head:
                    )
                in
                let lloc = Ast.lloc_of_nodes children in
-               let nd = new Ast.node ~lloc ~children Label.PpBranchSubroutine in
+               let nd = new Ast.node ~lloc ~children L.PpBranchSubroutine in
                let sp = Ast.Partial.mkspec ~length:!len () in
                sp, nd
          in
@@ -6894,8 +6982,10 @@ subroutine_stmt:
 ;
 
 _subroutine_stmt:
-   | ps=prefix SUBROUTINE n_str=name_or_macro_var das_opt=ioption(subroutine_das) l_opt=ioption(language_binding_spec)
+   | sshd=subroutine_stmt_head das_opt=ioption(subroutine_das) l_opt=ioption(language_binding_spec)
        { 
+         let pnds, n_str = sshd in
+
          env#exit_pu_head_context;
 
          (*let n_str = n#get_name in*)
@@ -6911,14 +7001,13 @@ _subroutine_stmt:
            end_scope() (* cancel scope of main_program *)
          end;
 
-         register_subroutine n_str;
+         List.iter
+           (fun x ->
+             register_subroutine x
+           ) (Str.split name_sep_pat n_str);
+
          begin_subroutine_subprogram_scope n_str;
 
-         let pnds = 
-           match ps with
-           | [] -> []
-           | _ -> [mknode $startpos(ps) $endpos(ps) L.Prefix ps]
-         in
          let dnds =
            match das_opt with
            | Some (_, _, []) -> []
@@ -6926,6 +7015,38 @@ _subroutine_stmt:
            | None -> []
          in
          mkstmtnode $symbolstartpos $endpos (Stmt.SubroutineStmt n_str) (pnds @ dnds @ (opt_to_list l_opt))
+       }
+;
+
+subroutine_stmt_head:
+   | ps=prefix SUBROUTINE n_str=name_or_macro_var
+       { 
+         let pnds = 
+           match ps with
+           | [] -> []
+           | _ -> [mknode $startpos(ps) $endpos(ps) L.Prefix ps]
+         in
+         pnds, n_str
+       }
+   | sps=SUBROUTINE_STMT_HEAD
+       { 
+         let sp, s = sps in
+         let n =
+           try
+             s#get_name
+           with
+             Not_found ->
+               let l = ref [] in
+               let rec scan nd =
+                 if L.is_subroutine_stmt_head nd#label then
+                   l := nd#get_name :: !l
+                 else
+                   List.iter scan nd#children
+               in
+               scan s;
+               String.concat ";" (List.rev !l)
+         in
+         [s], n
        }
 ;
 

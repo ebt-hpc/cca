@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -57,11 +58,23 @@ let make_include_node options ast_nd =
 let of_ast options ast =
   let utbl = Hashtbl.create 0 in
 
-  let rec conv ?(label=None) ast_nd =
+  let rec conv ?(loc_opt=None) ?(label=None) ast_nd =
     let lab = 
       match label with
       | Some lab' -> lab'
       | None -> ast_nd#label
+    in
+
+    let orig_loc_flag =
+      match loc_opt with
+      | Some _ -> true
+      | None -> false
+    in
+    let get_loc =
+      if orig_loc_flag then
+        fun x -> Some x#orig_loc
+      else
+        fun x -> None
     in
 
     let is_incl nd =
@@ -72,8 +85,8 @@ let of_ast options ast =
       | nd1::(nd2::rest as l) -> begin
           match nd1#label, nd2#label with
           | L.PartName n, L.SectionSubscriptList _ -> begin
-              let x_opt0 = conv nd1 in
-              let x_opt1 = conv ~label:(Some (L.SectionSubscriptList n)) nd2 in
+              let x_opt0 = conv ~loc_opt:(get_loc nd1) nd1 in
+              let x_opt1 = conv ~loc_opt:(get_loc nd2) ~label:(Some (L.SectionSubscriptList n)) nd2 in
               match x_opt0, x_opt1 with
               | Some x0, Some x1 -> x0 :: x1 :: (conv_children rest)
               | None, None -> conv_children rest
@@ -86,11 +99,17 @@ let of_ast options ast =
           end
           | _ -> begin
               if is_incl nd1 then begin
-                (make_include_node options nd1) :: (conv_children l)
+                match nd1#label with
+                | L.InternalSubprogram _
+                | L.ModuleSubprogram _ -> begin  (* to avoid dangling call sites *)
+                    match conv ~loc_opt:(Some nd1#orig_loc) nd1 with
+                    | Some x -> x :: (conv_children l)
+                    | None -> conv_children l
+                end
+                | _ -> (make_include_node options nd1) :: (conv_children l)
               end
               else begin
-                let x_opt = conv nd1 in
-                match x_opt with
+                match conv ~loc_opt:(get_loc nd1) nd1 with
                 | Some x -> x :: (conv_children l)
                 | None -> conv_children l
               end
@@ -98,21 +117,29 @@ let of_ast options ast =
       end
       | [nd] -> begin
           if is_incl nd then begin
-            [make_include_node options nd]
+            match nd#label with
+            | L.InternalSubprogram _
+            | L.ModuleSubprogram _ -> begin  (* to avoid dangling call sites *)
+                match conv ~loc_opt:(Some nd#orig_loc) nd with
+                | Some x -> [x]
+                | None -> []
+            end
+            | _ -> [make_include_node options nd]
           end
           else
-            Xoption.to_list (conv nd)
+            Xoption.to_list (conv ~loc_opt:(get_loc nd) nd)
       end
       | [] -> []
     in
 
     let children = conv_children ast_nd#children in
 
-    if ast_nd#lloc#get_level > 0 && children = [] then
+    if ast_nd#lloc#get_level > 0 && children = [] && not orig_loc_flag then
       None
     else begin
 
       let binding = ast_nd#binding in
+      let bindings = ast_nd#bindings in
 
       let info = ast_nd#info in
 
@@ -139,6 +166,19 @@ let of_ast options ast =
           | _ -> ()
         end;
         begin
+          List.iter
+            (fun binding ->
+              match binding with
+              | B.Def _ -> begin
+                  I.iter_name_spec
+                    (fun nspec ->
+                      specs := (L.Annotation.mkspec nspec) :: !specs
+                    ) info
+              end
+              | _ -> ()
+            ) bindings
+        end;
+        begin
           try
             let n = L.get_external_subprogram_name ast_nd#label in
             specs := (L.Annotation.mkprovide [n]) :: !specs
@@ -151,7 +191,7 @@ let of_ast options ast =
       let nd = mknode options ~annot lab children in
       begin
         match binding with
-        | B.None -> ()
+        | B.NoBinding -> ()
         | B.Def(bid, use) -> begin
             let b =
               match use with
@@ -165,7 +205,7 @@ let of_ast options ast =
             in
             nd#data#set_binding b
         end
-        | B.Use bid -> begin
+        | B.Use(bid, _) -> begin
             nd#data#set_binding binding;
             try
               let c = Hashtbl.find utbl bid in
@@ -175,7 +215,41 @@ let of_ast options ast =
                 Hashtbl.add utbl bid 1
         end
       end;
-      set_loc nd ast_nd#loc;
+      begin
+        List.iter
+          (fun binding ->
+            match binding with
+            | B.NoBinding -> ()
+            | B.Def(bid, use) -> begin
+                let b =
+                  match use with
+                  | B.Unknown -> begin
+                      try
+                        B.make_used_def bid (Hashtbl.find utbl bid)
+                      with
+                        Not_found -> binding
+                  end
+                  | B.Used c -> binding
+                in
+                nd#data#add_binding b
+            end
+            | B.Use(bid, _) -> begin
+                nd#data#add_binding binding;
+                try
+                  let c = Hashtbl.find utbl bid in
+                  Hashtbl.replace utbl bid (c+1)
+                with
+                  Not_found ->
+                    Hashtbl.add utbl bid 1
+            end
+          ) bindings
+      end;
+      let loc =
+        match loc_opt with
+        | Some x -> x
+        | None -> ast_nd#loc
+      in
+      set_loc nd loc;
       Some nd
     end
   in (* let rec conv *)

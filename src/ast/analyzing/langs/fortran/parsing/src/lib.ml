@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -97,7 +98,9 @@ class parser_c = object (self)
   val mutable parser_partial_onlys                 = fun ul -> Obj.magic ()
   val mutable parser_partial_type_bound_proc_part  = fun ul -> Obj.magic ()
   val mutable parser_partial_function_head         = fun ul -> Obj.magic ()
+  val mutable parser_partial_function_stmt_head    = fun ul -> Obj.magic ()
   val mutable parser_partial_subroutine_head       = fun ul -> Obj.magic ()
+  val mutable parser_partial_subroutine_stmt_head  = fun ul -> Obj.magic ()
   val mutable parser_partial_pu_tail               = fun ul -> Obj.magic ()
 
   val mutable parser_main         = fun ul -> Ast.dummy_node
@@ -192,6 +195,8 @@ class parser_c = object (self)
                                    parser_partial_pu_tail;
                                    parser_partial_function_head;
                                    parser_partial_subroutine_head;
+                                   parser_partial_function_stmt_head;
+                                   parser_partial_subroutine_stmt_head;
                                    parser_partial_program]
 
     | C.Tspecification_part    -> [parser_partial_specification_part;
@@ -202,7 +207,9 @@ class parser_c = object (self)
 
     | C.Tsubprograms           -> [parser_partial_subprograms;
                                    parser_partial_function_head;
-                                   parser_partial_subroutine_head]
+                                   parser_partial_subroutine_head;
+                                   parser_partial_function_stmt_head;
+                                   parser_partial_subroutine_stmt_head]
 
     | C.Tinterface_spec        -> [parser_partial_interface_spec]
     | C.Tcase_block            -> [parser_partial_case_block]
@@ -219,7 +226,9 @@ class parser_c = object (self)
     | C.Tonlys                 -> [parser_partial_onlys]
     | C.Ttype_bound_proc_part  -> [parser_partial_type_bound_proc_part]
     | C.Tfunction_head         -> [parser_partial_function_head]
+    | C.Tfunction_stmt_head    -> [parser_partial_function_stmt_head]
     | C.Tsubroutine_head       -> [parser_partial_subroutine_head]
+    | C.Tsubroutine_stmt_head  -> [parser_partial_subroutine_stmt_head]
     | C.Tpu_tail               -> [parser_partial_pu_tail]
 
     | C.Tin_stmt               -> [](*[parser_partial_variable;parser_partial_expr]*)
@@ -317,7 +326,9 @@ class parser_c = object (self)
     parser_partial_onlys                 <- mkparser P.partial_onlys;
     parser_partial_type_bound_proc_part  <- mkparser P.partial_type_bound_proc_part;
     parser_partial_function_head         <- mkparser P.partial_function_head;
+    parser_partial_function_stmt_head    <- mkparser P.partial_function_stmt_head;
     parser_partial_subroutine_head       <- mkparser P.partial_subroutine_head;
+    parser_partial_subroutine_stmt_head  <- mkparser P.partial_subroutine_stmt_head;
     parser_partial_pu_tail               <- mkparser P.partial_pu_tail;
 
     parser_main                          <- mkparser P.main;

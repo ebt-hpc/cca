@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -472,6 +473,7 @@ module F (Stat : Aux.STATE_T) = struct
             | SPEC_PART_CONSTRUCT _ | EXEC_PART_CONSTRUCT _
             | DERIVED_TYPE_DEF_PART _ | END_FRAGMENT 
             | FUNCTION_HEAD _ | SUBROUTINE_HEAD _ | PU_TAIL _ | STMT _
+            | SUBPROGRAM _
             | NOTHING
             | INCLUDE__FILE _
                 -> ()
@@ -1897,6 +1899,8 @@ module F (Stat : Aux.STATE_T) = struct
                               open_section_flag := true;
                               nd :: lst, (Partial.length_of_spec spec) + len, (get_tag spec) :: tags
 
+                          | FUNCTION_STMT_HEAD(spec, nd) | SUBROUTINE_STMT_HEAD(spec, nd) ->
+                              nd :: lst, (Partial.length_of_spec spec) + len, (get_tag spec) :: tags
                           | _ -> 
                               BEGIN_DEBUG
                                 DEBUG_MSG "br#get_list:";
@@ -1972,6 +1976,8 @@ module F (Stat : Aux.STATE_T) = struct
                     | C.Taction_stmt           -> ACTION_STMT(mkspec ~length (), node), true
                     | C.Tderived_type_def_part -> DERIVED_TYPE_DEF_PART(mkspec ~length (), node), false
                     | C.Tonlys                 -> ONLY_(mkspec ~length (), node), false
+                    | C.Tfunction_stmt_head    -> FUNCTION_STMT_HEAD(mkspec ~length (), node), false
+                    | C.Tsubroutine_stmt_head  -> SUBROUTINE_STMT_HEAD(mkspec ~length (), node), false
 
                     | C.Tassignment_stmt       -> assert false
                     | C.Ttype_declaration_stmt -> assert false

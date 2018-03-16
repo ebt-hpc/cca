@@ -367,8 +367,6 @@ module F (L : Spec.LABEL_T) = struct
     val enc_str = Entity.encoding_to_string enc
     val fid_str = Triple.encode_fid options tree
 
-    val mkbinding = Triple.make_binding options tree
-
     val mkextname = Triple.make_extname options tree
 
     method mkentity (nd : Spec.node_t) =
@@ -396,7 +394,7 @@ module F (L : Spec.LABEL_T) = struct
       else
 	fileentity
 
-    method mkbinding bid = mkbinding bid
+    method mkbinding ?(loc_opt=None) bid = Triple.make_binding ~loc_opt options tree bid
 
     method mkextname lname = mkextname ~lang:lang_prefix lname
 

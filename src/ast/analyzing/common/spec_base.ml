@@ -92,6 +92,7 @@ class type node_data_t_shared = object ('self)
   method is_boundary        : bool   
 
   method binding     : Binding.t
+  method bindings    : Binding.t list
 
 
 end (* of class type node_data_t_shared *)

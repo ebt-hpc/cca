@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -1967,8 +1968,9 @@ module F (Stat : STATE_T) = struct
     | _ -> ()
 
 
-  let finalize_object_spec name node =
+  let finalize_object_spec ?(multi_bind=false) name node =
     DEBUG_MSG "name=\"%s\"" name;
+    DEBUG_MSG "node=%s" node#to_string;
     try
       match env#lookup_name ~allow_implicit:false ~afilt:N.Spec.has_object_spec name with
       | [] -> ()
@@ -1976,23 +1978,37 @@ module F (Stat : STATE_T) = struct
           let bid_opt = ref None in
           List.iter
             (fun spec ->
+              DEBUG_MSG "spec: %s" (N.Spec.to_string spec);
+              let first_time = !bid_opt = None in
               try
                 let ospec = N.Spec.get_object_spec spec in
+                DEBUG_MSG "ospec: %s" ospec#to_string;
                 let lod = N.Spec.loc_of_decl_explicit node#orig_loc in
                 ospec#set_loc_of_decl lod;
+                DEBUG_MSG " -> %s" ospec#to_string;
                 DEBUG_MSG "ospec#bid=%a" BID.ps ospec#bid;
                 let bid =
                   match !bid_opt with
                   | Some bid ->
-                      DEBUG_MSG "%a -> %a" BID.ps ospec#bid BID.ps bid;
-                      ospec#set_bid bid;
+                      if ospec#bid <> bid then begin
+                        DEBUG_MSG "%a -> %a" BID.ps ospec#bid BID.ps bid;
+                        ospec#set_bid bid
+                      end;
                       bid
                   | None ->
                       bid_opt := Some ospec#bid;
                       ospec#bid
                 in
-                node#set_binding (B.make_unknown_def bid);
-                node#set_info (I.mknamespec spec)
+                if multi_bind then begin
+                  if first_time then begin
+                    node#add_binding (B.make_unknown_def bid);
+                    node#add_info (I.mknamespec spec)
+                  end
+                end
+                else begin
+                  node#set_binding (B.make_unknown_def bid);
+                  node#set_info (I.mknamespec spec)
+                end
               with
                 Not_found -> ()
             ) (List.rev specs)

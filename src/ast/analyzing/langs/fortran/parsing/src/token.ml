@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -62,7 +63,9 @@ let rec rawtoken_to_string = function
   | END_TYPE_STMT(spec, nd)         -> sprintf "END_TYPE_STMT(%s):\n%s" (spec_to_string spec) (nd_to_string nd)
 
   | FUNCTION_HEAD(spec, nd)         -> sprintf "FUNCTION_HEAD(%s):\n%s" (spec_to_string spec) (nd_to_string nd)
+  | FUNCTION_STMT_HEAD(spec, nd)    -> sprintf "FUNCTION_STMT_HEAD(%s):\n%s" (spec_to_string spec) (nd_to_string nd)
   | SUBROUTINE_HEAD(spec, nd)       -> sprintf "SUBROUTINE_HEAD(%s):\n%s" (spec_to_string spec) (nd_to_string nd)
+  | SUBROUTINE_STMT_HEAD(spec, nd)  -> sprintf "SUBROUTINE_STMT_HEAD(%s):\n%s" (spec_to_string spec) (nd_to_string nd)
 
   | PU_TAIL(spec, nd)               -> sprintf "PU_TAIL(%s):\n%s" (spec_to_string spec) (nd_to_string nd)
 
@@ -989,7 +992,9 @@ let rec rawtoken_size = function
   | END_TYPE_STMT(spec, _)
 
   | FUNCTION_HEAD(spec, _)
+  | FUNCTION_STMT_HEAD(spec, _)
   | SUBROUTINE_HEAD(spec, _)
+  | SUBROUTINE_STMT_HEAD(spec, _)
   | PU_TAIL(spec, _)
 
     -> spec.Ast.Partial.length
@@ -1913,7 +1918,9 @@ let rawtoken_to_rep = function
   | END_TYPE_STMT _         -> "END_TYPE_STMT"
 
   | FUNCTION_HEAD _         -> "FUNCTION_HEAD"
+  | FUNCTION_STMT_HEAD _    -> "FUNCTION_STMT_HEAD"
   | SUBROUTINE_HEAD _       -> "SUBROUTINE_HEAD"
+  | SUBROUTINE_STMT_HEAD _  -> "SUBROUTINE_STMT_HEAD"
 
   | PU_TAIL _               -> "PU_TAIL"
 
@@ -3110,8 +3117,14 @@ module F (Stat : Parser_aux.STATE_T) = struct
   let of_function_head spec nd =
     (FUNCTION_HEAD(spec, nd), loc_of_nd nd)
 
+  let of_function_stmt_head spec nd =
+    (FUNCTION_STMT_HEAD(spec, nd), loc_of_nd nd)
+
   let of_subroutine_head spec nd =
     (SUBROUTINE_HEAD(spec, nd), loc_of_nd nd)
+
+  let of_subroutine_stmt_head spec nd =
+    (SUBROUTINE_STMT_HEAD(spec, nd), loc_of_nd nd)
 
   let of_pu_tail spec nd =
     (PU_TAIL(spec, nd), loc_of_nd nd)

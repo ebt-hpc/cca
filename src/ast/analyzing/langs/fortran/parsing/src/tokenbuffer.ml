@@ -1,7 +1,8 @@
 (*
    Buffer for tokens
 
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -3142,6 +3143,17 @@ module F (Stat : Aux.STATE_T) = struct
           with
             Undefined -> List.iter (fun nd -> self#add (TokenF.of_stmt spec nd)) nds
       end
+      | Partial.FunctionStmtHead(spec, nd) -> begin
+          BEGIN_DEBUG
+            DEBUG_MSG "Partial.FunctionStmtHead";
+            DEBUG_MSG "%s" nd#to_string;
+          END_DEBUG;
+          self#clear;
+          try
+            self#add (TokenF.of_function_stmt_head spec (tag_to_node C.Tfunction_stmt_head btag [nd]))
+          with
+            Undefined -> self#add (TokenF.of_stmt spec nd)
+      end
       | Partial.SubroutineHead(spec, nds) -> begin
           BEGIN_DEBUG
             DEBUG_MSG "Partial.SubroutineHead";
@@ -3152,6 +3164,17 @@ module F (Stat : Aux.STATE_T) = struct
             self#add (TokenF.of_subroutine_head spec (tag_to_node C.Tsubroutine_head btag nds))
           with
             Undefined -> List.iter (fun nd -> self#add (TokenF.of_stmt spec nd)) nds
+      end
+      | Partial.SubroutineStmtHead(spec, nd) -> begin
+          BEGIN_DEBUG
+            DEBUG_MSG "Partial.SubroutineStmtHead";
+            DEBUG_MSG "%s" nd#to_string;
+          END_DEBUG;
+          self#clear;
+          try
+            self#add (TokenF.of_subroutine_stmt_head spec (tag_to_node C.Tsubroutine_stmt_head btag [nd]))
+          with
+            Undefined -> self#add (TokenF.of_stmt spec nd)
       end
       | Partial.PuTail(spec, nds) -> begin
           BEGIN_DEBUG

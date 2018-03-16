@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -49,7 +50,7 @@ let dump_in_xml_ch root ch =
     let name, _attrs = nd#to_tag in
     let ba =
       match nd#binding with
-      | B.None -> []
+      | B.NoBinding -> []
       | _ -> ["src:bid",BID.to_raw (B.get_bid nd#binding)]
     in
     let attrs = _attrs @ ba @ (get_loc_attr nd#loc) in

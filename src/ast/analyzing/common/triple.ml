@@ -385,10 +385,43 @@ let _make_binding options ~digest ~path proj_root (vkind, version) bid =
   in
   make_qname binding_prefix (String.concat Entity.sep [enc_str; file_id_str; BID.to_raw bid])
 
-let make_binding options tree bid =
-  if BID.is_local bid then
+let make_binding ?(loc_opt=None) options tree bid =
+  if BID.is_local bid then begin
+    let digest, path =
+      match loc_opt with
+      | Some loc ->
+          let fn = loc.Loc.filename in
+          if Filename.is_relative fn then begin
+            let d =
+              let fn_ = Filename.concat tree#proj_root fn in
+              try
+                Xhash.digest_of_file options#fact_algo fn_
+              with
+                _ -> begin
+                  WARN_MSG "failed to compute digest of \"%s\"" fn_;
+                  fn
+                end
+            in
+            (if d <> tree#source_digest then tree#source_digest^d else d), fn
+          end
+          else begin
+            let d =
+              try
+                Xhash.digest_of_file options#fact_algo fn
+              with
+                _ -> begin
+                  WARN_MSG "failed to compute digest of \"%s\"" fn;
+                  fn
+                end
+            in
+            let p = Xfile.relpath tree#proj_root fn in
+            (if d <> tree#source_digest then tree#source_digest^d else d), p
+          end
+      | None -> tree#source_digest, tree#source_path
+    in
     _make_binding options 
-      ~digest:tree#source_digest ~path:tree#source_path tree#proj_root (tree#vkind, tree#version) bid
+      ~digest ~path tree#proj_root (tree#vkind, tree#version) bid
+  end
   else
     make_qname binding_prefix (BID.to_raw bid)
 

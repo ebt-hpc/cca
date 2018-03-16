@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -61,6 +62,9 @@ type t =
   | PpSectionIfndef of string
   | PpSectionElif of string
   | PpSectionElse
+
+  | SubroutineStmtHead of string
+  | FunctionStmtHead of string
 
   | OclDirective of OclDirective.t
   | OCL
@@ -437,6 +441,8 @@ let to_string = function
   | PpSectionElif c           -> "PpSectionElif:"^c
   | PpSectionElse             -> "PpSectionElse"
 
+  | SubroutineStmtHead n      -> "SubroutineStmtHead:"^n
+  | FunctionStmtHead n        -> "FunctionStmtHead:"^n
 
   | OclDirective d            -> "OclDirective."^(OclDirective.to_string d)
   | OCL                       -> "OCL"
@@ -808,6 +814,8 @@ let to_simple_string = function
   | PpSectionElif s           -> "<pp-section-elif:"^s^">"
   | PpSectionElse             -> "<pp-section-else>"
 
+  | SubroutineStmtHead s      -> "subroutine "^s
+  | FunctionStmtHead s        -> "function "^s
 
   | OclDirective d            -> OclDirective.to_simple_string d
   | OCL                       -> "<OCL>"
@@ -1179,6 +1187,8 @@ let to_tag = function
   | PpSectionElif c           -> "PpSectionElif", ["cond",XML.encode_string c]
   | PpSectionElse             -> "PpSectionElse", []
 
+  | SubroutineStmtHead n      -> "SubroutineStmtHead", [name_attr_name,n]
+  | FunctionStmtHead n        -> "FunctionStmtHead", [name_attr_name,n]
 
   | OclDirective d            -> OclDirective.to_tag d
   | OCL                       -> "OCL", []
@@ -1568,6 +1578,9 @@ let get_name = function
   | Enumerator n
 
   | DataPointerObject n
+
+  | SubroutineStmtHead n
+  | FunctionStmtHead n
 
     -> n
 
@@ -2107,6 +2120,14 @@ let is_fragment = function
   | Fragment -> true
   | _ -> false
 
+let is_subroutine_stmt_head = function
+  | SubroutineStmtHead _ -> true
+  | _ -> false
+
+let is_function_stmt_head = function
+  | FunctionStmtHead _ -> true
+  | _ -> false
+
 
 (* *)
 
@@ -2240,6 +2261,9 @@ let anonymize ?(more=false) = function
   | CodimensionDecl n            -> CodimensionDecl ""
   | Enumerator n                 -> Enumerator ""
   | DataPointerObject n          -> DataPointerObject ""
+
+  | SubroutineStmtHead n         -> SubroutineStmtHead ""
+  | FunctionStmtHead n           -> FunctionStmtHead ""
 
   | lab -> lab
 

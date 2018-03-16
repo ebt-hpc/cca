@@ -285,6 +285,7 @@ def parse(proj_dir, proj_id, ver):
     args += ' -cache %s' % os.path.join(WORK_DIR, 'parsesrc')
     args += ' -fact:into-directory %s' % os.path.join(FACT_DIR, proj_id)
     args += ' -fact:project %s' % proj_id
+    args += ' -fact:project-root %s' % proj_dir
     args += ' -fact:version VARIANT:%s -fact:add-versions' % ver
     args += ' -fact:encoding:FDLCO -fact:size-thresh 100000'
     args += ' -parser:fortran'

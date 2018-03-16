@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -48,10 +49,15 @@ class node
     val mutable label = (lab : L.t)
     val mutable children = (children : 'self list)
     val mutable info = info
-    val mutable binding = B.None
+    val mutable binding = B.NoBinding
+    val mutable bindings = []
 
     method binding = binding
     method set_binding b = binding <- b
+    method bindings = bindings
+    method add_binding b =
+      if not (List.mem b bindings) then
+        bindings <- b :: bindings
 
     method label = label
     method lloc = lloc
@@ -97,16 +103,24 @@ class node
       | _ :: t -> children <- t
 
     method to_string =
-      sprintf "<%s>%s%s%s" 
-        (L.to_string label) 
-        (lloc#to_string ?short:(Some true) ()) 
+      sprintf "<%s>%s%s%s%s"
+        (L.to_string label)
+        (lloc#to_string ?short:(Some true) ())
         (match info with
         | I.NoInfo -> ""
         | _ -> sprintf ": <<%s>>" (I.to_string info)
         )
         (match binding with
-        | B.None -> ""
+        | B.NoBinding -> ""
         | _ -> sprintf ": %a" BID.ps (B.get_bid binding)
+        )
+        (
+         match bindings with
+         | [] -> ""
+         | _ ->
+             sprintf ": %s"
+               (String.concat ";"
+                  (List.map (fun b -> sprintf "%a" BID.ps (B.get_bid b)) bindings))
         )
 
     method to_tag = L.to_tag label
@@ -231,6 +245,8 @@ module Partial = struct
     | TypeBoundProcPart   of spec * node list
     | FunctionHead        of spec * node list
     | SubroutineHead      of spec * node list
+    | SubroutineStmtHead  of spec * node
+    | FunctionStmtHead    of spec * node
     | PuTail              of spec * node list
 
   let to_string = function
@@ -256,7 +272,9 @@ module Partial = struct
     | Onlys(spec, nds)              -> sprintf "Onlys(%s)" (spec_to_string spec)
     | TypeBoundProcPart(spec, nds)  -> sprintf "TypeBoundProcPart(%s)" (spec_to_string spec)
     | FunctionHead(spec, nds)       -> sprintf "FunctionHead(%s)" (spec_to_string spec)
+    | FunctionStmtHead(spec, nd)    -> sprintf "FunctionStmtHead(%s)" (spec_to_string spec)
     | SubroutineHead(spec, nds)     -> sprintf "SubroutineHead(%s)" (spec_to_string spec)
+    | SubroutineStmtHead(spec, nd)  -> sprintf "SubroutineStmtHead(%s)" (spec_to_string spec)
     | PuTail(spec, nds)             -> sprintf "PuTail(%s)" (spec_to_string spec)
 
   let get_spec = function
@@ -282,7 +300,9 @@ module Partial = struct
     | Onlys(spec, _)
     | TypeBoundProcPart(spec, _)
     | FunctionHead(spec, _)
+    | FunctionStmtHead(spec, _)
     | SubroutineHead(spec, _)
+    | SubroutineStmtHead(spec, _)
     | PuTail(spec, _)
       -> spec
 
@@ -311,7 +331,9 @@ module Partial = struct
   let mk_onlys ?(length=0) nds                 = Onlys(mkspec ~length ~tag:C.Tonlys (), nds)
   let mk_type_bound_proc_part ?(length=0) nds  = TypeBoundProcPart(mkspec ~length ~tag:C.Ttype_bound_proc_part (), nds)
   let mk_function_head ?(length=0) nds         = FunctionHead(mkspec ~length ~tag:C.Tfunction_head (), nds)
+  let mk_function_stmt_head ?(length=0) nd     = FunctionStmtHead(mkspec ~length ~tag:C.Tfunction_stmt_head (), nd)
   let mk_subroutine_head ?(length=0) nds       = SubroutineHead(mkspec ~length ~tag:C.Tsubroutine_head (), nds)
+  let mk_subroutine_stmt_head ?(length=0) nd   = SubroutineStmtHead(mkspec ~length ~tag:C.Tsubroutine_stmt_head (), nd)
   let mk_pu_tail ?(length=0) nds               = PuTail(mkspec ~length ~tag:C.Tpu_tail (), nds)
 
   let get_nodes = function
@@ -344,6 +366,8 @@ module Partial = struct
     | Expr(_, nd)
     | TypeSpec(_, nd)
     | ActionStmt(_, nd)
+    | SubroutineStmtHead(_, nd)
+    | FunctionStmtHead(_, nd)
 
       -> [nd]
 

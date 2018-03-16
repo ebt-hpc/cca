@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -48,7 +49,9 @@ type tag =
   | Ttype_bound_proc_part
 
   | Tfunction_head
+  | Tfunction_stmt_head
   | Tsubroutine_head
+  | Tsubroutine_stmt_head
 
   | Tpu_tail
 
@@ -83,7 +86,9 @@ let tag_to_string = function
   | Ttype_bound_proc_part  -> "type_bound_procedure_part"
 
   | Tfunction_head         -> "function_head"
+  | Tfunction_stmt_head    -> "function_stmt_head"
   | Tsubroutine_head       -> "subroutine_head"
+  | Tsubroutine_stmt_head  -> "subroutine_stmt_head"
 
   | Tpu_tail               -> "pu_tail"
 
@@ -130,7 +135,9 @@ let onlys()                 = mk Tonlys true
 let type_bound_proc_part()  = mk Ttype_bound_proc_part true
 
 let function_head()         = mk Tfunction_head true
+let function_stmt_head()    = mk Tfunction_stmt_head true
 let subroutine_head()       = mk Tsubroutine_head true
+let subroutine_stmt_head()  = mk Tsubroutine_stmt_head true
 let pu_tail()               = mk Tpu_tail true
 
 let in_stmt()               = mk Tin_stmt true
@@ -164,7 +171,9 @@ let is_onlys c                 = c.tag = Tonlys
 let is_type_bound_proc_part c  = c.tag = Ttype_bound_proc_part
 
 let is_function_head c         = c.tag = Tfunction_head
+let is_function_stmt_head c    = c.tag = Tfunction_stmt_head
 let is_subroutine_head c       = c.tag = Tsubroutine_head
+let is_subroutine_stmt_head c  = c.tag = Tsubroutine_stmt_head
 let is_pu_tail c               = c.tag = Tpu_tail
 
 let is_in_stmt c               = c.tag = Tin_stmt

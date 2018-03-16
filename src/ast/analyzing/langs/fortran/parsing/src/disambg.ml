@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -18,6 +19,8 @@
 (* Disambiguate AST *)
 
 module F (Stat : Parser_aux.STATE_T) = struct
+
+  module Loc_ = Loc
 
   open Stat
   open Ast
@@ -126,6 +129,17 @@ module F (Stat : Parser_aux.STATE_T) = struct
       Not_found -> ()
 
 
+  let conv_loc
+      { Ast.Loc.filename     = fn;
+        Ast.Loc.start_offset = so;
+        Ast.Loc.end_offset   = eo;
+        Ast.Loc.start_line   = sl;
+        Ast.Loc.start_char   = sc;
+        Ast.Loc.end_line     = el;
+        Ast.Loc.end_char     = ec;
+      } =
+    Loc_.make ~fname:fn so eo sl sc el ec
+
   let set_binding_of_subprogram_reference ?(defer=true) node =
     DEBUG_MSG "defer=%B" defer;
     try
@@ -144,9 +158,26 @@ module F (Stat : Parser_aux.STATE_T) = struct
           end
       end
       | spec::_ -> begin
+          DEBUG_MSG "spec=%s" (N.Spec.to_string spec);
+          let ospec = N.Spec.get_object_spec spec in
+          DEBUG_MSG "ospec=%s" ospec#to_string;
           try
-            match (N.Spec.get_object_spec spec)#bid_opt with
-            | Some bid -> node#set_binding (B.make_use bid)
+            match ospec#bid_opt with
+            | Some bid -> begin
+                let b =
+                  try
+                    let loc_def = N.Spec.loc_of_decl_to_loc ospec#loc_of_decl in
+                    DEBUG_MSG "node#loc: %s" (Loc.to_string node#loc);
+                    if loc_def <> node#loc then begin
+                      B.make_use ~loc_opt:(Some (conv_loc loc_def)) bid
+                    end
+                    else
+                      B.make_use bid
+                  with
+                    Not_found -> B.make_use bid
+                in
+                node#set_binding b
+            end
             | _ -> if defer then env#register_ambiguous_node node
           with
             Not_found -> if defer then env#register_ambiguous_node node
