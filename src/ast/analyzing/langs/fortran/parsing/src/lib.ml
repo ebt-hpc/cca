@@ -32,7 +32,7 @@ let predefined_macrotbl =
   let open Tokens_ in
 
   let mkconst id    = PP_MACRO_CONST id in
-  let mkname id     = PP_MACRO_NAME id in
+  let mkname id     = PP_MACRO_NAME(id, "") in
   let mkexpr id     = PP_MACRO_EXPR id in
   let mkstmt id     = PP_MACRO_STMT id in
   let mktypespec id = PP_MACRO_TYPE_SPEC id in

@@ -473,7 +473,7 @@ module F (Stat : Aux.STATE_T) = struct
             | SPEC_PART_CONSTRUCT _ | EXEC_PART_CONSTRUCT _
             | DERIVED_TYPE_DEF_PART _ | END_FRAGMENT 
             | FUNCTION_HEAD _ | SUBROUTINE_HEAD _ | PU_TAIL _ | STMT _
-            | SUBPROGRAM _
+            | SUBPROGRAM _ | PROGRAM_UNIT _
             | NOTHING
             | INCLUDE__FILE _
                 -> ()

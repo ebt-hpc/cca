@@ -1912,6 +1912,8 @@ let to_short_string ?(ignore_identifiers_flag=false) =
   | FunctionStmtHead n   -> combo2 264 [n]
   | SubroutineStmtHead n -> combo2 265 [n]
 
+  | ProcName n -> combo2 266 [n]
+
 let anonymize2 = anonymize ~more:true
 
 let anonymize3 = anonymize ~more:true

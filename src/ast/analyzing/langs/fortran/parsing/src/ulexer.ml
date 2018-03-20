@@ -5353,7 +5353,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
             | PP_MACRO_CONST _      -> Macro.resolve_body (PP_MACRO_CONST id) body_
             | PP_MACRO_CONST_CHAR _ -> Macro.resolve_body (PP_MACRO_CONST_CHAR id) body_
             | PP_MACRO_CONST_INT _  -> Macro.resolve_body (PP_MACRO_CONST_INT id) body_
-            | PP_MACRO_NAME _       -> Macro.resolve_body (PP_MACRO_NAME id) body_
+            | PP_MACRO_NAME _       -> Macro.resolve_body (PP_MACRO_NAME(id, "")) body_
             | PP_MACRO_EXPR _       -> Macro.resolve_body (PP_MACRO_EXPR id) body_
             | PP_MACRO_STMT _       -> Macro.resolve_body (PP_MACRO_STMT id) body_
             | PP_MACRO_TYPE_SPEC _  -> Macro.resolve_body (PP_MACRO_TYPE_SPEC id) body_

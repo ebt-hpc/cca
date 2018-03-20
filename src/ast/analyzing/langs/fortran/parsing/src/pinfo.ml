@@ -1,5 +1,6 @@
 (*
    Copyright 2013-2017 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -1074,6 +1075,7 @@ module Name = struct
 
 
 
+  exception Spec_found of Spec.t
   exception Specs_found of Spec.t list
 
 
@@ -1185,10 +1187,12 @@ module Name = struct
     val scope = scope
 
     val tbl = (Hashtbl.create 0 : (name, Spec.t) Hashtbl.t)
+    val regexp_tbl = (Hashtbl.create 0 : (name, Spec.t) Hashtbl.t)
 
     val mutable implicit_spec_list = (None : ImplicitSpec.c list option)
 
-    val default_implicit_spec_list = (* it is assumed to be an integer if n starts with [i-n] and a real otherwise *)
+    (* it is assumed to be an integer if n starts with [i-n] and a real otherwise *)
+    val default_implicit_spec_list =
       let int_spec = new ImplicitSpec.c TypeSpec.Integer in
       let real_spec = new ImplicitSpec.c TypeSpec.Real in
       int_spec#set_letter_spec_list [('i','n')];
@@ -1291,6 +1295,16 @@ module Name = struct
     method add n spec =
       let n_ = String.lowercase n in
 
+      let is_regexp = String.contains n_ '|' in
+      DEBUG_MSG "is_regexp=%B" is_regexp;
+
+      let tbl_add =
+        if is_regexp then
+          Hashtbl.add regexp_tbl
+        else
+          Hashtbl.add tbl
+      in
+
       let specs = self#_find_all n_ in
       let attrs = 
         Xlist.filter_map 
@@ -1314,7 +1328,7 @@ module Name = struct
       match spec with
       | Spec.DataObject dospec -> begin
           if aattrs = [] && attrs = [] then begin
-            Hashtbl.add tbl n_ spec
+            tbl_add n_ spec
           end
           else begin
             let attr =
@@ -1366,7 +1380,7 @@ module Name = struct
                   attr#set_intrinsic
               ) (List.rev attrs);
 
-            Hashtbl.add tbl n_ spec
+            tbl_add n_ spec
           end
       end
 
@@ -1382,12 +1396,12 @@ module Name = struct
               (List.exists (fun a -> try a#is_private with _ -> false) attrs)
             then
               attr#set_access_spec_private;
-            Hashtbl.add tbl n_ spec
+            tbl_add n_ spec
           with
             Not_found -> assert false
       end
 
-      | _ -> Hashtbl.add tbl n_ spec
+      | _ -> tbl_add n_ spec
 
           
 
@@ -1396,25 +1410,79 @@ module Name = struct
 
     method _find n =
       (*DEBUG_MSG "\"%s\"" n;*)
-      Hashtbl.find tbl n
+      try
+        Hashtbl.find tbl n
+      with
+        Not_found ->
+          try
+            Hashtbl.find regexp_tbl n
+          with
+            Not_found ->
+              try
+                Hashtbl.iter
+                  (fun pat spec ->
+                    let re = Str.regexp ("^"^pat^"$") in
+                    if Str.string_match re n 0 then
+                      raise (Spec_found spec)
+                  ) regexp_tbl;
+                raise Not_found
+              with
+                Spec_found spec -> spec
 
     method find n = self#_find (String.lowercase n)
 
 
     method _find_all n =
       (*DEBUG_MSG "\"%s\"" n;*)
-      Hashtbl.find_all tbl n
+      let l = Hashtbl.find_all tbl n in
+      if l = [] then
+        let l = Hashtbl.find_all regexp_tbl n in
+        if l = [] then
+          let l0 = ref [] in
+          Hashtbl.iter
+            (fun pat spec ->
+              DEBUG_MSG "pat=%s" pat;
+              let re = Str.regexp ("^"^pat^"$") in
+              if Str.string_match re n 0 then
+                l0 := spec :: !l0
+            ) regexp_tbl;
+          !l0
+        else
+          l
+      else
+        l
 
     method find_all n = self#_find_all (String.lowercase n)
 
     method _mem n =
-      Hashtbl.mem tbl n
+      if Hashtbl.mem tbl n then
+        true
+      else if Hashtbl.mem regexp_tbl n then
+        true
+      else
+        try
+          Hashtbl.iter
+            (fun pat _ ->
+              let re = Str.regexp ("^"^pat^"$") in
+              if Str.string_match re n 0 then
+                raise Exit
+            ) regexp_tbl;
+          false
+        with
+          Exit -> true
 
     method mem n = self#_mem (String.lowercase n)
+
+    method _copy =
+      {<scope = ScopingUnit.copy scope;
+        tbl = tbl;
+        regexp_tbl = regexp_tbl;
+        >}
 
     method copy =
       {<scope = ScopingUnit.copy scope;
         tbl = Hashtbl.copy tbl;
+        regexp_tbl = Hashtbl.copy regexp_tbl;
         >}
 
     method to_string =
@@ -1435,6 +1503,10 @@ module Name = struct
         (fun n spc ->
           buf_add (sprintf "%s -> %s\n" n (Spec.to_string spc))
         ) tbl;
+      Hashtbl.iter
+        (fun n spc ->
+          buf_add (sprintf "%s -> %s\n" n (Spec.to_string spc))
+        ) regexp_tbl;
 
       Buffer.contents buf
 
@@ -1793,6 +1865,7 @@ module Name = struct
       "lstat"; (* *)
       "mclock"; (* *)
       "mclock8"; (* *)
+      "rank"; (* *)
       "realpart"; (* *)
       "second"; (* *)
       "time8"; (* *)

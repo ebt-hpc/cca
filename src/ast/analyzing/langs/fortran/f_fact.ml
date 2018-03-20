@@ -91,6 +91,7 @@ module F (L : Label.T) = struct
   let p_in_container_unit = mkfres "inContainerUnit"
 
   let p_name      = mkfres "name"
+  let p_regexp    = mkfres "regexp"
   let p_value     = mkfres "value"
   let p_variable  = mkfres "variableName"
   let p_rank      = mkfres "rank"
@@ -120,14 +121,31 @@ module F (L : Label.T) = struct
 
   let name_sep_pat = Str.regexp_string ";"
 
+  let conv_pat =
+    let pat_conv_tbl = [
+      Str.regexp_string "\\(", "(";
+      Str.regexp_string "\\)", ")";
+      Str.regexp_string "\\|", "|";
+    ]
+    in
+    fun x ->
+      List.fold_left
+        (fun s (re, rpl) ->
+          Str.global_replace re rpl s
+        ) x pat_conv_tbl
+
+  let mkpat n = "^"^(conv_pat (String.lowercase_ascii n))^"$"
+
+  let is_pat x = String.contains x '|'
+
+
   class extractor options cache_path tree = object (self)
     inherit extractor_base options cache_path tree as super
 
     method id = "Fortran"
   
 
-    method mkextname n =
-      super#mkextname (String.lowercase n)
+    method mkextname n = super#mkextname (String.lowercase_ascii n)
 
     method scanner_body_after_subscan nd lab entity =
 
@@ -145,6 +163,7 @@ module F (L : Label.T) = struct
                     (fun n -> 
                       let en = self#mkextname n in
                       self#add (en, p_is_a, Triple.c_external_name);
+                      self#add (en, p_name, mklit n);
                       self#add (entity, p_requires, en)
                     ) ns
 
@@ -155,6 +174,10 @@ module F (L : Label.T) = struct
                         (fun n ->
                           let en = self#mkextname n in
                           self#add (en, p_is_a, Triple.c_external_name);
+                          if is_pat n then
+                            self#add (en, p_regexp, mklit (mkpat n))
+                          else
+                            self#add (en, p_name, mklit n);
                           self#add (entity, p_provides, en)
                         ) (Str.split name_sep_pat _n)
                     ) ns
@@ -184,6 +207,7 @@ module F (L : Label.T) = struct
                               let n = Tree.make_local_name (L.get_name (getlab mnd)) x in
                               let en = self#mkextname n in
                               self#add (en, p_is_a, Triple.c_external_name);
+                              self#add (en, p_name, mklit n);
                               self#add (entity, p_provides, en)
                             ) (Str.split name_sep_pat (L.get_name lab))
                         with

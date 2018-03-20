@@ -76,7 +76,7 @@ let rec rawtoken_to_string = function
   | PP_MACRO_CONST s      -> "PP_MACRO_CONST:"^s
   | PP_MACRO_CONST_CHAR s -> "PP_MACRO_CONST_CHAR:"^s
   | PP_MACRO_CONST_INT s  -> "PP_MACRO_CONST_INT:"^s
-  | PP_MACRO_NAME s       -> "PP_MACRO_NAME:"^s
+  | PP_MACRO_NAME(s, e)   -> "PP_MACRO_NAME:"^s^(if e = "" then "" else ":"^e)
   | PP_MACRO_VARIABLE s   -> "PP_MACRO_VARIABLE:"^s
   | PP_MACRO_EXPR s       -> "PP_MACRO_EXPR:"^s
   | PP_MACRO_STMT s       -> "PP_MACRO_STMT:"^s
@@ -1007,7 +1007,7 @@ let rec rawtoken_size = function
   | PP_MACRO_CONST s
   | PP_MACRO_CONST_CHAR s
   | PP_MACRO_CONST_INT s
-  | PP_MACRO_NAME s
+  | PP_MACRO_NAME(s, _)
   | PP_MACRO_VARIABLE s
   | PP_MACRO_EXPR s      
   | PP_MACRO_STMT s      
@@ -1931,7 +1931,7 @@ let rawtoken_to_rep = function
   | PP_MACRO_CONST s      -> s
   | PP_MACRO_CONST_CHAR s -> s
   | PP_MACRO_CONST_INT s  -> s
-  | PP_MACRO_NAME s       -> s
+  | PP_MACRO_NAME(s, _)   -> s
   | PP_MACRO_VARIABLE s   -> s
   | PP_MACRO_EXPR s       -> s
   | PP_MACRO_STMT s       -> s

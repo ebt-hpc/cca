@@ -1,5 +1,6 @@
 #
-# Copyright 2013-2017 RIKEN
+# Copyright 2013-2018 RIKEN
+# Copyright 2018 Chiba Institute of Technology
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,6 +37,11 @@ WHERE {
   ?call a ?call_cat OPTION (INFERENCE NONE) .
   FILTER (?call_cat IN (f:CallStmt, f:FunctionReference, f:PartName))
 
+  FILTER EXISTS {
+    ?call f:inProgramUnit*/ver:version ?ver .
+    ?callee f:inProgramUnit*/ver:version ?ver .
+  }
+
   {
     {
       SELECT DISTINCT ?callee ?callee_name ?b
@@ -56,6 +62,14 @@ WHERE {
             f:name ?callee_name .
 
     ?call f:refersTo ?callee .
+  }
+  UNION
+  {
+    ?callee a f:Subprogram ;
+            f:provides/f:regexp ?xpat .
+
+    ?call f:requires/f:name ?xn .
+    FILTER (REGEX(?xn, ?xpat, "i"))
   }
   UNION
   {
@@ -89,6 +103,42 @@ WHERE {
                 f:inProgramUnit ?pu .  
 
       } GROUP BY ?callee ?callee_name ?pu
+    }
+  }
+  UNION
+  {
+    {
+      SELECT DISTINCT ?call ?xb ?pu
+      WHERE {
+
+        {
+          ?call f:refersTo ?ifb .
+        }
+        UNION
+        {
+          ?call src:binding ?b .
+          ?ifb src:binding ?b .
+        }
+
+        ?ifb a f:InterfaceBlock ;
+             f:name ?ifb_name ;
+             f:inProgramUnit ?pu .
+
+        ?x f:name ?callee_name ;
+           src:binding ?xb ;
+           f:inInterfaceBlock ?ifb .
+
+      } GROUP BY ?call ?xb ?pu
+    }
+    {
+      SELECT DISTINCT ?callee ?xb ?pu
+      WHERE {
+        ?callee a f:Subprogram ;
+                src:binding ?xb ;
+                f:name ?callee_name ;
+                f:inProgramUnit ?pu .
+
+      } GROUP BY ?callee ?xb ?pu
     }
   }
   UNION

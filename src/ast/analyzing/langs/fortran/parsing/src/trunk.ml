@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018 Chiba Institute of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -426,6 +427,16 @@ module F (Stat : Aux.STATE_T) = struct
     with
       Not_found ->
         env#lex_find_macro id
+
+  let find_all_macros id =
+    DEBUG_MSG "id=%s" id;
+    let ms =
+      env#find_all_macros id
+    in
+    if ms = [] then
+      env#lex_find_all_macros id
+    else
+      ms
 
   let hide_macro id =
     env#macrotbl#hide id;
@@ -947,8 +958,8 @@ module F (Stat : Aux.STATE_T) = struct
         tbuf#prebuf_add token
 
 
-    method private expand_line base_loc st ed line =
-      DEBUG_MSG "line=^%s$" line;
+    method private expand_line ?(gen_regexp=false) base_loc st ed line =
+      DEBUG_MSG "gen_regexp=%B, line=^%s$" gen_regexp line;
       let ulexbuf = Ulexing.from_utf8_string ~base_loc line in
       let scanner() = U._token ulexbuf in
       let buf = new TBF.base in
@@ -975,15 +986,44 @@ module F (Stat : Aux.STATE_T) = struct
               match tok with
               | EOF _ -> raise Ulexing.Error
 
-              | PP_MACRO_ID(_, id) -> begin
+              | PP_MACRO_ID(_, id) when not gen_regexp -> begin
                   try
                     match find_macro id with
                     | Macro.Object line0 ->
-                        let buf0 = self#expand_line line0.Macro.ln_loc st ed line0.Macro.ln_raw in
+                        let buf0 =
+                          self#expand_line ~gen_regexp line0.Macro.ln_loc st ed line0.Macro.ln_raw
+                        in
                         buf#receive_all buf0
                     | _ -> assert false
                   with
                     Not_found -> assert false
+              end
+              | PP_MACRO_ID(_, id) when gen_regexp -> begin
+                  let ss =
+                    List.map
+                      (function
+                        | Macro.Object ln0 ->
+                            DEBUG_MSG "ln0: %s" (Macro.line_to_string ln0);
+                            let b0 =
+                              self#expand_line ~gen_regexp ln0.Macro.ln_loc st ed ln0.Macro.ln_raw
+                            in
+                            let s =
+                              String.concat ""
+                                (List.map
+                                   (fun x ->
+                                     Token.rawtoken_to_rep
+                                       (Token.qtoken_to_rawtoken x)
+                                   ) b0#get_list)
+                            in
+                            DEBUG_MSG "s=^%s$" s;
+                            s
+                        | _ -> ""
+                      ) (find_all_macros id)
+                  in
+                  let ss = List.sort_uniq Pervasives.compare ss in
+                  let pat = "\\("^(String.concat "\\|" ss)^"\\)" in
+                  DEBUG_MSG "pat=%s" pat;
+                  buf#add (PB.make_qtoken (IDENTIFIER pat) Loc.dummy_lexpos Loc.dummy_lexpos)
               end
               | PP_MACRO_APPL(id, args) -> begin
                   let line0, base_loc0 =
@@ -1013,7 +1053,7 @@ module F (Stat : Aux.STATE_T) = struct
                     with
                       Not_found -> assert false
                   in
-                  let buf0 = self#expand_line base_loc0 st ed line0 in
+                  let buf0 = self#expand_line ~gen_regexp base_loc0 st ed line0 in
                   buf#receive_all buf0
               end
               | _ -> buf#add (PB.make_qtoken tok st ed)
@@ -1071,7 +1111,7 @@ module F (Stat : Aux.STATE_T) = struct
 
                 end
             end
-            | [(IDENTIFIER _, _)]   -> tbuf#prebuf_add (PB.make_qtoken (PP_MACRO_NAME ida) st ed)
+            | [(IDENTIFIER s, _)]   -> tbuf#prebuf_add (PB.make_qtoken (PP_MACRO_NAME(ida, s)) st ed)
             | [(CHAR_LITERAL _, _)] -> tbuf#prebuf_add (PB.make_qtoken (PP_MACRO_CONST_CHAR ida) st ed)
             | [(INT_LITERAL _, _)]  -> tbuf#prebuf_add (PB.make_qtoken (PP_MACRO_CONST_INT ida) st ed)
 
@@ -1125,12 +1165,20 @@ module F (Stat : Aux.STATE_T) = struct
                 DEBUG_MSG "consists_only_of_id --> %B" consists_only_of_id;
 
                 if consists_only_of_id then begin
-                  tbuf#prebuf_add (PB.make_qtoken (PP_MACRO_NAME ida) st ed)
+                  let b = self#expand_line ~gen_regexp:true line.Macro.ln_loc st ed raw in
+                  let xs = b#get_list in
+                  let expanded =
+                    String.concat ""
+                      (List.map
+                         (fun x -> Token.rawtoken_to_rep (Token.qtoken_to_rawtoken x)) xs)
+                  in
+                  DEBUG_MSG "expanded=%s" expanded;
+                 tbuf#prebuf_add (PB.make_qtoken (PP_MACRO_NAME(ida, expanded)) st ed)
                 end
                 else begin
                   let contexts =
                     if is_concat xs then
-                      [ C.variable(),  PP_MACRO_NAME ida,      (fun t -> tbuf#prebuf_add t) ]
+                      [ C.variable(),  PP_MACRO_NAME(ida, ""), (fun t -> tbuf#prebuf_add t) ]
                     else
                       [ C.variable(),  PP_MACRO_VARIABLE ida,  (fun t -> tbuf#prebuf_add t);
                         C.expr(),      PP_MACRO_EXPR ida,      (fun t -> tbuf#prebuf_add t);

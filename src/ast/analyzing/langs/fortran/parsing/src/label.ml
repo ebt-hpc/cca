@@ -402,6 +402,8 @@ type t =
 
   | ApolloPointerSpec (* Apollo/Domain Fortran *)
 
+  | ProcName of name
+
 
 let to_string = function
   | DUMMY                     -> "DUMMY"
@@ -776,6 +778,8 @@ let to_string = function
 
   | ApolloPointerSpec        -> "ApolloPointerSpec"
 
+  | ProcName n               -> "ProcName:"^n
+
 let to_simple_string = function
   | DUMMY                     -> "<dummy>"
 
@@ -1148,6 +1152,8 @@ let to_simple_string = function
   | Options s                -> "options "^s
 
   | ApolloPointerSpec        -> "<apollo-pointer-spec>"
+
+  | ProcName n               -> n
 
 let to_tag = function
   | DUMMY                     -> "DUMMY", []
@@ -1523,6 +1529,8 @@ let to_tag = function
 
   | ApolloPointerSpec        -> "ApolloPointerSpec", []
 
+  | ProcName n               -> "ProcName", [name_attr_name,n]
+
 let get_value = function
   | Constant c -> Constant.get_value c
   | _ -> raise Not_found
@@ -1581,6 +1589,8 @@ let get_name = function
 
   | SubroutineStmtHead n
   | FunctionStmtHead n
+
+  | ProcName n
 
     -> n
 
@@ -1670,6 +1680,11 @@ let get_name_opt = function
   | Enumerator n
 
   | DataPointerObject n
+
+  | SubroutineStmtHead n
+  | FunctionStmtHead n
+
+  | ProcName n
 
     -> Some n
 
@@ -2264,6 +2279,8 @@ let anonymize ?(more=false) = function
 
   | SubroutineStmtHead n         -> SubroutineStmtHead ""
   | FunctionStmtHead n           -> FunctionStmtHead ""
+
+  | ProcName n                   -> ProcName ""
 
   | lab -> lab
 

@@ -422,6 +422,17 @@ class env = object (self)
         match predefined_macrotbl with
         | Some tbl -> tbl#find id
         | None -> raise Not_found
+
+  method find_all_macros id =
+    DEBUG_MSG "id=%s" id;
+    let ms = macrotbl#find_all id in
+    if ms = [] then
+        match predefined_macrotbl with
+        | Some tbl -> tbl#find_all id
+        | None -> []
+    else
+      ms
+
   method macro_defined id =
     try
       let _ = self#find_macro id in
@@ -451,6 +462,17 @@ class env = object (self)
         | Some tbl -> tbl#find id
         | None -> raise Not_found
 
+  method lex_find_all_macros id =
+    DEBUG_MSG "id=%s" id;
+    let ms =
+      lex_macrotbl#find_all id
+    in
+    if ms = [] then
+      match predefined_macrotbl with
+      | Some tbl -> tbl#find_all id
+      | None -> raise Not_found
+    else
+      ms
 
   val mutable ignore_case_flag = false
 
@@ -1035,7 +1057,7 @@ class env = object (self)
 
       bopu_flag          <- stat.s_at_bopu;
       symbol_tbl         <- Hashtbl.copy stat.s_symbol_tbl;
-      stack              <- (*self#_copy_stack*) stat.s_stack;
+      stack              <- self#__copy_stack stat.s_stack;
 
       in_format_context     <- stat.s_in_format_context;
       in_open_context       <- stat.s_in_open_context;
@@ -1150,7 +1172,7 @@ class env = object (self)
   method private __copy_stack s =
     let copy = Stack.create() in
     let fs = ref [] in
-    Stack.iter (fun f -> fs := f :: !fs) s;
+    Stack.iter (fun f -> fs := f#_copy :: !fs) s;
     List.iter (fun f -> Stack.push f copy) !fs;
     copy
 
@@ -1694,6 +1716,12 @@ module F (Stat : STATE_T) = struct
     | N.ScopingUnit.MainProgram(n_opt, hd) -> hd := true
     | _ -> ()
 
+  let cancel_main_program_scope() =
+    DEBUG_MSG "current scope: %s" (N.ScopingUnit.to_string env#current_frame#scope);
+    match env#current_frame#scope with
+    | N.ScopingUnit.MainProgram _ -> end_scope()
+    | _ -> ()
+
 
   let normalize_label lab =
     Xstring.lstrip ~strs:["0"] lab
@@ -2046,13 +2074,19 @@ module F (Stat : STATE_T) = struct
         d 
     | _ -> nd
 
-  let mark_EOPU() =
+  let mark_EOPU ?(ending_scope=true) () =
     DEBUG_MSG "current scope: %s" (N.ScopingUnit.to_string env#current_frame#scope);
-    match env#current_frame#scope with
-    | N.ScopingUnit.Program -> begin
-        env#exit_contains_context;
+    if ending_scope then begin
+      end_scope();
+      DEBUG_MSG "  -> %s" (N.ScopingUnit.to_string env#current_frame#scope)
+    end;
+    begin
+      match env#current_frame#scope with
+      | N.ScopingUnit.Program -> begin
+          env#exit_contains_context;
+      end
+      | _ -> ()
     end
-    | _ -> ()
 
 
   let rec is_xxx_part_construct 

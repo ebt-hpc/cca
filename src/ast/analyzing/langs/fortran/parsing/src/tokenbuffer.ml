@@ -2303,7 +2303,7 @@ module F (Stat : Aux.STATE_T) = struct
                                   rep := !rep ^ (Token.rawtoken_to_rep t);
                                   loc' := l
                                 done;
-                                tok := PP_MACRO_NAME !rep;
+                                tok := PP_MACRO_NAME(!rep, "");
                                 loc := merge_locs !loc !loc';
 
                                 let params =
@@ -2330,11 +2330,11 @@ module F (Stat : Aux.STATE_T) = struct
                       incr nth
                     done
                   with
-                    Exit -> tok := PP_MACRO_NAME s
+                    Exit -> tok := PP_MACRO_NAME(s, "")
               end
               | _ -> begin
                   DEBUG_MSG "<pp-identigfier> --> <pp-macro-name>";
-                  tok := PP_MACRO_NAME s
+                  tok := PP_MACRO_NAME(s, "")
               end
             end
           | _ -> ()

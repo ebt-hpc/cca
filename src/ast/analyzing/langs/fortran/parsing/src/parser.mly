@@ -143,7 +143,7 @@ let name_sep_pat = Str.regexp_string ";"
 %token <string> PP_UNDERSCORE
 %token PP_AND PP_OR PP_CONCAT
 
-%token <string> PP_MACRO_NAME
+%token <string * string> PP_MACRO_NAME
 %token <string> PP_MACRO_CONST
 %token <string> PP_MACRO_CONST_CHAR
 %token <string> PP_MACRO_CONST_INT
@@ -587,7 +587,7 @@ include_line:
 
 name:
    | i=IDENTIFIER    { mkleaf $startpos $endpos (mkn i) }
-   | n=PP_MACRO_NAME { mkleaf $startpos $endpos (L.Name n) }
+   | n=PP_MACRO_NAME { let r, e = n in mkleaf $startpos $endpos (L.Name r) }
 ;
 
 stmt_end:
@@ -758,7 +758,7 @@ partial_subroutine_stmt_head:
 ;
 
 partial_pu_tail:
-   | se=specification_part__execution_part e=end_stmt pus_=program_unit* EOP
+   | se=specification_part__execution_part e=end_stmt_p pus_=program_unit* EOP
        { 
          let pus = 
            List.flatten
@@ -772,6 +772,14 @@ partial_pu_tail:
          in
          Partial.mk_pu_tail ((Ast.spec_opt_exec_opt_to_list se) @ (e :: pus))
        }
+;
+
+end_stmt_p:
+   | e=_end_stmt_p stmt_end { e }
+;
+
+_end_stmt_p:
+   | END { mark_EOPU ~ending_scope:false (); mkstmtleaf $startpos $endpos (Stmt.EndStmt) }
 ;
 
 partial_derived_type_def_part:
@@ -1985,7 +1993,7 @@ main_program:
 _main_program:
    | m0=main_program0 sp_opt=ioption(subprogram_part)
        { 
-         end_scope();
+         (*end_scope();*)
          let n_opt, pl, se = m0 in
          let spl = opt_to_list sp_opt in
          List.iter disambiguate_internal_subprogram spl;
@@ -2179,6 +2187,8 @@ _procedure_stmt: (* F2008 (optional '::') *)
    | ioption(MODULE) procedure_kw colon_colon_opt ns=clist(name)
        { 
          env#exit_procedure_context;
+         List.iter (fun n -> n#relab (L.ProcName n#get_name)) ns;
+         List.iter set_binding_of_subprogram_reference ns;
          mkstmtnode $symbolstartpos $endpos Stmt.ProcedureStmt ns
        }
 ;
@@ -2210,7 +2220,7 @@ module_:
 _module_:
    | m0=module0_ sp_opt=ioption(subprogram_part) 
        { 
-         end_scope();
+         (*end_scope();*)
          let m = List.hd m0 in
          let spl = opt_to_list sp_opt in
          List.iter disambiguate_module_subprogram spl;
@@ -2242,7 +2252,7 @@ _module_stmt:
            env#clear_BOPU;
 
          begin
-           end_scope(); (* cancel scope of main_program *)
+           cancel_main_program_scope();
            let frm = begin_module_scope n_str in
            register_module n_str frm;
            if not env#partial_parsing_flag then
@@ -2276,7 +2286,7 @@ submodule:
 submodule_head:
    | m0=submodule_head0 sp_opt=ioption(subprogram_part) 
        { 
-         end_scope();
+         (*end_scope();*)
          let m = List.hd m0 in
          let spl = opt_to_list sp_opt in
          List.iter disambiguate_module_subprogram spl;
@@ -2311,7 +2321,7 @@ _submodule_stmt:
            env#clear_BOPU;
 
          begin
-           end_scope(); (* cancel scope of main_program *)
+           cancel_main_program_scope();
            let frm = begin_submodule_scope n_str in
            register_submodule n_str frm;
            if not env#partial_parsing_flag then
@@ -2349,7 +2359,7 @@ end_submodule_stmt_head:
 block_data:
    | b0=block_data0 e=end_block_data_stmt 
        { 
-         end_scope();
+         (*end_scope();*)
          let b = List.hd b0 in
          let n_opt = b#get_name_opt in
          mknode $startpos $endpos (L.ProgramUnit (ProgramUnit.BlockData n_opt)) (b0 @ [e])
@@ -2380,7 +2390,7 @@ _block_data_stmt:
          if env#at_BOPU then 
            env#clear_BOPU;
          begin
-           end_scope(); (* cancel scope of main_program *)
+           cancel_main_program_scope();
            begin
              match n_str_opt with
              | Some n_str -> register_block_data n_str
@@ -6632,7 +6642,7 @@ function_subprogram:
 _function_subprogram:
    | f0=function_subprogram0 sp_opt=ioption(subprogram_part) 
        { 
-         end_scope();
+         (*end_scope();*)
          let f, se, fn = f0 in
          let spl = opt_to_list sp_opt in
          List.iter disambiguate_internal_subprogram spl;
@@ -6685,7 +6695,7 @@ function_head:
              context_stack#push (C.spec__exec()); (* already pushed for head-less main_program *)
          end
          else begin
-           end_scope() (* cancel scope of main_program *)
+           cancel_main_program_scope()
          end;
 
          let fname_list = Xset.to_list fnames in
@@ -6737,13 +6747,13 @@ suffix:
    | r=result l_opt=ioption(language_binding_spec) { mknode $startpos $endpos L.Suffix (r :: (opt_to_list l_opt)) }
    | l=language_binding_spec r_opt=ioption(result) { mknode $startpos $endpos L.Suffix (l :: (opt_to_list r_opt)) }
 ;
-
+(*
 %inline
 name_or_macro_var:
    | n=name              { n#get_name }
    | n=PP_MACRO_VARIABLE { n }
 ;
-
+*)
 function_stmt_head:
    | fshd=function_stmt_head0 LPAREN ns=clist0(name)
        { 
@@ -6759,7 +6769,7 @@ function_stmt_head:
              context_stack#push (C.spec__exec()); (* already pushed for head-less main_program *)
          end
          else begin
-           end_scope() (* cancel scope of main_program *)
+           cancel_main_program_scope()
          end;
 
          List.iter
@@ -6781,14 +6791,24 @@ function_stmt_head:
 ;
 
 function_stmt_head0:
-   | ps=prefix FUNCTION n_str=name_or_macro_var
+   | ps=prefix FUNCTION n_str=ident_or_macro_var
        { 
-         let pnds = 
+         let pnds =
            match ps with
            | [] -> []
            | _ -> [mknode $startpos(ps) $endpos(ps) L.Prefix ps]
          in
          pnds, n_str
+       }
+   | ps=prefix FUNCTION re=PP_MACRO_NAME
+       { 
+         let n_str, expanded = re in
+         let pnds =
+           match ps with
+           | [] -> []
+           | _ -> [mknode $startpos(ps) $endpos(ps) L.Prefix ps]
+         in
+         pnds, n_str^(if expanded <> "" then ";"^expanded else "")
        }
    | spf=FUNCTION_STMT_HEAD
        { 
@@ -6892,7 +6912,7 @@ subroutine_subprogram:
 _subroutine_subprogram:
    | s0=subroutine_subprogram0 sp_opt=ioption(subprogram_part) 
        { 
-         end_scope();
+         (*end_scope();*)
          let s, se, sn = s0 in
          let spl = opt_to_list sp_opt in
          List.iter disambiguate_internal_subprogram spl;
@@ -6942,7 +6962,7 @@ subroutine_head:
            context_stack#push (C.spec__exec()); (* already pushed for head-less main_program *)
          end
          else begin
-           end_scope() (* cancel scope of main_program *)
+           cancel_main_program_scope()
          end;
 
          let sname_list = Xset.to_list snames in
@@ -6998,7 +7018,7 @@ _subroutine_stmt:
              context_stack#push (C.spec__exec()); (* already pushed for head-less main program *)
          end
          else begin
-           end_scope() (* cancel scope of main_program *)
+           cancel_main_program_scope()
          end;
 
          List.iter
@@ -7018,15 +7038,31 @@ _subroutine_stmt:
        }
 ;
 
+%inline
+ident_or_macro_var:
+   | i=IDENTIFIER        { i }
+   | n=PP_MACRO_VARIABLE { n }
+;
+
 subroutine_stmt_head:
-   | ps=prefix SUBROUTINE n_str=name_or_macro_var
+   | ps=prefix SUBROUTINE n_str=ident_or_macro_var
        { 
-         let pnds = 
+         let pnds =
            match ps with
            | [] -> []
            | _ -> [mknode $startpos(ps) $endpos(ps) L.Prefix ps]
          in
          pnds, n_str
+       }
+   | ps=prefix SUBROUTINE re=PP_MACRO_NAME
+       { 
+         let n_str, expanded = re in
+         let pnds =
+           match ps with
+           | [] -> []
+           | _ -> [mknode $startpos(ps) $endpos(ps) L.Prefix ps]
+         in
+         pnds, n_str^(if expanded <> "" then ";"^expanded else "")
        }
    | sps=SUBROUTINE_STMT_HEAD
        { 

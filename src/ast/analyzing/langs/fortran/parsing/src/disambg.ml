@@ -1775,6 +1775,8 @@ module F (Stat : Parser_aux.STATE_T) = struct
         | L.Ambiguous _ ->
             disambiguate_variable ~defer node
 
+        | L.ProcName name -> set_binding_of_subprogram_reference ~defer node
+
         | _ -> ()
       ) 
 
