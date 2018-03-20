@@ -750,6 +750,77 @@ function jump_to_next() {
   }
 }
 
+function jump_to_comment() {
+  var sel = $('#comments');
+  sel.removeClass('ui-state-error');
+  var i = sel.val();
+  if (i != '') {
+    console.log('jump_to_comment:', i);
+    scrollTo(i);
+  }
+  $('#dialog').dialog('close');
+}
+
+function list_comments() {
+  var jstree = get_jstree();
+  var root = jstree.get_node('#');
+  var m = jstree._model.data;
+  var comments = [];
+
+  $.each(root.children_d, function (ii, i) {
+    node = m[i];
+    if (node.a_attr.title) {
+      //console.log(node.a_attr.title);
+      comments.unshift([node.a_attr.title, i]);
+    }
+  });
+
+  if (comments.length == 0)
+    return;
+
+  var form;
+
+  var dialog = $('#dialog').dialog('option', {
+    autoOpen : true,
+    width   : 400,
+    title   : 'Jump to comment',
+    buttons : {
+      "Jump": function () {
+        jump_to_comment();
+      },
+      Cancel: function () {
+        $(this).dialog('close');
+        //$(this).dialog('destroy');
+      },
+    },
+    close: function () {
+      form[0].reset();
+      $('#comments').removeClass('ui-state-error');
+    },
+  });
+
+  var mes = '<p>';
+  mes += '<form>';
+  mes += '<select name="comments" id="comments" size=1 style="width:370px;">';
+  mes += '<option value="">Select a comment</option>'
+  for (var i in comments) {
+    mes += '<option value="'+comments[i][1]+'">'+comments[i][0]+'</option>';
+  }
+  mes += '</select>';
+  mes += '<input type="submit" tabindex="-1" style="position:absolute; top:-1000px>';
+  mes += '</form>';
+  mes += '</p>';
+
+  set_dialog_message(mes);
+
+  form = dialog.find("form").on("submit", function(event) {
+    event.preventDefault();
+    jump_to_comment();
+  });
+
+  dialog.dialog('open');
+
+}
 
 function treeview(data_url, vkind, vid, algo, meth) {
   global_timer.start();
@@ -923,7 +994,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
             },
           },
           "set_comment" : {
-            "label" : "Add Comment",
+            "label" : "Add/Modify Comment",
             "icon"  : ICONS_DIR+"/Bubble.png",
             "action" : function (obj) {
 
@@ -971,6 +1042,13 @@ function treeview(data_url, vkind, vid, algo, meth) {
               var c = $node.a_attr.title;
               if (c)
                 $('#comment').text(c);
+            },
+          },
+          "list_comments" : {
+            "label" : "Jump to Comment",
+            "icon"  : ICONS_DIR+"/Bubble.png",
+            "action" : function (obj) {
+              list_comments();
             },
           },
           EXPAND_TARGET_LOOPS : {
