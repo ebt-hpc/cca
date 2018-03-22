@@ -89,6 +89,8 @@ module F (L : Label.T) = struct
   let p_in_acc_construct = mkfres "inAccConstruct"
 
   let p_in_container_unit = mkfres "inContainerUnit"
+  let p_in_pu_or_fragment = mkfres "inProgramUnitOrFragment"
+  let p_in_pu_or_sp       = mkfres "inProgramUnitOrSubprogram"
 
   let p_name      = mkfres "name"
   let p_regexp    = mkfres "regexp"
@@ -137,6 +139,12 @@ module F (L : Label.T) = struct
   let mkpat n = "^"^(conv_pat (String.lowercase_ascii n))^"$"
 
   let is_pat x = String.contains x '|'
+
+  let rec has_subprogram nd =
+    if L.is_subprogram (getlab nd) then
+      true
+    else
+      Array.exists has_subprogram nd#initial_children
 
 
   class extractor options cache_path tree = object (self)
@@ -220,8 +228,22 @@ module F (L : Label.T) = struct
             ) a
         end;
 
-        if L.is_program_unit lab || L.is_program lab || L.is_fragment lab || L.is_subroutine lab || L.is_function lab then begin
-          self#add (entity, p_in_file, self#fileentity);
+        if
+          L.is_program_unit lab ||
+          L.is_program lab ||
+          L.is_fragment lab ||
+          L.is_subroutine lab ||
+          L.is_function lab ||
+          (L.is_pp_branch lab && has_subprogram nd)
+        then begin
+          let fent =
+            let fid = nd#data#source_fid in
+            if fid = "" then
+              self#fileentity
+            else
+              Triple.mkent (Triple.___make_file_entity (Triple.get_enc_str options ()) fid)
+          in
+          self#add (entity, p_in_file, fent);
           self#set_version entity
         end;
 
@@ -389,6 +411,9 @@ module F (L : Label.T) = struct
         self#add_surrounding_xxx L.is_acc_construct nd entity p_in_acc_construct;
 
         self#add_surrounding_xxx L.is_container_unit nd entity p_in_container_unit;
+
+        self#add_surrounding_xxx L.is_program_unit_or_fragment nd entity p_in_pu_or_fragment;
+        self#add_surrounding_xxx L.is_program_unit_or_subprogram nd entity p_in_pu_or_sp;
       end;
 
 

@@ -54,39 +54,58 @@ let make_include_node options ast_nd =
   set_loc nd (ast_nd#lloc#get_loc_of_level 0);
   nd
 
+let rec has_subprogram ast_nd =
+  match ast_nd#label with
+  | L.InternalSubprogram _
+  | L.ModuleSubprogram _ -> true
+  | _ -> List.exists has_subprogram ast_nd#children
+
 
 let of_ast options ast =
   let utbl = Hashtbl.create 0 in
 
-  let rec conv ?(loc_opt=None) ?(label=None) ast_nd =
+  let proj_root = try options#fact_proj_roots.(0) with _ -> "" in
+  let version = try options#fact_versions.(0) with _ -> Entity.unknown_version in
+
+  let rec conv ?(orig_loc_flag=false) ?(label=None) ast_nd =
     let lab = 
       match label with
       | Some lab' -> lab'
       | None -> ast_nd#label
     in
 
-    let orig_loc_flag =
-      match loc_opt with
-      | Some _ -> true
-      | None -> false
-    in
-    let get_loc =
-      if orig_loc_flag then
-        fun x -> Some x#orig_loc
-      else
-        fun x -> None
-    in
-
     let is_incl nd =
       ast_nd#lloc#get_level = 0 && nd#lloc#get_level > 0
+    in
+
+    let proc_included_node nd =
+      let fn = nd#data#src_loc.Loc.filename in
+      DEBUG_MSG "fn=%s" fn;
+      try
+        let fn_, path =
+          if Filename.is_relative fn then
+            (Filename.concat proj_root fn), fn
+          else
+            fn, (Xfile.relpath proj_root fn)
+        in
+        let digest = Xhash.digest_of_file options#fact_algo fn_ in
+        let fid_str =
+          Triple._encode_fid options ~digest ~path proj_root version
+        in
+        if nd#data#source_fid = "" then begin
+          nd#data#set_source_fid fid_str
+        end
+      with
+        _ ->
+          WARN_MSG "failed to compute digest of %s" nd#to_string;
     in
 
     let rec conv_children = function
       | nd1::(nd2::rest as l) -> begin
           match nd1#label, nd2#label with
           | L.PartName n, L.SectionSubscriptList _ -> begin
-              let x_opt0 = conv ~loc_opt:(get_loc nd1) nd1 in
-              let x_opt1 = conv ~loc_opt:(get_loc nd2) ~label:(Some (L.SectionSubscriptList n)) nd2 in
+              let x_opt0 = conv ~orig_loc_flag nd1 in
+              let x_opt1 = conv ~orig_loc_flag ~label:(Some (L.SectionSubscriptList n)) nd2 in
               match x_opt0, x_opt1 with
               | Some x0, Some x1 -> x0 :: x1 :: (conv_children rest)
               | None, None -> conv_children rest
@@ -102,14 +121,14 @@ let of_ast options ast =
                 match nd1#label with
                 | L.InternalSubprogram _
                 | L.ModuleSubprogram _ -> begin  (* to avoid dangling call sites *)
-                    match conv ~loc_opt:(Some nd1#orig_loc) nd1 with
+                    match conv ~orig_loc_flag:true nd1 with
                     | Some x -> x :: (conv_children l)
                     | None -> conv_children l
                 end
                 | _ -> (make_include_node options nd1) :: (conv_children l)
               end
               else begin
-                match conv ~loc_opt:(get_loc nd1) nd1 with
+                match conv ~orig_loc_flag nd1 with
                 | Some x -> x :: (conv_children l)
                 | None -> conv_children l
               end
@@ -120,14 +139,14 @@ let of_ast options ast =
             match nd#label with
             | L.InternalSubprogram _
             | L.ModuleSubprogram _ -> begin  (* to avoid dangling call sites *)
-                match conv ~loc_opt:(Some nd#orig_loc) nd with
+                match conv ~orig_loc_flag:true nd with
                 | Some x -> [x]
                 | None -> []
             end
             | _ -> [make_include_node options nd]
           end
           else
-            Xoption.to_list (conv ~loc_opt:(get_loc nd) nd)
+            Xoption.to_list (conv ~orig_loc_flag nd)
       end
       | [] -> []
     in
@@ -245,11 +264,14 @@ let of_ast options ast =
           ) bindings
       end;
       let loc =
-        match loc_opt with
-        | Some x -> x
-        | None -> ast_nd#loc
+        if orig_loc_flag then
+          ast_nd#orig_loc
+        else
+          ast_nd#loc
       in
       set_loc nd loc;
+      if orig_loc_flag then
+        proc_included_node nd;
       Some nd
     end
   in (* let rec conv *)

@@ -380,6 +380,13 @@ module F (L : Spec.LABEL_T) = struct
       end
       else
 	let range_str = Triple.get_range_str enc loc in
+        let fid_str =
+          let fid = nd#data#source_fid in
+          if fid = "" then
+            fid_str
+          else
+            fid
+        in
 	Triple.mkent (Triple.__make_entity enc_str fid_str range_str nd#data#is_phantom)
 
 

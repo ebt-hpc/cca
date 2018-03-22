@@ -181,10 +181,13 @@ GRAPH <%%(proj)s> {
           f:inDoConstruct ?loop .
 
       ?loop a f:DoConstruct ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
 
+      ?pu_or_sp src:inFile/src:location ?loc .
+
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
       OPTIONAL {
@@ -228,10 +231,13 @@ GRAPH <%%(proj)s> {
 
       ?call a f:CallStmt ;
             f:name ?callee_name ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
 
+      ?pu_or_sp src:inFile/src:location ?loc .
+
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
       OPTIONAL {
@@ -317,10 +323,13 @@ GRAPH <%%(proj)s> {
 
       ?dtv a f:CompilerDirective ;
            a ?cat0 OPTION (INFERENCE NONE) ;
+           f:inProgramUnitOrSubprogram ?pu_or_sp ;
            f:inProgramUnit ?pu .
 
+      ?pu_or_sp src:inFile/src:location ?loc .
+
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
       OPTIONAL {
@@ -407,10 +416,13 @@ GRAPH <%%(proj)s> {
     WHERE {
 
       ?constr a f:ContainerUnit ;
+              f:inProgramUnitOrSubprogram ?pu_or_sp ;
               f:inProgramUnit ?pu .
 
+      ?pu_or_sp src:inFile/src:location ?loc .
+
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
       OPTIONAL {
@@ -448,11 +460,11 @@ GRAPH <%%(proj)s> {
       FILTER (?sp != ?sp0)
     }
 
-    FILTER NOT EXISTS {
-      ?constr f:inMainProgram ?m0 .
-      ?m0 f:inContainerUnit ?parent_constr .
-      FILTER (?m0 != ?constr && ?m0 != ?parent_constr)
-    }
+    # FILTER NOT EXISTS {
+    #   ?constr f:inMainProgram ?m0 .
+    #   ?m0 f:inContainerUnit ?parent_constr .
+    #   FILTER (?m0 != ?constr && ?m0 != ?parent_constr)
+    # }
 
     GRAPH <http://codinuum.com/ont/cpi> {
       ?sp_cat0 rdfs:label ?sp_cat .
@@ -538,7 +550,7 @@ PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
 SELECT DISTINCT ?ver ?loc ?pu_name ?vpu_name ?sp ?sp_cat ?sub ?main ?prog
 ?constr ?cat ?call ?call_cat
-?callee ?callee_name ?callee_loc ?callee_cat
+?callee ?callee_name ?callee_loc ?callee_cat ?callee_pu_name
 WHERE {
 GRAPH <%%(proj)s> {
 
@@ -554,7 +566,10 @@ GRAPH <%%(proj)s> {
 
       ?constr a f:ContainerUnit ;
               a ?cat0 OPTION (INFERENCE NONE) ;
+              f:inProgramUnitOrSubprogram ?pu_or_sp ;
               f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       FILTER NOT EXISTS {
         ?c a f:ContainerUnit ;
@@ -565,7 +580,7 @@ GRAPH <%%(proj)s> {
 
       ?pu a f:ProgramUnit ;
           ver:version ?ver ;
-          src:inFile/src:location ?loc .
+          src:inFile/src:location ?pu_loc .
 
       OPTIONAL {
         ?pu f:name ?pu_name
@@ -585,13 +600,13 @@ GRAPH <%%(proj)s> {
   }
 
   {
-    SELECT DISTINCT ?callee ?callee_cat ?callee_name ?callee_loc ?ver
+    SELECT DISTINCT ?callee ?callee_cat ?callee_name ?callee_loc ?ver ?callee_pu_name
     WHERE {
 
       ?callee a f:Subprogram ;
               a ?callee_cat0 OPTION (INFERENCE NONE) ;
               f:name ?callee_name ;
-              f:inProgramUnit*/src:inFile ?callee_file .
+              src:inFile ?callee_file .
 
       ?callee_file a src:File ;
                    src:location ?callee_loc ;
@@ -601,7 +616,11 @@ GRAPH <%%(proj)s> {
         ?callee_cat0 rdfs:label ?callee_cat
       }
     
-    } GROUP BY ?callee ?callee_cat ?callee_name ?callee_loc ?ver
+      OPTIONAL {
+        ?callee f:inProgramUnit/f:name ?callee_pu_name .
+      }
+    
+    } GROUP BY ?callee ?callee_cat ?callee_name ?callee_loc ?ver ?callee_pu_name
   }
 
   OPTIONAL {
@@ -638,7 +657,7 @@ PREFIX f:   <%(f_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
 SELECT DISTINCT ?ver ?loc ?pu_name ?vpu_name ?sp ?sp_cat ?sub ?main ?prog 
-?callee ?callee_name ?callee_loc ?callee_cat ?call ?call_cat ?constr
+?callee ?callee_name ?callee_loc ?callee_cat ?call ?call_cat ?constr ?callee_pu_name
 WHERE {
 GRAPH <%%(proj)s> {
 
@@ -647,11 +666,14 @@ GRAPH <%%(proj)s> {
     WHERE {
 
       ?call a ?call_cat0 OPTION (INFERENCE NONE) ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu ;
             f:mayCall ?callee .
 
+      ?pu_or_sp src:inFile/src:location ?loc .
+
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
       OPTIONAL {
@@ -677,13 +699,13 @@ GRAPH <%%(proj)s> {
   }
 
   {
-    SELECT DISTINCT ?callee ?callee_cat ?callee_name ?callee_loc ?ver
+    SELECT DISTINCT ?callee ?callee_cat ?callee_name ?callee_loc ?ver ?callee_pu_name
     WHERE {
 
       ?callee a f:Subprogram ;
               a ?callee_cat0 OPTION (INFERENCE NONE) ;
               f:name ?callee_name ;
-              f:inProgramUnit*/src:inFile ?callee_file .
+              src:inFile ?callee_file .
 
       ?callee_file a src:File ;
                    src:location ?callee_loc ;
@@ -693,7 +715,11 @@ GRAPH <%%(proj)s> {
         ?callee_cat0 rdfs:label ?callee_cat
       }
 
-    } GROUP BY ?callee ?callee_cat ?callee_name ?callee_loc ?ver
+      OPTIONAL {
+        ?callee f:inProgramUnit/f:name ?callee_pu_name .
+      }
+
+    } GROUP BY ?callee ?callee_cat ?callee_name ?callee_loc ?ver ?callee_pu_name
   }
 
   OPTIONAL {
@@ -738,15 +764,17 @@ GRAPH <%%(proj)s> {
     WHERE {
 
       ?constr a f:ContainerUnit ;
-            f:inSubprogram ?sp0 ;
-            f:inProgramUnit ?pu .
+              f:inSubprogram ?sp0 ;
+              f:inProgramUnit ?pu .
+
+      ?sp0 src:inFile/src:location ?loc .
 
       FILTER NOT EXISTS {
         ?constr f:inSubprogram/f:inSubprogram ?sp0 .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
       OPTIONAL {
@@ -1888,9 +1916,10 @@ class Outline(dp.base):
                 callee      = row['callee']
                 callee_loc  = row['callee_loc']
                 callee_cat  = row['callee_cat']
+                callee_pu_name = row.get('callee_pu_name', None)
 
                 callee_node = Node(ver, callee_loc, callee, cat=callee_cat,
-                                   sub=callee_name)
+                                   sub=callee_name, pu_name=callee_pu_name)
                 self.add_edge(lang, call_node, callee_node, mark=mark)
 
             self.debug('constr_sp')
@@ -1934,9 +1963,10 @@ class Outline(dp.base):
                 callee      = row['callee']
                 callee_loc  = row['callee_loc']
                 callee_cat  = row['callee_cat']
+                callee_pu_name = row.get('callee_pu_name', None)
 
                 callee_node = Node(ver, callee_loc, callee, cat=callee_cat,
-                                   sub=callee_name)
+                                   sub=callee_name, pu_name=callee_pu_name)
                 self.add_edge(lang, call_node, callee_node, mark=mark)
 
         self.message('check marks...')

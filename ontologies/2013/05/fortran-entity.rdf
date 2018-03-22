@@ -544,8 +544,7 @@
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#inProgramUnit -->
 
     <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#inProgramUnit">
-        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#inProgramUnitOrFragment"/>
-        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#inProgramUnitOrSubprogram"/>
+        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#containedIn"/>
         <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
         <rdfs:range rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#ProgramUnit"/>
     </owl:ObjectProperty>
@@ -593,7 +592,7 @@
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#inSubprogram -->
 
     <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#inSubprogram">
-        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#inProgramUnitOrSubprogram"/>
+        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#containedIn"/>
         <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
         <rdfs:range rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Subprogram"/>
     </owl:ObjectProperty>

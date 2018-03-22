@@ -4,7 +4,8 @@
 '''
   Source code metrics for Fortran programs
 
-  Copyright 2013-2017 RIKEN
+  Copyright 2013-2018 RIKEN
+  Copyright 2018 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -273,14 +274,17 @@ GRAPH <%%(proj)s> {
 
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -332,20 +336,23 @@ GRAPH <%%(proj)s> {
 
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc .
+          src:inFile/src:location ?pu_loc .
 
     } GROUP BY ?pu ?loop ?vname ?callee ?loc ?loop_d
   }
 
   ?callee a f:Subprogram ;
-          f:inProgramUnit*/src:inFile ?callee_file .
+          src:inFile ?callee_file .
 
   ?callee_file a src:File ;
                src:location ?callee_loc ;
@@ -376,7 +383,7 @@ GRAPH <%%(proj)s> {
             f:mayCall ?callee .
 
       ?sp a f:Subprogram ;
-          f:inProgramUnit*/src:inFile ?file .
+          src:inFile ?file .
 
       FILTER NOT EXISTS {
         ?call f:inSubprogram ?sp0 .
@@ -434,8 +441,12 @@ GRAPH <%%(proj)s> {
      } GROUP BY ?pu ?loop ?vname ?pn ?aname ?loop_d
   }
 
+  ?loop f:inProgramUnitOrSubprogram ?pu_or_sp .
+
+  ?pu_or_sp src:inFile/src:location ?loc .
+
   ?pu a f:ProgramUnit ;
-      src:inFile/src:location ?loc ;
+      src:inFile/src:location ?pu_loc ;
       ver:version ?ver .
 
   {
@@ -482,14 +493,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -547,14 +561,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -626,14 +643,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -704,14 +724,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
       OPTIONAL {
@@ -799,14 +822,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -870,14 +896,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -947,14 +976,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -1035,14 +1067,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -1109,14 +1144,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
@@ -1189,14 +1227,17 @@ GRAPH <%%(proj)s> {
     WHERE {
       ?loop a f:DoConstruct ;
             src:treeDigest ?loop_d ;
+            f:inProgramUnitOrSubprogram ?pu_or_sp ;
             f:inProgramUnit ?pu .
+
+      ?pu_or_sp src:inFile/src:location ?loc .
 
       OPTIONAL {
         ?loop f:variableName ?vname .
       }
 
       ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?loc ;
+          src:inFile/src:location ?pu_loc ;
           ver:version ?ver .
 
     } GROUP BY ?ver ?loc ?loop ?vname ?loop_d

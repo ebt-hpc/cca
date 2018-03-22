@@ -188,6 +188,10 @@ module Tree (L : Spec.LABEL_T) = struct
 
       constraint 'node = 'self Otree.node2
 
+      val mutable source_fid = ""
+      method set_source_fid x = source_fid <- x
+      method source_fid = source_fid
+
       method get_ordinal nth =
         match ordinal_tbl_opt with
         | None -> nth

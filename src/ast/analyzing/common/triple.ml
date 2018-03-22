@@ -341,7 +341,7 @@ let encode_fid ?(force_PVF=false) options tree =
   _encode_fid ~force_PVF options
     ~digest:tree#source_digest ~path:tree#source_path tree#proj_root (tree#vkind, tree#version)
 
-let __make_file_entity options ?(force_PVF=false) ~digest ~path proj_root (vkind, version) =
+let get_enc_str options ?(force_PVF=false) () =
   let enc = options#fact_enc in
   let enc_str =
     if force_PVF || Entity.is_PVF_encoding enc then
@@ -349,12 +349,19 @@ let __make_file_entity options ?(force_PVF=false) ~digest ~path proj_root (vkind
     else if Entity.is_FD_encoding enc then
 	Entity.encoding_to_string Entity.FD
     else
-      raise (Invalid_argument "Triple._make_file_entity")
+      raise (Invalid_argument "Triple.get_enc_str")
   in
+  enc_str
+
+let ___make_file_entity enc_str fid_str =
+  String.concat Entity.sep [enc_str; fid_str]
+
+let __make_file_entity options ?(force_PVF=false) ~digest ~path proj_root (vkind, version) =
+  let enc_str = get_enc_str options ~force_PVF () in
   let file_id_str = 
     _encode_fid options ~force_PVF ~digest ~path proj_root (vkind, version) 
   in
-  String.concat Entity.sep [enc_str; file_id_str]
+  ___make_file_entity enc_str file_id_str
 
 let _make_file_entity options ?(force_PVF=false) ~digest ~path proj_root vkind_version =
   mkent (__make_file_entity options ~force_PVF ~digest ~path proj_root vkind_version)
@@ -522,7 +529,13 @@ let _make_entity options tree nd =
 
     let enc_str = Entity.encoding_to_string enc in
 
-    let fid_str = encode_fid options tree in
+    let fid_str =
+      let fid = nd#data#source_fid in
+      if fid = "" then
+        encode_fid options tree
+      else
+        fid
+    in
 
     let range_str = get_range_str enc loc in
 

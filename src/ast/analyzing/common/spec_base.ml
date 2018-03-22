@@ -52,6 +52,9 @@ end
 class type node_data_t_shared = object ('self)
   inherit Otree.data2
 
+  method source_fid       : string
+  method set_source_fid   : string -> unit
+
   method _digest      : Xhash.t option
   method digest       : Xhash.t option
   method set_digest   : Xhash.t -> unit

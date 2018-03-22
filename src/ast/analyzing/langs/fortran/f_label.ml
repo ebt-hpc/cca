@@ -72,9 +72,13 @@ module type T = sig
 
   val is_program_unit           : t -> bool
 
+  val is_program_unit_or_fragment   : t -> bool
+  val is_program_unit_or_subprogram : t -> bool
+
   val is_main_program           : t -> bool
   val is_function               : t -> bool
   val is_subroutine             : t -> bool
+  val is_subprogram             : t -> bool
 
   val is_ext_function           : t -> bool
   val is_ext_subroutine         : t -> bool
@@ -2326,14 +2330,14 @@ let is_main_program = function
   | _ -> false
 
 let is_function = function
-  | ProgramUnit (ProgramUnit.FunctionSubprogram _) 
+  | ProgramUnit (ProgramUnit.FunctionSubprogram _)
   | InternalSubprogram (InternalSubprogram.FunctionSubprogram _)
   | ModuleSubprogram (ModuleSubprogram.FunctionSubprogram _)
     -> true
   | _ -> false
 
 let is_ext_function = function
-  | ProgramUnit (ProgramUnit.FunctionSubprogram _) 
+  | ProgramUnit (ProgramUnit.FunctionSubprogram _)
     -> true
   | _ -> false
 
@@ -2348,14 +2352,14 @@ let is_mod_function = function
   | _ -> false
 
 let is_subroutine = function
-  | ProgramUnit (ProgramUnit.SubroutineSubprogram _) 
+  | ProgramUnit (ProgramUnit.SubroutineSubprogram _)
   | InternalSubprogram (InternalSubprogram.SubroutineSubprogram _)
   | ModuleSubprogram (ModuleSubprogram.SubroutineSubprogram _)
     -> true
   | _ -> false
 
 let is_ext_subroutine = function
-  | ProgramUnit (ProgramUnit.SubroutineSubprogram _) 
+  | ProgramUnit (ProgramUnit.SubroutineSubprogram _)
     -> true
   | _ -> false
 
@@ -2366,6 +2370,30 @@ let is_int_subroutine = function
 
 let is_mod_subroutine = function
   | ModuleSubprogram (ModuleSubprogram.SubroutineSubprogram _)
+    -> true
+  | _ -> false
+
+let is_subprogram = function
+  | ProgramUnit
+      (ProgramUnit.SubroutineSubprogram _|ProgramUnit.FunctionSubprogram _)
+  | InternalSubprogram
+      (InternalSubprogram.SubroutineSubprogram _|InternalSubprogram.FunctionSubprogram _)
+  | ModuleSubprogram
+      (ModuleSubprogram.SubroutineSubprogram _|ModuleSubprogram.FunctionSubprogram _)
+    -> true
+  | _ -> false
+
+let is_program_unit_or_fragment = function
+  | ProgramUnit _
+  | Fragment -> true
+  | _ -> false
+
+let is_program_unit_or_subprogram = function
+  | ProgramUnit _
+  | InternalSubprogram
+      (InternalSubprogram.SubroutineSubprogram _|InternalSubprogram.FunctionSubprogram _)
+  | ModuleSubprogram
+      (ModuleSubprogram.SubroutineSubprogram _|ModuleSubprogram.FunctionSubprogram _)
     -> true
   | _ -> false
 
