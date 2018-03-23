@@ -322,17 +322,19 @@ module F (L : Label.T) = struct
           with
             _ -> false
         in
-        let loc_opt =
+        (*let loc_opt =
           if is_included then
             Some nd#data#src_loc
           else
             None
-        in
+        in*)
         begin
           let b = nd#data#binding in
           match b with
-          | B.Def(bid, use) -> self#add (entity, p_binding, self#mkbinding ~loc_opt bid)
-          | B.Use(bid, loc_opt) -> self#add (entity, p_binding, self#mkbinding ~loc_opt bid)
+          | B.Def(bid, use) ->
+              self#add (entity, p_binding, self#mkbinding (*~loc_opt*) bid)
+          | B.Use(bid, loc_opt) ->
+              self#add (entity, p_binding, self#mkbinding (*~loc_opt*) bid)
           | _ -> ()
         end;
         begin
@@ -340,9 +342,9 @@ module F (L : Label.T) = struct
             (fun b ->
               match b with
               | B.Def(bid, use) ->
-                  self#add (entity, p_binding, self#mkbinding ~loc_opt bid)
+                  self#add (entity, p_binding, self#mkbinding (*~loc_opt*) bid)
               | B.Use(bid, loc_opt) ->
-                  self#add (entity, p_binding, self#mkbinding ~loc_opt bid)
+                  self#add (entity, p_binding, self#mkbinding (*~loc_opt*) bid)
               | _ -> ()
             ) nd#data#bindings
         end;

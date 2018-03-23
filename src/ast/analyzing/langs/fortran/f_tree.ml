@@ -120,11 +120,13 @@ let of_ast options ast =
               if is_incl nd1 then begin
                 match nd1#label with
                 | L.InternalSubprogram _
-                | L.ModuleSubprogram _ -> begin  (* to avoid dangling call sites *)
+                | L.ModuleSubprogram _
+                | L.PpBranch when has_subprogram nd1
+                  -> begin  (* to avoid dangling call sites *)
                     match conv ~orig_loc_flag:true nd1 with
                     | Some x -> x :: (conv_children l)
                     | None -> conv_children l
-                end
+                  end
                 | _ -> (make_include_node options nd1) :: (conv_children l)
               end
               else begin
@@ -138,11 +140,13 @@ let of_ast options ast =
           if is_incl nd then begin
             match nd#label with
             | L.InternalSubprogram _
-            | L.ModuleSubprogram _ -> begin  (* to avoid dangling call sites *)
+            | L.ModuleSubprogram _
+            | L.PpBranch when has_subprogram nd
+              -> begin  (* to avoid dangling call sites *)
                 match conv ~orig_loc_flag:true nd with
                 | Some x -> [x]
                 | None -> []
-            end
+              end
             | _ -> [make_include_node options nd]
           end
           else
