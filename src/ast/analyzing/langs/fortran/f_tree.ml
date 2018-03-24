@@ -121,7 +121,7 @@ let of_ast options ast =
                 match nd1#label with
                 | L.InternalSubprogram _
                 | L.ModuleSubprogram _
-                | L.PpBranch when has_subprogram nd1
+                | (L.PpBranch|L.PpSectionIfdef _|L.PpSectionIfndef _|L.PpSectionIf _) when has_subprogram nd1
                   -> begin  (* to avoid dangling call sites *)
                     match conv ~orig_loc_flag:true nd1 with
                     | Some x -> x :: (conv_children l)
@@ -141,7 +141,7 @@ let of_ast options ast =
             match nd#label with
             | L.InternalSubprogram _
             | L.ModuleSubprogram _
-            | L.PpBranch when has_subprogram nd
+            | (L.PpBranch|L.PpSectionIfdef _|L.PpSectionIfndef _|L.PpSectionIf _) when has_subprogram nd
               -> begin  (* to avoid dangling call sites *)
                 match conv ~orig_loc_flag:true nd with
                 | Some x -> [x]

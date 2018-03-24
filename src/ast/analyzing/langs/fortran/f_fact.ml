@@ -316,13 +316,13 @@ module F (L : Label.T) = struct
             Not_found -> ()
         end;
 
-        let is_included =
+        (*let is_included =
           try
             nd#data#src_loc.Loc.filename <> tree#root#data#src_loc.Loc.filename
           with
             _ -> false
         in
-        (*let loc_opt =
+        let loc_opt =
           if is_included then
             Some nd#data#src_loc
           else
