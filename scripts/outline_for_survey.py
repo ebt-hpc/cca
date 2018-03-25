@@ -573,8 +573,8 @@ GRAPH <%%(proj)s> {
 
       FILTER NOT EXISTS {
         ?c a f:ContainerUnit ;
-           f:inContainerUnit ?constr .
-        ?call f:inContainerUnit ?c .
+           f:inContainerUnit+ ?constr .
+        ?call f:inContainerUnit+ ?c .
         FILTER (?c != ?constr)
       }
 
@@ -615,7 +615,7 @@ GRAPH <%%(proj)s> {
       GRAPH <http://codinuum.com/ont/cpi> {
         ?callee_cat0 rdfs:label ?callee_cat
       }
-    
+
       OPTIONAL {
         ?callee f:inProgramUnit/f:name ?callee_pu_name .
       }

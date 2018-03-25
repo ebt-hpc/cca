@@ -1297,6 +1297,11 @@ GRAPH <%%(proj)s> {
                   (?tyc = f:Real && 
                      EXISTS {
                        ?tspec src:children/rdf:first/src:children/rdf:first/f:value 8
+                     }) ||
+                  (?tyc = f:PpMacroTypeSpec &&
+                     EXISTS {
+                       ?tspec f:body ?body .
+                       FILTER (CONTAINS(?body, "double") || CONTAINS(?body, "complex"))
                      })
           )
       }
