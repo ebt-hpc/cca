@@ -98,6 +98,9 @@ proj = form.getvalue('proj', None)
 ver  = form.getvalue('ver', None)
 
 target_only = form.getvalue('target_only', False)
+if target_only:
+    if target_only == '0' or target_only.lower() == 'false':
+        target_only = False
 
 content = 'FAILED'
 

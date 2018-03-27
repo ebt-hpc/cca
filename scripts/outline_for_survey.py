@@ -600,12 +600,13 @@ GRAPH <%%(proj)s> {
   }
 
   {
-    SELECT DISTINCT ?callee ?callee_cat ?callee_name ?callee_loc ?ver ?callee_pu_name
+    SELECT DISTINCT ?callee ?callee_cat ?callee_loc ?ver ?callee_pu_name
+    (GROUP_CONCAT(DISTINCT ?cn; SEPARATOR=":") AS ?callee_name)
     WHERE {
 
       ?callee a f:Subprogram ;
               a ?callee_cat0 OPTION (INFERENCE NONE) ;
-              f:name ?callee_name ;
+              f:name ?cn ;
               src:inFile ?callee_file .
 
       ?callee_file a src:File ;
@@ -620,7 +621,7 @@ GRAPH <%%(proj)s> {
         ?callee f:inProgramUnit/f:name ?callee_pu_name .
       }
     
-    } GROUP BY ?callee ?callee_cat ?callee_name ?callee_loc ?ver ?callee_pu_name
+    } GROUP BY ?callee ?callee_cat ?callee_loc ?ver ?callee_pu_name
   }
 
   OPTIONAL {
@@ -699,12 +700,13 @@ GRAPH <%%(proj)s> {
   }
 
   {
-    SELECT DISTINCT ?callee ?callee_cat ?callee_name ?callee_loc ?ver ?callee_pu_name
+    SELECT DISTINCT ?callee ?callee_cat ?callee_loc ?ver ?callee_pu_name
+    (GROUP_CONCAT(DISTINCT ?cn; SEPARATOR=":") AS ?callee_name)
     WHERE {
 
       ?callee a f:Subprogram ;
               a ?callee_cat0 OPTION (INFERENCE NONE) ;
-              f:name ?callee_name ;
+              f:name ?cn ;
               src:inFile ?callee_file .
 
       ?callee_file a src:File ;
@@ -719,7 +721,7 @@ GRAPH <%%(proj)s> {
         ?callee f:inProgramUnit/f:name ?callee_pu_name .
       }
 
-    } GROUP BY ?callee ?callee_cat ?callee_name ?callee_loc ?ver ?callee_pu_name
+    } GROUP BY ?callee ?callee_cat ?callee_loc ?ver ?callee_pu_name
   }
 
   OPTIONAL {
@@ -1576,6 +1578,11 @@ class SourceFiles(dp.base):
         return lines
 
 
+def norm_callee_name(orig):
+    norm = orig
+    if orig:
+        norm = ':'.join(sorted(orig.split(':')))
+    return norm
 
 
 class Outline(dp.base):
@@ -1893,7 +1900,7 @@ class Outline(dp.base):
                 call     = row['call']
                 call_cat = row['call_cat']
 
-                callee_name = row['callee_name']
+                callee_name = norm_callee_name(row['callee_name'])
 
                 call_node = Node(ver, loc, call, cat=call_cat, prog=prog, sub=sub,
                                  callee_name=callee_name,
@@ -1948,7 +1955,7 @@ class Outline(dp.base):
                 call     = row['call']
                 call_cat = row['call_cat']
 
-                callee_name = row['callee_name']
+                callee_name = norm_callee_name(row['callee_name'])
 
                 call_node = Node(ver, loc, call, cat=call_cat, prog=prog, sub=sub,
                                  callee_name=callee_name,
