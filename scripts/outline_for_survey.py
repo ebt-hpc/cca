@@ -1010,7 +1010,7 @@ class Node(dp.base):
                 else:
                     if 'pp' not in [TYPE_TBL.get(c, None) for c in self.cats]:
                         pstr = ', '.join([str(p) for p in self._parents])
-                        self.warning('%s: parents=[%s]' % (self, pstr))
+                        self.warning('multiple parents:\n%s:\nparents=[%s]' % (self, pstr))
 
         return self._container
 
@@ -1584,6 +1584,26 @@ def norm_callee_name(orig):
         norm = ':'.join(sorted(orig.split(':')))
     return norm
 
+def is_x_dict(s, d):
+    b = False
+    cat = d.get('cat', None)
+    if cat:
+        if set(cat.split('&')) & s:
+            b = True
+    return b
+def is_caller(d):
+    return is_x_dict(CALLS, d)
+def is_sp(d):
+    return is_x_dict(SUBPROGS, d)
+
+def iter_d(f, d, lv=0):
+    f(lv, d)
+    d_is_caller = is_caller(d)
+    for c in d.get('children', []):
+        lv_ = lv
+        if d_is_caller and is_sp(c):
+            lv_ = lv + 1
+        iter_d(f, c, lv=lv_)
 
 class Outline(dp.base):
     def __init__(self,
@@ -2586,68 +2606,104 @@ class Outline(dp.base):
 
             self.debug('* root_collapsed_caller_tbl:')
             for (r, collapsed_caller_tbl) in root_collapsed_caller_tbl.iteritems():
-                 self.debug('root=%s:' % r)
+                self.debug('root=%s:' % r)
 
-                 callees_tbl = {}
-                 root_callees_tbl[r] = callees_tbl
+                while collapsed_caller_tbl:
+                    new_collapsed_caller_tbl = {}
 
-                 for (callee, d_lv_list) in collapsed_caller_tbl.iteritems():
+                    callees_tbl = {}
+                    root_callees_tbl[r] = callees_tbl
 
-                     self.debug(' callee=%s' % callee)
+                    for (callee, d_lv_list) in collapsed_caller_tbl.iteritems():
 
-                     expanded_callee_tbl = root_expanded_callee_tbl.get(r, {})
-                     callee_dl = expanded_callee_tbl.get(callee, [])
-                     if callee_dl:
-                         callees_tbl[callee] = [d['id'] for d in callee_dl]
-                         self.debug('callees_tbl: %s -> [%s]' % (callee, ','.join(callees_tbl[callee])))
-                         self.debug(' -> skip')
-                         continue
+                        self.debug(' callee=%s' % callee)
 
-                     callee_dl = []
+                        expanded_callee_tbl = root_expanded_callee_tbl.get(r, {})
+                        callee_dl = expanded_callee_tbl.get(callee, [])
+                        if callee_dl:
+                            callees_tbl[callee] = [d['id'] for d in callee_dl]
+                            self.debug('callees_tbl: %s -> [%s]' % (callee, ','.join(callees_tbl[callee])))
+                            self.debug(' -> skip')
+                            continue
 
-                     for (r_, tbl) in root_expanded_callee_tbl.iteritems():
-                         callee_dl = tbl.get(callee, [])
-                         if callee_dl:
-                             self.debug('callee dicts found in %s' % r_)
-                             break
+                        callee_dl = []
+                        collapsed_caller_tbl_ = {}
 
-                     if callee_dl:
-                         copied_dl = []
+                        for (r_, tbl) in root_expanded_callee_tbl.iteritems():
+                            callee_dl = tbl.get(callee, [])
+                            if callee_dl:
+                                self.debug('%d callee dicts found in %s' % (len(callee_dl), r_))
+                                collapsed_caller_tbl_ = root_collapsed_caller_tbl.get(r_, {})
+                                break
 
-                         self.debug('  %d callee dicts found' % len(callee_dl))
+                        if callee_dl:
+                            nid_callee_lv_tbl = {}
 
-                         max_lv = 0
-                         selected = None
-                         for (d, lv) in d_lv_list:
-                             if lv > max_lv:
-                                 max_lv = lv
-                                 selected = d
-                             self.debug('    nid=%s lv=%d' % (d['id'], lv))
+                            for callee_d in callee_dl:
+                                def chk(lv_, d):
+                                    callee_ = d.get('callee', None)
+                                    if callee_ and d.get('children', []) == []:
+                                        d_lv_list_ = collapsed_caller_tbl_.get(callee_, [])
+                                        for (d_, _) in d_lv_list_:
+                                            nid_ = d_['id']
+                                            try:
+                                                nid_callee_lv_tbl[nid_].append((callee_, lv_))
+                                            except KeyError:
+                                                nid_callee_lv_tbl[nid_] = [(callee_, lv_)]
+                                iter_d(chk, callee_d)
 
-                         selected_id = selected['id']
-                         self.debug('    -> selected %s' % selected_id)
+                            max_lv = 0
+                            selected = None
+                            for (d, lv) in d_lv_list:
+                                if lv > max_lv:
+                                    max_lv = lv
+                                    selected = d
+                                self.debug('    nid=%s lv=%d' % (d['id'], lv))
 
-                         try:
-                             base = '%s%s' % (selected_id, NID_SEP)
+                            selected_id = selected['id']
+                            self.debug('    -> selected %s' % selected_id)
 
-                             def conv_id(i):
-                                 return base+i
+                            copied_dl = []
 
-                             def hook(x):
-                                 x['id'] = conv_id(x['id'])
+                            try:
+                                base = '%s%s' % (selected_id, NID_SEP)
 
-                             for callee_d in callee_dl:
-                                 info = {'count':0}
-                                 copied = copy_dict(callee_d, hook=hook, info=info)
-                                 copied_dl.append(copied)
-                                 self.debug('%d nodes copied' % info['count'])
+                                def conv_id(i):
+                                    return base+i
 
-                             selected['children'] = copied_dl
+                                def hook(x):
+                                    xid = x['id']
+                                    for (c, lv) in nid_callee_lv_tbl.get(xid, []):
+                                        lv_ = max_lv + lv + 1
+                                        try:
+                                            l = new_collapsed_caller_tbl[c]
+                                            if not any([x_['id'] == xid and lv_ == lv__ for (x_, lv__) in l]):
+                                                l.append((x, lv_))
+                                        except KeyError:
+                                            new_collapsed_caller_tbl[c] = [(x, lv_)]
+                                    x['id'] = conv_id(xid)
 
-                             callees_tbl[callee] = [d['id'] for d in copied_dl]
-                             self.debug('callees_tbl: %s -> [%s]' % (callee, ','.join(callees_tbl[callee])))
-                         except Exception, e:
-                             self.warning(str(e))
+                                for callee_d in callee_dl:
+                                    info = {'count':0}
+                                    copied = copy_dict(callee_d, hook=hook, info=info)
+                                    copied_dl.append(copied)
+                                    self.debug('%d nodes copied' % info['count'])
+
+                                selected['children'] = copied_dl
+                                callees_tbl[callee] = [d['id'] for d in copied_dl]
+                                self.debug('callees_tbl: %s -> [%s]' % (callee, ','.join(callees_tbl[callee])))
+                            except Exception, e:
+                                self.warning(str(e))
+
+                    if new_collapsed_caller_tbl:
+                        collapsed_caller_tbl = new_collapsed_caller_tbl
+                        self.debug('new_collapsed_caller_tbl:')
+                    else:
+                        collapsed_caller_tbl = {}
+                    for (callee, d_lv_list) in new_collapsed_caller_tbl.iteritems():
+                        self.debug('callee=%s' % callee)
+                        for (d, lv) in d_lv_list:
+                            self.debug('%s (lv=%d)' % (d['id'], lv))
 
             if metrics_dir:
                 if ensure_dir(metrics_dir):
