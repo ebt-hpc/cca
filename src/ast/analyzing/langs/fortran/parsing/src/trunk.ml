@@ -178,7 +178,7 @@ module F (Stat : Aux.STATE_T) = struct
     Buffer.add_string sbuf "\npos: ";
     Buffer.add_string sbuf (string_of_int (Ulexing.get_pos ulexbuf));
     Buffer.add_string sbuf "\nbuf: [";
-    Buffer.add_string sbuf (Ulexing.get_buf ulexbuf);
+    Buffer.add_bytes sbuf (Ulexing.get_buf ulexbuf);
     Buffer.add_string sbuf "]\n";
     Buffer.contents sbuf
 

@@ -546,7 +546,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
   let get_last_char ulexbuf =
     let buf = Ulexing.get_buf ulexbuf in
     let st = Ulexing.get_start ulexbuf in
-    buf.[st-1]
+    Bytes.get buf (st-1)
 
   let is_letter_or_uscore c =
     match c with
@@ -4932,8 +4932,16 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
     let fixed_cont =  trigger <> "" && is_fixed_cont_line line in
     let free_cont = is_free_cont_line line in
-    if fixed_cont then
-      Bytes.set line 0 ' ';
+
+    let line =
+      if fixed_cont then begin
+        let b = Bytes.of_string line in
+        Bytes.set b 0 ' ';
+        Bytes.to_string b
+      end
+      else
+        line
+    in
 
     let xlf_qtoken = 
       mktok ~start_opt:(Some st) (RAW (DL.mkxlf trigger line fixed_cont free_cont)) lexbuf
@@ -5056,8 +5064,15 @@ module F (Stat : Parser_aux.STATE_T) = struct
     let fixed_cont = is_fixed_cont_line (*~assume_fixed_source_form:false*) line in
     let free_cont = is_free_cont_line (*~assume_free_source_form:false*) line in
     DEBUG_MSG "fixed_cont:%B free_cont:%B" fixed_cont free_cont;
-    if fixed_cont && offset > 0 then
-      Bytes.set line 0 ' ';
+    let line =
+      if fixed_cont && offset > 0 then begin
+        let b = Bytes.of_string line in
+        Bytes.set b 0 ' ';
+        Bytes.to_string b
+      end
+      else
+        line
+    in
     let q = get_omp_token_queue (st+offset) line in
     let omp_qtoken =
       mktok ~start_opt:(Some st) (RAW (DL.mkomp line q fixed_cont free_cont)) lexbuf
@@ -5158,8 +5173,16 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
     let fixed_cont = is_fixed_cont_line line in
     let free_cont = is_free_cont_line line in
-    if fixed_cont then
-      Bytes.set line 0 ' ';
+
+    let line =
+      if fixed_cont then begin
+        let b = Bytes.of_string line in
+        Bytes.set b 0 ' ';
+        Bytes.to_string b
+      end
+      else
+        line
+    in
 
     let acc_qtoken =
       mktok ~start_opt:(Some st) (RAW (DL.mkacc line fixed_cont free_cont)) lexbuf

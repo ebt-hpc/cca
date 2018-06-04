@@ -166,18 +166,18 @@ module F (L : Label.T) = struct
           let a = (Obj.obj nd#data#_annotation : Label.annotation) in
           Label.Annotation.iter
             (function
-              | Label.Annotation.Require ns -> 
-                  List.iter 
-                    (fun n -> 
+              | Label.Annotation.Require ns ->
+                  List.iter
+                    (fun n ->
                       let en = self#mkextname n in
                       self#add (en, p_is_a, Triple.c_external_name);
                       self#add (en, p_name, mklit n);
                       self#add (entity, p_requires, en)
                     ) ns
 
-              | Label.Annotation.Provide ns -> 
-                  List.iter 
-                    (fun _n -> 
+              | Label.Annotation.Provide ns ->
+                  List.iter
+                    (fun _n ->
                       List.iter
                         (fun n ->
                           let en = self#mkextname n in
