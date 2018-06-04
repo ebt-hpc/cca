@@ -2244,6 +2244,8 @@ let is_phantom = function (* not yet *)
     -> true
   | _ -> false
 
+let is_special = function (* not yet *)
+  | _ -> false
 
 let is_pp_directive = function
   | PpDirective _ -> true
