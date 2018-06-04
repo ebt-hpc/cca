@@ -143,6 +143,10 @@ module Tree (L : Spec.LABEL_T) = struct
   exception Malformed_row of string
 
   let get_lab nd = (Obj.obj nd#data#_label : L.t)
+  let get_orig_lab_opt nd =
+    match nd#data#orig_lab_opt with
+    | Some o -> Some (Obj.obj o : L.t)
+    | None -> None
 
   let get_annotation nd = (Obj.obj nd#data#_annotation : L.annotation)
 
@@ -176,6 +180,7 @@ module Tree (L : Spec.LABEL_T) = struct
       options 
       ?(annot=L.null_annotation) 
       ?(ordinal_tbl_opt=(None : ordinal_tbl option))
+      ?(orig_lab_opt=(None : L.t option))
       (lab : L.t) = 
 
     let is_named      = L.is_named lab in
@@ -203,6 +208,7 @@ module Tree (L : Spec.LABEL_T) = struct
         | Some tbl -> tbl#add_list l
 
       val mutable lab = lab
+      val mutable orig_lab_opt = orig_lab_opt
 
       val mutable _label = Obj.repr ()
       method _label = _label
@@ -329,9 +335,11 @@ module Tree (L : Spec.LABEL_T) = struct
 
       method is_phantom = L.is_phantom lab
 
+      method is_special = L.is_special lab
+
       method to_elem_data = L.to_elem_data self#src_loc lab
 
-      method eq ndat = _label = ndat#_label
+      method eq ndat = _label = ndat#_label && self#orig_lab_opt = ndat#orig_lab_opt
 
       method subtree_equals ndat = 
 	self#eq ndat && _digest = ndat#_digest && _digest <> None
@@ -343,7 +351,10 @@ module Tree (L : Spec.LABEL_T) = struct
       method src_loc = src_loc
 
       method to_string = 
-	sprintf "%s[%s]" self#label (Loc.to_string src_loc)
+	sprintf "%s%s[%s]"
+          self#label
+          (match orig_lab_opt with Some l -> "("^(L.to_string l)^")" | None -> "")
+          (Loc.to_string src_loc)
 
       method is_named = is_named
       method is_named_orig = is_named_orig
@@ -362,6 +373,10 @@ module Tree (L : Spec.LABEL_T) = struct
       method get_name = L.get_name lab
       method get_value = L.get_value lab
 
+      method orig_lab_opt =
+        match orig_lab_opt with
+        | Some l -> Some (Obj.repr l)
+        | None -> None
 
       initializer
 	self#update
@@ -386,16 +401,21 @@ module Tree (L : Spec.LABEL_T) = struct
     end (* of class Sourcecode.node_data *)
 
 
-  let mknode options ?(annot=L.null_annotation) ?(ordinal_tbl_opt=None) lab nodes =
+  let mknode options
+      ?(annot=L.null_annotation)
+      ?(ordinal_tbl_opt=None)
+      ?(orig_lab_opt=None)
+      lab nodes
+      =
     Otree.create_node2 options#uid_generator
-      (new node_data options ~annot ~ordinal_tbl_opt lab) (Array.of_list nodes)
+      (new node_data options ~annot ~ordinal_tbl_opt ~orig_lab_opt lab) (Array.of_list nodes)
 
-  let mklnode options ?(annot=L.null_annotation) lab nodes =
-    mknode options ~annot ~ordinal_tbl_opt:(Some null_ordinal_tbl) lab nodes
+  let mklnode options ?(annot=L.null_annotation) ?(orig_lab_opt=None) lab nodes =
+    mknode options ~annot ~ordinal_tbl_opt:(Some null_ordinal_tbl) ~orig_lab_opt lab nodes
 
-  let mkleaf options ?(annot=L.null_annotation) lab =
+  let mkleaf options ?(annot=L.null_annotation) ?(orig_lab_opt=None) lab =
     Otree.create_node2 options#uid_generator
-      (new node_data options ~annot lab) [||]
+      (new node_data options ~annot ~orig_lab_opt lab) [||]
 
   let get_logical_nth_child nd nth =
     let l = ref [] in
@@ -408,14 +428,19 @@ module Tree (L : Spec.LABEL_T) = struct
 
 
   class node_maker options = object (self)
-    method private mknode ?(annot=L.null_annotation) ?(ordinal_tbl_opt=None) lab nodes =
-      mknode options ~annot ~ordinal_tbl_opt lab nodes
+    method private mknode
+        ?(annot=L.null_annotation)
+        ?(ordinal_tbl_opt=None)
+        ?(orig_lab_opt=None)
+        lab nodes
+        =
+      mknode options ~annot ~ordinal_tbl_opt ~orig_lab_opt lab nodes
 
-    method private mklnode ?(annot=L.null_annotation) lab nodes =
-      mklnode options ~annot lab nodes
+    method private mklnode ?(annot=L.null_annotation) ?(orig_lab_opt=None) lab nodes =
+      mklnode options ~annot ~orig_lab_opt lab nodes
 
-    method private mkleaf ?(annot=L.null_annotation) lab = 
-      mkleaf options ~annot lab
+    method private mkleaf ?(annot=L.null_annotation) ?(orig_lab_opt=None) lab =
+      mkleaf options ~annot ~orig_lab_opt lab
   end
 
 
@@ -463,21 +488,24 @@ module Tree (L : Spec.LABEL_T) = struct
     val mutable true_children_tbl = (Hashtbl.create 0 : (node_t, node_t array) Hashtbl.t)
     method set_true_children_tbl tbl = true_children_tbl <- tbl
 
-    method recover_true_children =
+    method recover_true_children ~initial_only () =
+      DEBUG_MSG "initial_only=%B" initial_only;
       let modified = ref false in
       Hashtbl.iter 
 	(fun nd c ->
 
-	  DEBUG_MSG "recovering true children: %a -> [%s]" 
+	  DEBUG_MSG "recovering true children: %a -> [%s]"
 	    UID.ps nd#uid (Xarray.to_string (fun n -> UID.to_string n#uid) ";" c);
 
 	  nd#set_initial_children c;
-(*	  nd#set_children c; *)
+          if not initial_only then
+            nd#set_children c;
 	  Array.iteri
             (fun i n ->
               n#set_initial_parent nd;
               n#set_initial_pos i;
-              (*n#set_parent nd*)
+              if not initial_only then
+                n#set_parent nd
             ) c;
 	  modified := true
 	) true_children_tbl;
@@ -580,7 +608,8 @@ module Tree (L : Spec.LABEL_T) = struct
 	if GI.is_valid gi then
 	  let children = Xlist.filter_map doit (Array.to_list nd#initial_children) in
 	  let lab = get_lab nd in
-	  let new_nd = self#mknode lab children in
+          let orig_lab_opt = get_orig_lab_opt nd in
+	  let new_nd = self#mknode ~orig_lab_opt lab children in
 	  new_nd#set_gindex gi;
           begin
             try

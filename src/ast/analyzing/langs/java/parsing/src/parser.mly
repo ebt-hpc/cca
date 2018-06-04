@@ -1,3 +1,18 @@
+(*
+   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*)
 (* 
  * A parser for the Java Language (based on the JLS 3rd ed.) 
  * 
@@ -221,6 +236,10 @@ unann_class_or_interface_type:
     }
 ;
 
+%inline
+unann_class_type:
+| c=unann_class_or_interface_type { c }
+;
 
 %inline
 class_type:
@@ -271,57 +290,104 @@ type_arguments_opt:
 
 type_arguments:
 | LT GT { mktyargs $startofs $endofs [] }
-| lt=LT ts=type_argument_list_1 
+| LT tas=type_argument_list_1 
     { 
-      let targs, loc2 = ts in
-      _mktyargs (Loc.merge lt loc2) targs 
+      mktyargs $startofs $endofs tas 
     }
 ;
 
 %inline
 wildcard_head:
-| al=annotations0 QUESTION { al }
+| al=annotations0 QUESTION { al, $endofs }
 ;
 
 wildcard:
-| al=wildcard_head                          { al, None }
-| al=wildcard_head EXTENDS r=reference_type { al, Some(mkwb $startofs $endofs (WBextends r)) }
-| al=wildcard_head SUPER   r=reference_type { al, Some(mkwb $startofs $endofs (WBsuper r)) }
+| alo=wildcard_head                            { let al, _ = alo in al, None }
+| alo=wildcard_head e=EXTENDS r=reference_type
+    { 
+      let _ = e in
+      let al, _ = alo in
+      al, Some(mkwb $startofs(e) $endofs (WBextends r))
+    }
+| alo=wildcard_head s=SUPER   r=reference_type
+    { 
+      let _ = s in
+      let al, _ = alo in
+      al, Some(mkwb $startofs(s) $endofs (WBsuper r))
+    }
 ;
 wildcard_1:
-| al=wildcard_head GT                         { al, None }
-| al=wildcard_head EXTENDS r=reference_type_1 { al, Some(mkwb $startofs $endofs (WBextends r)) }
-| al=wildcard_head SUPER   r=reference_type_1 { al, Some(mkwb $startofs $endofs (WBsuper r)) }
+| alo=wildcard_head GT                           { let al, o = alo in (al, None), o }
+| alo=wildcard_head e=EXTENDS r=reference_type_1
+    { 
+      let _ = e in
+      let eo = r.Ast.ty_loc.Loc.end_offset in
+      let al, _ = alo in
+      (al, Some(mkwb $startofs(e) eo (WBextends r))), eo
+    }
+| alo=wildcard_head s=SUPER   r=reference_type_1
+    { 
+      let _ = s in
+      let eo = r.Ast.ty_loc.Loc.end_offset in
+      let al, _ = alo in
+      (al, Some(mkwb $startofs(s) eo (WBsuper r))), eo
+    }
 ;
-  wildcard_2:
-| al=wildcard_head GT_GT                      { al, None }
-| al=wildcard_head EXTENDS r=reference_type_2 { al, Some(mkwb $startofs $endofs (WBextends r)) }
-| al=wildcard_head SUPER   r=reference_type_2 { al, Some(mkwb $startofs $endofs (WBsuper r)) }
+wildcard_2:
+| alo=wildcard_head GT_GT                        { let al, o = alo in (al, None), o }
+| alo=wildcard_head e=EXTENDS r=reference_type_2
+    { 
+      let _ = e in
+      let eo = r.Ast.ty_loc.Loc.end_offset in
+      let al, _ = alo in
+      (al, Some(mkwb $startofs(e) eo (WBextends r))), eo
+    }
+| alo=wildcard_head s=SUPER   r=reference_type_2
+    { 
+      let _ = s in
+      let eo = r.Ast.ty_loc.Loc.end_offset in
+      let al, _ = alo in
+      (al, Some(mkwb $startofs(s) eo (WBsuper r))), eo
+    }
 ;
-  wildcard_3:
-| al=wildcard_head GT_GT_GT                   { al, None }
-| al=wildcard_head EXTENDS r=reference_type_3 { al, Some(mkwb $startofs $endofs (WBextends r)) }
-| al=wildcard_head SUPER   r=reference_type_3 { al, Some(mkwb $startofs $endofs (WBsuper r)) }
+wildcard_3:
+| alo=wildcard_head GT_GT_GT                     { let al, o = alo in (al, None), o }
+| alo=wildcard_head e=EXTENDS r=reference_type_3
+    { 
+      let _ = e in
+      let eo = r.Ast.ty_loc.Loc.end_offset in
+      let al, _ = alo in
+      (al, Some(mkwb $startofs(e) eo (WBextends r))), eo
+    }
+| alo=wildcard_head s=SUPER   r=reference_type_3
+    { 
+      let _ = s in
+      let eo = r.Ast.ty_loc.Loc.end_offset in
+      let al, _ = alo in
+      (al, Some(mkwb $startofs(s) eo (WBsuper r))), eo
+    }
 ;
 
 reference_type_1:
 | r=reference_type GT { r }
-| c=class_or_interface_type_spec lt=LT t=type_argument_list_2 
+| c=class_or_interface_type_spec lt=LT tas=type_argument_list_2 
     {
       let head, a, n = c in
-      let targs, loc3 = t in
-      let tyargs = _mktyargs (Loc.merge lt loc3) targs in
-      mktype $startofs $endofs (TclassOrInterface(head @ [TSapply(a, n, tyargs)])) 
+      let edloc = $endofs - 1 in
+      let _ = lt in
+      let tyargs = mktyargs $startofs(lt) edloc tas in
+      mktype $startofs edloc (TclassOrInterface(head @ [TSapply(a, n, tyargs)]))
     }
 ;
 reference_type_2:
 | r=reference_type GT_GT { r }
-| c=class_or_interface_type_spec lt=LT t=type_argument_list_3 
+| c=class_or_interface_type_spec lt=LT tas=type_argument_list_3 
     {  
       let head, a, n = c in
-      let targs, loc3 = t in
-      let tyargs = _mktyargs (Loc.merge lt loc3) targs in
-      mktype $startofs $endofs (TclassOrInterface(head @ [TSapply(a, n, tyargs)])) 
+      let edloc = $endofs - 2 in
+      let _ = lt in
+      let tyargs = mktyargs $startofs(lt) edloc tas in
+      mktype $startofs edloc (TclassOrInterface(head @ [TSapply(a, n, tyargs)]))
     }
 ;
 reference_type_3:
@@ -333,33 +399,33 @@ type_argument_list:
 | l=type_argument_list COMMA t=type_argument { l @ [t] }
 ;
 type_argument_list_1:
-|                            t=type_argument_1 { [t], get_loc $startofs $endofs }
-| l=type_argument_list COMMA t=type_argument_1 { l @ [t], get_loc $startofs $endofs }
+|                            t=type_argument_1 { [t] }
+| l=type_argument_list COMMA t=type_argument_1 { l @ [t] }
 ;
 type_argument_list_2:
-|                            t=type_argument_2 { [t], get_loc $startofs $endofs }
-| l=type_argument_list COMMA t=type_argument_2 { l @ [t], get_loc $startofs $endofs }
+|                            t=type_argument_2 { [t] }
+| l=type_argument_list COMMA t=type_argument_2 { l @ [t] }
 ;
 type_argument_list_3:
-|                            t=type_argument_3 { [t], get_loc $startofs $endofs }
-| l=type_argument_list COMMA t=type_argument_3 { l @ [t], get_loc $startofs $endofs }
+|                            t=type_argument_3 { [t] }
+| l=type_argument_list COMMA t=type_argument_3 { l @ [t] }
 ;
 
 type_argument:
 | r=reference_type { mktyarg $startofs $endofs (TAreferenceType r) }
-| aw=wildcard      { mktyarg $startofs $endofs (TAwildcard aw) }
+| aw=wildcard      { mktyarg $symbolstartofs $endofs (TAwildcard aw) }
 ;
 type_argument_1:
-| r=reference_type_1 { mktyarg $startofs $endofs (TAreferenceType r) }
-| aw=wildcard_1      { mktyarg $startofs $endofs (TAwildcard aw) }
+| r=reference_type_1 { _mktyarg r.ty_loc (TAreferenceType r) }
+| awo=wildcard_1     { let aw, o = awo in mktyarg $symbolstartofs o (TAwildcard aw) }
 ;
 type_argument_2:
-| r=reference_type_2 { mktyarg $startofs $endofs (TAreferenceType r) }
-| aw=wildcard_2      { mktyarg $startofs $endofs (TAwildcard aw) }
+| r=reference_type_2 { _mktyarg r.ty_loc (TAreferenceType r) }
+| awo=wildcard_2     { let aw, o = awo in mktyarg $symbolstartofs o (TAwildcard aw) }
 ;
 type_argument_3:
-| r=reference_type_3 { mktyarg $startofs $endofs (TAreferenceType r) }
-| aw=wildcard_3      { mktyarg $startofs $endofs (TAwildcard aw) }
+| r=reference_type_3 { _mktyarg r.ty_loc (TAreferenceType r) }
+| awo=wildcard_3     { let aw, o = awo in mktyarg $symbolstartofs o (TAwildcard aw) }
 ;
 
 
@@ -458,8 +524,8 @@ single_type_import_declaration:
 	  set_attribute_PT_T (mkresolved fqn) n;
           register_qname_as_typename n;
         with
-	  _ -> ()
-            (*let sn = P.name_to_simple_string n in
+	  _ ->
+            ()(*let sn = P.name_to_simple_string n in
             parse_warning $startofs $endofs "failed to resolve %s" sn*)
       end;
       mkimpdecl $startofs $endofs (IDsingle n)
@@ -469,6 +535,7 @@ single_type_import_declaration:
 static_single_type_import_declaration:
 | IMPORT STATIC n=name DOT i=identifier SEMICOLON 
     { 
+      let fqn_opt = ref None in
       begin
         try
           let fqn =
@@ -477,16 +544,22 @@ static_single_type_import_declaration:
             with
               _ -> P.name_to_simple_string n
           in
+          fqn_opt := Some fqn;
           register_identifier_as_typename fqn (rightmost_identifier n);
           set_attribute_PT_T (mkresolved fqn) n;
           register_qname_as_typename n;
         with
-          _ -> ()
-            (*let sn = P.name_to_simple_string n in
+          _ ->
+            ()(*let sn = P.name_to_simple_string n in
             parse_warning $startofs $endofs "failed to resolve %s" sn*)
       end;
       let _, id = i in
-      register_identifier_as_static_member id;
+      let sfqn =
+        match !fqn_opt with
+        | Some x -> x^"."^id
+        | _ -> id
+      in
+      register_identifier_as_static_member sfqn id;
       mkimpdecl $startofs $endofs (IDsingleStatic(n, id)) 
     }
 ;
@@ -500,6 +573,7 @@ type_import_on_demand_declaration:
         with
           _ ->
             let sn = P.name_to_simple_string n in
+            (*parse_warning $startofs $endofs "failed to resolve %s" sn;*)
             try
               let p =
                 Filename.concat env#classtbl#get_source_dir#path (Common.pkg_to_path sn)
@@ -528,8 +602,8 @@ static_type_import_on_demand_declaration:
           set_attribute_PT_T (mkresolved fqn) n;
           register_qname_as_typename n;
         with
-          _ -> ()
-            (*let sn = P.name_to_simple_string n in
+          _ ->
+            ()(*let sn = P.name_to_simple_string n in
             parse_warning $startofs $endofs "failed to resolve %s" sn*)
       end;
       mkimpdecl $startofs $endofs (IDstaticOnDemand n)
@@ -636,8 +710,8 @@ class_declaration_head0:
 | m_opt=modifiers_opt CLASS i=identifier 
     { 
       let _, id = i in
-      register_identifier_as_class (mkfqn_cls id) id; 
-      begin_scope(); 
+      register_identifier_as_class (mkfqn_cls id) id;
+      begin_scope ~kind:(FKclass id) ();
       m_opt, id
     }
 ;
@@ -722,7 +796,7 @@ enum_declaration_head0:
       | Common.JLS3 | Common.JLSx ->
 	  env#set_java_lang_spec_JLS3;
 	  register_identifier_as_class (mkfqn_cls id) id;
-	  begin_scope(); 
+	  begin_scope ~kind:(FKclass id) ();
 	  m_opt, id
       | Common.JLS2 ->
 	  parse_error $symbolstartofs $endofs "'enum' declaration is not available in JLS2"
@@ -760,26 +834,32 @@ enum_constants:
 | es=enum_constants COMMA e=enum_constant { es @ [e] }
 ;
 
-enum_constant:
+enum_constant_head:
 | a=annotations0 i=identifier e=enum_arguments_opt          
     { 
       let loc0, id = i in
+      register_identifier_as_enumconst (mkfqn id) id;
       let loc =
 	match a with
 	| [] -> Loc.merge loc0 (get_loc $startofs $endofs)
 	| _ -> get_loc $startofs $endofs
       in
-      mkec loc a id e None 
+      begin_scope();
+      (loc, a, id, e)
     }
-| a=annotations0 i=identifier e=enum_arguments_opt c=class_body 
+;
+
+enum_constant:
+| x=enum_constant_head
     { 
-      let loc0, id = i in
-      let loc =
-	match a with
-	| [] -> Loc.merge loc0 (get_loc $startofs $endofs)
-	| _ -> get_loc $startofs $endofs
-      in
-      mkec loc a id e (Some c) 
+      let loc, a, id, e = x in
+      end_scope();
+      mkec loc a id e None
+    }
+| x=enum_constant_head c=class_body
+    { 
+      let loc, a, id, e = x in
+      mkec loc a id e (Some c)
     }
 ;
 
@@ -1052,7 +1132,7 @@ normal_interface_declaration_head0:
     { 
       let _, id = i in
       register_identifier_as_interface (mkfqn_cls id) id; 
-      begin_scope(); 
+      begin_scope ~kind:(FKclass id) ();
       m_opt, id
     }
 ;
@@ -1080,7 +1160,7 @@ annotation_type_declaration_head:
     { 
       let _, id = i in
       register_identifier_as_interface (mkfqn_cls id) id;
-      begin_scope();
+      begin_scope ~kind:(FKclass id) ();
       mkifh $startofs $endofs m_opt id None None
     }
 ;
@@ -1093,17 +1173,17 @@ annotation_type_declaration:
 ;
 
 annotation_type_body:
-| LBRACE a=annotation_type_element_declarations0 RBRACE { end_scope(); mkatb $startofs $endofs a }
+| LBRACE a=annotation_type_member_declarations0 RBRACE { end_scope(); mkatb $startofs $endofs a }
 ;
 
 %inline
-annotation_type_element_declarations0:
-| l=list(annotation_type_element_declaration) { l }
+annotation_type_member_declarations0:
+| l=list(annotation_type_member_declaration) { l }
 ;
 
-annotation_type_element_declaration:
-| c=constant_declaration { mkated $startofs $endofs (ATEDconstant c) }
-| m_opt=modifiers_opt j=unann_type i=identifier LPAREN RPAREN d=default_value_opt SEMICOLON 
+annotation_type_member_declaration:
+| c=constant_declaration { mkatmd $startofs $endofs (ATMDconstant c) }
+| m_opt=modifiers_opt j=unann_type i=identifier LPAREN RPAREN a=ann_dims0 d=default_value_opt SEMICOLON 
     { 
       let loc = 
 	match m_opt with
@@ -1111,12 +1191,12 @@ annotation_type_element_declaration:
 	| Some _ -> get_loc $symbolstartofs $endofs
       in
       let _, id = i in
-      _mkated loc (ATEDabstract(m_opt, j, id, d)) 
+      _mkatmd loc (ATMDelement(m_opt, j, id, a, d))
     }
-| c=class_declaration     { _mkated c.cd_loc (ATEDclass c)  }
-| e=enum_declaration      { _mkated e.cd_loc (ATEDclass e) }
-| i=interface_declaration { _mkated i.ifd_loc (ATEDinterface i) }
-| SEMICOLON               { mkated $startofs $endofs ATEDempty }
+| c=class_declaration     { _mkatmd c.cd_loc (ATMDclass c)  }
+| e=enum_declaration      { _mkatmd e.cd_loc (ATMDclass e) }
+| i=interface_declaration { _mkatmd i.ifd_loc (ATMDinterface i) }
+| SEMICOLON               { mkatmd $startofs $endofs ATMDempty }
 ;
 
 default_value_opt:
@@ -1125,6 +1205,21 @@ default_value_opt:
 
 default_value:
 | DEFAULT e=element_value { e }
+;
+
+%inline
+ann_dims0:
+| (* *)      { [] }
+| a=ann_dims { a }
+;
+
+ann_dims:
+|            a=ann_dim { [a] }
+| d=ann_dims a=ann_dim { d @ [a] }
+;
+
+ann_dim:
+| a=annotations0 LBRACKET RBRACKET { mkad $startofs $endofs a }
 ;
 
 extends_interfaces_opt:
@@ -1471,9 +1566,37 @@ synchronized_statement:
 ;
 
 try_statement:
-| TRY b=block c=catches           { mkstmt $startofs $endofs (Stry(b, Some c, None)) }
-| TRY b=block           f=finally { mkstmt $startofs $endofs (Stry(b, None, Some f)) }
-| TRY b=block c=catches f=finally { mkstmt $startofs $endofs (Stry(b, Some c, Some f)) }
+| TRY r_opt=resource_spec_opt b=block c=catches           { mkstmt $startofs $endofs (Stry(r_opt, b, Some c, None)) }
+| TRY r_opt=resource_spec_opt b=block           f=finally { mkstmt $startofs $endofs (Stry(r_opt, b, None, Some f)) }
+| TRY r_opt=resource_spec_opt b=block c=catches f=finally { mkstmt $startofs $endofs (Stry(r_opt, b, Some c, Some f)) }
+| TRY r_opt=resource_spec_opt b=block                     { mkstmt $startofs $endofs (Stry(r_opt, b, None, None)) }
+;
+
+%inline
+resource_spec_opt:
+| r_opt=ioption(resource_spec) { r_opt }
+;
+
+resource_spec:
+| LPAREN rl=resource_list ioption(SEMICOLON) RPAREN { mkresspec $symbolstartofs $endofs rl }
+;
+
+resource_list:
+|                           r=resource { [r] }
+| l=resource_list SEMICOLON r=resource { l @ [r] }
+;
+
+resource:
+| m_opt=variable_modifiers_opt t=unann_type v=variable_declarator_id EQ e=expression 
+    { 
+      let loc = 
+	match m_opt with
+	| None -> Loc.merge t.ty_loc (get_loc $symbolstartofs $endofs)
+	| Some _ -> get_loc $symbolstartofs $endofs
+      in
+      register_identifier_as_variable (fst v) t;
+      mkres loc m_opt t v e
+    }
 ;
 
 %inline
@@ -1484,8 +1607,26 @@ catches:
 catch_clause_header:
 | CATCH { begin_scope() }
 
+catch_formal_parameter:
+| ms_opt=variable_modifiers_opt tl=catch_type d=variable_declarator_id
+    {
+      let loc = 
+	match ms_opt with
+	| None -> Loc.merge (List.hd tl).ty_loc (get_loc $symbolstartofs $endofs)
+	| Some _ -> get_loc $symbolstartofs $endofs
+      in
+      List.iter (register_identifier_as_parameter (fst d)) tl;
+      mkcfp loc ms_opt tl d
+    }
+;
+
+catch_type:
+|                 t=unann_class_type { [t] }
+| l=catch_type OR t=class_type       { l @ [t] }
+;
+
 catch_clause: 
-| catch_clause_header LPAREN f=formal_parameter RPAREN b=block 
+| catch_clause_header LPAREN f=catch_formal_parameter RPAREN b=block 
     { end_scope(); mkcatch $startofs $endofs f b }
 ;
 
@@ -1733,19 +1874,25 @@ method_invocation:
           end
           else begin
             if is_type_name q then begin
-              let fqn = get_type_fqn q in
-	      set_attribute_PT_T (mkresolved fqn) q;
-              register_qname_as_typename q;
-	      mkmi $startofs $endofs (MItypeName(q, None, id, a))
+              try
+                let fqn = get_type_fqn q in
+                set_attribute_PT_T (mkresolved fqn) q;
+                register_qname_as_typename q;
+                mkmi $startofs $endofs (MItypeName(q, None, id, a))
+              with
+              | Unknown _ ->
+                  set_attribute_PT_T (env#resolve q) q;
+                  register_qname_as_typename q;
+                  mkmi $startofs $endofs (MItypeName(q, None, id, a))
             end
             else begin
               env#reclassify_identifier(leftmost_of_name q);
-              raise (Unknown "")
+              mkmi $startofs $endofs (MIprimary(_name_to_prim q.n_loc q, None, id, a))
+              (*raise (Unknown "")*)
             end
           end
 	with
-	| Not_found | Unknown _ ->
-	    mkmi $startofs $endofs (MImethodName(n, a))
+	| Not_found -> mkmi $startofs $endofs (MImethodName(n, a))
       end
     }
 
@@ -1761,10 +1908,38 @@ method_invocation:
       mkmi $startofs $endofs (MIprimary(p, Some t, id, a)) 
     }
 
-| n=name DOT t=type_arguments i=identifier a=arguments
+| q=name DOT t=type_arguments i=identifier a=arguments
     { 
       let _, id = i in
-      mkmi $startofs $endofs (MItypeName(n, Some t, id, a)) 
+      if
+        is_local_name q ||
+        is_implicit_field_name q ||
+        is_field_access q ||
+        is_expr_name q
+      then begin
+        set_name_attribute NAexpression q;
+        register_qname_as_expression q;
+        env#reclassify_identifier(leftmost_of_name q);
+	mkmi $startofs $endofs (MIprimary(_name_to_prim q.n_loc q, Some t, id, a))
+      end
+      else begin
+        if is_type_name q then begin
+          try
+            let fqn = get_type_fqn q in
+            set_attribute_PT_T (mkresolved fqn) q;
+            register_qname_as_typename q;
+            mkmi $startofs $endofs (MItypeName(q, Some t, id, a))
+          with
+          | Unknown _ ->
+              set_attribute_PT_T (env#resolve q) q;
+              register_qname_as_typename q;
+              mkmi $startofs $endofs (MItypeName(q, Some t, id, a))
+        end
+        else begin
+          env#reclassify_identifier(leftmost_of_name q);
+          mkmi $startofs $endofs (MIprimary(_name_to_prim q.n_loc q, Some t, id, a))
+        end
+      end
     }
 
 | s=super DOT i=identifier a=arguments
@@ -2063,11 +2238,7 @@ type_parameters_opt:
 ;
 
 type_parameters:
-| lt=LT t=type_parameter_list_1 
-    { 
-      let tparams, loc = t in  
-      mktyparams (Loc.merge lt loc) tparams
-    }
+| LT tps=type_parameter_list_1 { mktyparams $startofs $endofs tps }
 ;
 
 type_parameter_list:
@@ -2076,8 +2247,8 @@ type_parameter_list:
 ;
 
 type_parameter_list_1:
-|                               tp=type_parameter_1 { [tp], get_loc $startofs $endofs }
-| tps=type_parameter_list COMMA tp=type_parameter_1 { tps @ [tp], get_loc $startofs $endofs }
+|                               tp=type_parameter_1 { [tp] }
+| tps=type_parameter_list COMMA tp=type_parameter_1 { tps @ [tp] }
 ;
 
 type_variable:
@@ -2091,12 +2262,12 @@ type_variable:
 ;
 
 type_parameter:
-| tv=type_variable tb=type_bound_opt { mktyparam $startofs $endofs tv tb }
+| tv=type_variable tb=type_bound_opt { mktyparam $symbolstartofs $endofs tv tb }
 ;
 
 type_parameter_1:
-| tv=type_variable GT              { mktyparam $startofs(tv) $endofs(tv) tv None }
-| tv=type_variable tb=type_bound_1 { mktyparam $startofs $endofs tv (Some tb) }
+| tv=type_variable GT              { mktyparam $symbolstartofs $endofs(tv) tv None }
+| tv=type_variable tb=type_bound_1 { mktyparam $symbolstartofs (tb.Ast.tb_loc.Loc.end_offset) tv (Some tb) }
 ;
 
 %inline
@@ -2109,8 +2280,12 @@ type_bound:
 ;
 
 type_bound_1:
-| EXTENDS r=reference_type_1                           { mktb $startofs $endofs r [] }
-| EXTENDS r=reference_type   a=additional_bound_list_1 { mktb $startofs $endofs r a }
+| EXTENDS r=reference_type_1                           { mktb $startofs r.Ast.ty_loc.Loc.end_offset r [] }
+| EXTENDS r=reference_type   a=additional_bound_list_1
+    { 
+      let edofs = (Xlist.last a).Ast.ab_loc.Loc.end_offset in
+      mktb $startofs edofs r a
+    }
 ;
 
 %inline
@@ -2133,7 +2308,7 @@ additional_bound:
 ;
 
 additional_bound_1:
-| AND r=reference_type_1 { mkab $startofs $endofs r }
+| AND r=reference_type_1 { mkab $startofs r.Ast.ty_loc.Loc.end_offset r }
 ;
 
 postfix_expression_nn:
@@ -2181,7 +2356,7 @@ relational_expression_nn:
 |                                      s=shift_expression_nn { s }
 
 | r=shift_expression_nn LT s=shift_expression    { mkexpr $startofs $endofs (Ebinary(BOlt, r, s)) } (* to avoid conflicts *)
-| r=shift_expression_nn GT s=shift_expression    { mkexpr $startofs $endofs (Ebinary(BOle, r, s)) }
+| r=shift_expression_nn GT s=shift_expression    { mkexpr $startofs $endofs (Ebinary(BOgt, r, s)) }
 
 | r=relational_expression_nn LT_EQ s=shift_expression    { mkexpr $startofs $endofs (Ebinary(BOle, r, s)) }
 | r=relational_expression_nn GT_EQ s=shift_expression    { mkexpr $startofs $endofs (Ebinary(BOge, r, s)) }

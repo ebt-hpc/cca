@@ -387,7 +387,9 @@ module F (L : Spec.LABEL_T) = struct
           else
             fid
         in
-	Triple.mkent (Triple.__make_entity enc_str fid_str range_str nd#data#is_phantom)
+	Triple.mkent
+          (Triple.__make_entity
+             enc_str fid_str range_str nd#data#is_phantom nd#data#is_special)
 
 
     method private mkfileentity =

@@ -55,13 +55,11 @@ module type T = sig
   val is_while                 : t -> bool
   val is_do                    : t -> bool
   val is_return                : t -> bool
-  val is_returntype            : t -> bool
   val is_parameter             : t -> bool
   val is_parameters            : t -> bool
   val is_typeparameter         : t -> bool
   val is_typeparameters        : t -> bool
   val is_typearguments         : ?nth:int -> t -> bool
-  val is_retty                 : t -> bool
   val is_statement             : t -> bool
   val is_field                 : t -> bool
   val is_type                  : t -> bool
@@ -146,13 +144,16 @@ let vdid_to_string (n, d) = n ^ "[" ^ (string_of_int d)
 
 let vdids_to_string = Xlist.to_string vdid_to_string ";"
 
-let rec conv_name n =
+let rec conv_name ?(resolve=true) n =
   match n.Ast.n_desc with
   | Ast.Nsimple(attr, ident) -> begin
-      try
-	Ast.get_resolved_name !attr
-      with
-	Not_found -> ident
+      if resolve then
+        try
+	  Ast.get_resolved_name !attr
+        with
+	  Not_found -> ident
+      else
+        ident
   end
   | Ast.Nqualified(attr, name, ident) ->
       let sep =
@@ -160,7 +161,13 @@ let rec conv_name n =
         | Ast.NAtype _, Ast.NAtype _ -> "$"
         | _ -> "."
       in
-      (conv_name name)^sep^ident
+      if resolve then
+        try
+	  Ast.get_resolved_name !attr
+        with
+	  Not_found -> (conv_name name)^sep^ident
+      else
+        (conv_name ~resolve name)^sep^ident
 
 let conv_loc 
     { Ast.Loc.start_offset = so;
@@ -202,31 +209,36 @@ module Type = struct
     | Array(ty, _) -> is_named ty
     | _ -> false
 
-  let rec type_argument_to_string ta =
+  let rec type_argument_to_string ?(resolve=true) ta =
     match ta.Ast.ta_desc with
-    | Ast.TAreferenceType ty -> to_simple_string (of_javatype ty)
-    | Ast.TAwildcard wc      -> wildcard_to_string wc
+    | Ast.TAreferenceType ty -> to_simple_string (of_javatype ~resolve ty)
+    | Ast.TAwildcard wc      -> wildcard_to_string ~resolve wc
 
-  and wildcard_bounds_to_string wb = 
+  and wildcard_bounds_to_string ?(resolve=true) wb = 
     match wb.Ast.wb_desc with
-    | Ast.WBextends ty -> "extends "^(to_simple_string (of_javatype ty))
-    | Ast.WBsuper ty   -> "super "^(to_simple_string (of_javatype ty))
+    | Ast.WBextends ty -> "extends "^(to_simple_string (of_javatype ~resolve ty))
+    | Ast.WBsuper ty   -> "super "^(to_simple_string (of_javatype ~resolve ty))
 
-  and wildcard_to_string = function
+  and wildcard_to_string ?(resolve=true) = function
     | al, None    -> (Printer.annotations_to_string al)^"?"
-    | al, Some wb -> (Printer.annotations_to_string al)^"? "^(wildcard_bounds_to_string wb)
+    | al, Some wb ->
+        (Printer.annotations_to_string al)^"? "^(wildcard_bounds_to_string ~resolve wb)
 
-  and type_arguments_to_string tas =
+  and type_arguments_to_string ?(resolve=true) tas =
     "<"^ 
-    (Xlist.to_string type_argument_to_string "," tas.Ast.tas_type_arguments)^
+    (Xlist.to_string (type_argument_to_string ~resolve) "," tas.Ast.tas_type_arguments)^
     ">"
 
-  and type_spec_to_string = function
-    | Ast.TSname(al, n)       -> conv_name n
-    | Ast.TSapply(al, n, tas) -> (conv_name n)^(type_arguments_to_string tas)
+  and type_spec_to_string ?(resolve=true) = function
+    | Ast.TSname(al, n)       -> conv_name ~resolve n
+    | Ast.TSapply(al, n, tas) -> (conv_name ~resolve n)^(type_arguments_to_string ~resolve tas)
 
-  and conv_type_specs tss =
-    Xlist.to_string type_spec_to_string "." tss
+  and type_spec_to_name ?(resolve=true) = function
+    | Ast.TSname(al, n)
+    | Ast.TSapply(al, n, _) -> conv_name ~resolve n
+
+  and conv_type_specs ?(resolve=true) tss =
+    Xlist.to_string (type_spec_to_name ~resolve) "." tss
 
   and to_string ty = 
     let rec conv = function
@@ -318,17 +330,17 @@ module Type = struct
     | Ast.PTdouble  -> Double
     | Ast.PTboolean -> Boolean
 
-  and of_javatype ty =
+  and of_javatype ?(resolve=true) ty =
     match ty.Ast.ty_desc with
     | Ast.Tprimitive(_, p)      -> of_primitive_type p
-    | Ast.TclassOrInterface tss -> ClassOrInterface (conv_type_specs tss)
-    | Ast.Tclass tss            -> Class (conv_type_specs tss)
-    | Ast.Tinterface tss        -> Interface (conv_type_specs tss)
-    | Ast.Tarray(ty, dims)      -> Array(of_javatype ty, dims)
+    | Ast.TclassOrInterface tss -> ClassOrInterface (conv_type_specs ~resolve tss)
+    | Ast.Tclass tss            -> Class (conv_type_specs ~resolve tss)
+    | Ast.Tinterface tss        -> Interface (conv_type_specs ~resolve tss)
+    | Ast.Tarray(ty, dims)      -> Array(of_javatype ~resolve ty, dims)
     | Ast.Tvoid                 -> Void
 
 
-  let make_class name = Class (conv_name name)
+  let make_class ?(resolve=true) name = Class (conv_name ~resolve name)
 
 end (* of module Type *)
 
@@ -716,7 +728,7 @@ module Modifier = struct
     | Transient 
     | Volatile 
     | Strictfp
-    | Annotation
+(*    | Annotation*)
     | Default
 
   let to_string m =
@@ -733,7 +745,7 @@ module Modifier = struct
       | Transient    -> "Transient"
       | Volatile     -> "Volatile"
       | Strictfp     -> "Strictfp"
-      | Annotation   -> "Annotation"
+(*      | Annotation   -> "Annotation"*)
       | Default      -> "Default"
     in
     "Modifier." ^ str
@@ -756,7 +768,7 @@ module Modifier = struct
     | Transient    -> "transient"
     | Volatile     -> "volatile"
     | Strictfp     -> "strictfp"
-    | Annotation   -> "@"
+(*    | Annotation   -> "@"*)
     | Default      -> "default"
 
   let to_short_string = function
@@ -771,7 +783,7 @@ module Modifier = struct
     | Transient    -> mkstr 8
     | Volatile     -> mkstr 9
     | Strictfp     -> mkstr 10
-    | Annotation   -> mkstr 11
+(*    | Annotation   -> mkstr 11*)
     | Default      -> mkstr 12
     
   let to_tag m = 
@@ -788,7 +800,7 @@ module Modifier = struct
       | Transient    -> "Transient"
       | Volatile     -> "Volatile"
       | Strictfp     -> "Strictfp"
-      | Annotation   -> "Annotation"
+(*      | Annotation   -> "Annotation"*)
       | Default      -> "Default"
     in
     name, []
@@ -809,9 +821,9 @@ module Primary = struct
     | QualifiedInstanceCreation of name
     | NameQualifiedInstanceCreation of name * name
 
-    | FieldAccess of name
-    | SuperFieldAccess of name
-    | ClassSuperFieldAccess of name
+    | FieldAccess of identifier
+    | SuperFieldAccess of identifier
+    | ClassSuperFieldAccess of identifier
 
     | PrimaryMethodInvocation of name
     | SimpleMethodInvocation of name
@@ -830,6 +842,9 @@ module Primary = struct
     | TypeSuperMethodReference of name * name
     | TypeNewMethodReference of name
 
+    | AmbiguousName of name
+    | AmbiguousMethodInvocation of name
+
   let get_name = function
     | Name name
     | QualifiedThis name
@@ -845,6 +860,8 @@ module Primary = struct
     | PrimaryMethodReference name
     | SuperMethodReference name
     | TypeNewMethodReference name
+    | AmbiguousName name
+    | AmbiguousMethodInvocation name
       -> name
 
     | NameQualifiedInstanceCreation(name1, name2)
@@ -882,6 +899,8 @@ module Primary = struct
     | SuperMethodReference _
     | TypeSuperMethodReference _
     | TypeNewMethodReference _
+    | AmbiguousName _
+    | AmbiguousMethodInvocation _
       -> true
 
     | Literal (Literal.String s) -> s <> ""
@@ -934,6 +953,8 @@ module Primary = struct
       | SuperMethodReference ident            -> sprintf "SuperMethodReference(%s)" ident
       | TypeSuperMethodReference(name, ident) -> sprintf "TypeSuperMethodReference(%s,%s)" name ident
       | TypeNewMethodReference name           -> "TypeNewMethodReference"
+      | AmbiguousName name                    -> sprintf "AmbiguousName(%s)" name
+      | AmbiguousMethodInvocation name        -> sprintf "AmbiguousMethodInvocation(%s)" name
     in
     "Primary." ^ str
 
@@ -959,12 +980,17 @@ module Primary = struct
     | SuperMethodReference ident             -> SuperMethodReference ""
     | TypeSuperMethodReference(name, ident)  -> TypeSuperMethodReference("", "")
     | TypeNewMethodReference name            -> TypeNewMethodReference ""
+    | AmbiguousName name                     -> AmbiguousName ""
+    | AmbiguousMethodInvocation name         -> AmbiguousMethodInvocation ""
     | pri                                    -> pri
 
   let anonymize2 = function
-    | FieldAccess _           -> Name ""
-    | SuperFieldAccess _      -> Name ""
-    | ClassSuperFieldAccess _ -> Name ""
+    | FieldAccess _
+    | SuperFieldAccess _
+    | ClassSuperFieldAccess _
+    | AmbiguousName _
+      -> Name ""
+
     | lab -> anonymize ~more:true lab
 
   let to_simple_string = function
@@ -994,6 +1020,8 @@ module Primary = struct
     | SuperMethodReference ident             -> "super::"^ident
     | TypeSuperMethodReference(name, ident)  -> name^".super::"^ident
     | TypeNewMethodReference name            -> name^"::new"
+    | AmbiguousName name                     -> "?"^name
+    | AmbiguousMethodInvocation name         -> "?"^name
     
   let to_short_string ?(ignore_identifiers_flag=false) = 
     let combo = combo ~ignore_identifiers_flag in function
@@ -1028,6 +1056,8 @@ module Primary = struct
     | SuperMethodReference ident            -> combo 23 [ident]
     | TypeSuperMethodReference(name, ident) -> combo 24 [name; ident]
     | TypeNewMethodReference name           -> combo 25 [name]
+    | AmbiguousName name                    -> combo 26 [name]
+    | AmbiguousMethodInvocation name        -> combo 27 [name]
     
   let to_tag p = 
     let name, attrs = 
@@ -1059,6 +1089,8 @@ module Primary = struct
       | SuperMethodReference ident             -> "SuperMethodReference", ["name",xmlenc ident]
       | TypeSuperMethodReference(name, ident)  -> "TypeSuperMethodReference", ["name",xmlenc name;ident_attr_name,xmlenc ident]
       | TypeNewMethodReference name            -> "TypeNewMethodReference", []
+      | AmbiguousName name                     -> "AmbiguousName", ["name",xmlenc name]
+      | AmbiguousMethodInvocation name         -> "AmbiguousMethodInvocation", ["name",xmlenc name]
     in
     name, attrs
 
@@ -1514,7 +1546,7 @@ type t = (* Label *)
   | Arguments
   | NamedArguments of name (* method *)
   | Parameters of name (* method *)
-  | Parameter of name * int * bool
+  | Parameter of name * dims * bool
   | TypeParameter of name (* type variable *)
   | TypeParameters of name
   | ArrayInitializer
@@ -1523,7 +1555,6 @@ type t = (* Label *)
   | Method of name
   | Super
   | Qualifier of name
-  | ReturnType of name
   | Throws of name (* method or ctor name *)
   | MethodBody of name (* method name *)
   | Specifier of kind
@@ -1551,14 +1582,19 @@ type t = (* Label *)
   | TypeDeclarations
   | CompilationUnit
 
-  | ATEDabstract of name
+  | ElementDeclaration of name
 
   | FieldDeclarations of name
 
   | InferredParameters
   | InferredParameter of name
 
-  | ReferenceTypeElem of name
+  | ResourceSpec
+  | Resource of name * dims
+
+  | CatchParameter of name * dims
+
+  | AnnotDim
 
   | Error
 
@@ -1621,7 +1657,6 @@ let rec to_string = function
   | Method name                             -> sprintf "Method(%s)" name
   | Super                                   -> "Super"
   | Qualifier q                             -> sprintf "Qualifier(%s)" q
-  | ReturnType name                         -> sprintf "ReturnType(%s)" name
   | Throws name                             -> sprintf "Throws(%s)" name
   | MethodBody name                         -> sprintf "MethodBody(%s)" name
   | Specifier k                             -> "Specifier:"^(kind_to_string k)
@@ -1645,12 +1680,17 @@ let rec to_string = function
   | ImportDeclarations                      -> "ImportDeclarations"
   | TypeDeclarations                        -> "TypeDeclarations"
   | CompilationUnit                         -> "CompilationUnit"
-  | ATEDabstract name                       -> sprintf "ATEDabstract(%s)" name
+  | ElementDeclaration name                 -> sprintf "ElementDeclaration(%s)" name
   | FieldDeclarations name                  -> sprintf "FieldDeclarations(%s)" name
   | InferredParameters                      -> "InferredParameters"
   | InferredParameter name                  -> sprintf "InferredParameter(%s)" name
 
-  | ReferenceTypeElem name                  -> sprintf "ReferenceTypeElem(%s)" name
+  | ResourceSpec                            -> sprintf "ResourceSpec"
+  | Resource(name, dims)                    -> sprintf "Resource(%s,%d)" name dims
+
+  | CatchParameter(name, dims)              -> sprintf "CatchParameter(%s,%d)" name dims
+
+  | AnnotDim                                -> "AnnotDim"
 
 let anonymize ?(more=false) = function
   | Type ty                        -> Type (Type.anonymize ty)
@@ -1675,7 +1715,6 @@ let anonymize ?(more=false) = function
   | FieldDeclaration vdids         -> FieldDeclaration []
   | Method name                    -> Method ""
   | Qualifier q                    -> Qualifier ""
-  | ReturnType name                -> ReturnType ""
   | Throws name                    -> Throws ""
   | MethodBody name                -> MethodBody ""
   | Specifier k                    -> Specifier Kany
@@ -1693,13 +1732,14 @@ let anonymize ?(more=false) = function
   | IDtypeOnDemand name            -> IDtypeOnDemand ""
   | IDsingleStatic(name, ident)    -> IDsingleStatic("", "")
   | IDstaticOnDemand name          -> IDstaticOnDemand ""
-  | ATEDabstract name              -> ATEDabstract ""
+  | ElementDeclaration name        -> ElementDeclaration ""
   | FieldDeclarations name         -> FieldDeclarations ""
   | ForInit tid                    -> ForInit (anonymize_tid tid)
   | ForCond tid                    -> ForCond (anonymize_tid tid)
   | ForUpdate tid                  -> ForUpdate (anonymize_tid tid)
   | InferredParameter name         -> InferredParameter ""
-  | ReferenceTypeElem name         -> ReferenceTypeElem ""
+  | Resource(name, dims)           -> Resource("", 0)
+  | CatchParameter(name, dims)     -> CatchParameter("", 0)
 
   | lab                            -> lab
 
@@ -1707,6 +1747,7 @@ let anonymize ?(more=false) = function
 let anonymize2 = function
   | Primary p   -> Primary (Primary.anonymize2 p) 
   | Qualifier _ -> Primary (Primary.Name "")
+  | VariableDeclarator _ -> Primary (Primary.Name "")
   | lab -> anonymize ~more:true lab
 
 let anonymize3 = function
@@ -1767,7 +1808,6 @@ let rec to_simple_string = function
   | Method name                 -> name
   | Super                       -> "super"
   | Qualifier q                 -> q
-  | ReturnType name             -> name
   | Throws name                 -> "throws"
   | MethodBody name             -> "<body>"
   | Specifier k                 -> "<spec"^(kind_to_suffix k)^">"
@@ -1791,11 +1831,14 @@ let rec to_simple_string = function
   | ImportDeclarations          -> "<imports>"
   | TypeDeclarations            -> "<ty_decls>"
   | CompilationUnit             -> "<compilation_unit>"
-  | ATEDabstract name           -> "@interface "^name
+  | ElementDeclaration name     -> "@interface "^name
   | FieldDeclarations name      -> "<fdecls>"
   | InferredParameters          -> "<inferred_parameters>"
   | InferredParameter name      -> name
-  | ReferenceTypeElem name      -> "<reference_type_elem>"
+  | ResourceSpec                -> "<resource_spec>"
+  | Resource(name, dims)        -> name^(if dims = 0 then "" else sprintf "[%d" dims)
+  | CatchParameter(name, dims)  -> name^(if dims = 0 then "" else sprintf "[%d]" dims)
+  | AnnotDim                    -> "[]"
   | Error               -> "<ERROR>"
 
 
@@ -1847,7 +1890,6 @@ let rec to_short_string ?(ignore_identifiers_flag=false) =
   | Method name                             -> combo 44 [name]
   | Super                                   -> mkstr 45
   | Qualifier q                             -> catstr [mkstr 46; q]
-  | ReturnType name                         -> catstr [mkstr 47; name]
   | Throws name                             -> combo 48 [name]
   | MethodBody name                         -> combo 49 [name]
   | Specifier k                             -> catstr [mkstr 50; kind_to_short_string k]
@@ -1871,17 +1913,20 @@ let rec to_short_string ?(ignore_identifiers_flag=false) =
   | ImportDeclarations                      -> mkstr 68
   | TypeDeclarations                        -> mkstr 69
   | CompilationUnit                         -> mkstr 70
-  | ATEDabstract name                       -> catstr [mkstr 71; name]
+  | ElementDeclaration name                 -> catstr [mkstr 71; name]
   | FieldDeclarations name                  -> catstr [mkstr 72; name]
   | LocalVariableDeclaration(isstmt, vdids) -> catstr [mkstr 73; if isstmt then "S" else ""; vdids_to_string vdids]
   | WildcardBoundsExtends                   -> mkstr 74
   | WildcardBoundsSuper                     -> mkstr 75
   | InferredParameters                      -> mkstr 76
   | InferredParameter name                  -> combo 77 [name]
-  | ReferenceTypeElem name                  -> combo 78 [name]
   | Error                                   -> mkstr 79
   | SwitchBlock                             -> mkstr 80
   | ConstructorBody(name, s)                -> combo 81 [name;s]
+  | ResourceSpec                            -> mkstr 82
+  | Resource(name, dims)                    -> combo 83 [name; string_of_int dims]
+  | CatchParameter(name, dims)              -> combo 84 [name; (string_of_int dims)]
+  | AnnotDim                                -> mkstr 85
 
 let to_tag l =
   let name, attrs = 
@@ -1950,8 +1995,7 @@ let to_tag l =
     | Method name                 -> "MethodDeclaration", ["name",xmlenc name]
     | Super                       -> "Super", []
     | Qualifier q                 -> "Qualifier", ["name",xmlenc q]
-    | ReturnType name             -> "ReturnType", ["name",xmlenc name]
-    | Throws name                 -> "Throws", ["name",name]
+    | Throws name                 -> "Throws", ["name",xmlenc name]
     | MethodBody name             -> "MethodBody", ["name",xmlenc name]
     | Specifier k                 -> (kind_to_string k)^"Specifier", []
     | Class name                  -> "ClassDeclaration", ["name",xmlenc name]
@@ -1978,7 +2022,7 @@ let to_tag l =
     | TypeDeclarations            -> "TypeDeclarations", []
 
 (* annotation type element declaration *)
-    | ATEDabstract name           -> "AbstractAnnotationTypeElementDeclaration", ["name",xmlenc name] 
+    | ElementDeclaration name     -> "AnnotationTypeElementDeclaration", ["name",xmlenc name]
 
     | FieldDeclarations name      -> "FieldDeclarations", ["name",xmlenc name]
 
@@ -1992,7 +2036,14 @@ let to_tag l =
         else
           "LocalVariableDeclaration"), [vdids_attr_name,vdids_to_string vdids]
 
-    | ReferenceTypeElem name      -> "ReferenceTypeElem", ["name",xmlenc name]
+    | ResourceSpec                -> "ResourceSpec", []
+    | Resource(name, dims)        -> "Resource", ["name",xmlenc name;
+                                                  dims_attr_name,string_of_int dims]
+
+    | CatchParameter(name, dims)  -> "CatchParameter", ["name",xmlenc name;
+                                                        dims_attr_name,string_of_int dims]
+
+    | AnnotDim                    -> "AnnotDim", []
 
     | Error -> "Error", []
   in
@@ -2048,7 +2099,6 @@ let to_char lab =
     | Method name -> 48
     | Super -> 49
     | Qualifier q -> 50
-    | ReturnType name -> 51
     | Throws name -> 52
     | MethodBody name -> 53
     | Specifier _ -> 54
@@ -2072,17 +2122,20 @@ let to_char lab =
     | ImportDeclarations -> 72
     | TypeDeclarations -> 73
     | CompilationUnit -> 74
-    | ATEDabstract name -> 75
+    | ElementDeclaration name -> 75
     | FieldDeclarations name -> 76
     | LocalVariableDeclaration(isstmt, vdids) -> 77
     | WildcardBoundsExtends -> 78
     | WildcardBoundsSuper -> 79
     | InferredParameters     -> 80
     | InferredParameter name -> 81
-    | ReferenceTypeElem name -> 82
     | Error -> 83
     | SwitchBlock -> 84
     | ConstructorBody _ -> 85
+    | ResourceSpec -> 86
+    | Resource _ -> 87
+    | CatchParameter(name, dims) -> 88
+    | AnnotDim                   -> 89
   in
   char_pool.(to_index lab)
 
@@ -2090,9 +2143,9 @@ let to_char lab =
 let to_elem_data = Astml.to_elem_data lang_prefix to_tag
 
 
-let of_javatype ty = (Type (Type.of_javatype ty))
+let of_javatype ?(resolve=true) ty = (Type (Type.of_javatype ~resolve ty))
 
-let of_classname name = Type (Type.make_class name)
+let of_classname ?(resolve=true) name = Type (Type.make_class ~resolve name)
 
 let of_literal lit = Primary (Primary.of_literal lit)
 
@@ -2148,6 +2201,7 @@ let is_collapse_target options lab =
     | Statement _
     | Primary _
     | Expression _
+    | Type (Type.ClassOrInterface _ | Type.Class _ | Type.Interface _)
 
     | Class _
     | Enum _
@@ -2227,19 +2281,24 @@ let relabel_allowed (lab1, lab2) =
     | Primary (Primary.FieldAccess _), Qualifier _ 
     | Qualifier _, Primary (Primary.FieldAccess _)
 
+    | Primary (Primary.Name _), Primary (Primary.FieldAccess _)
+    | Primary (Primary.FieldAccess _), Primary (Primary.Name _)
+
     | Primary _, Expression _ 
     | Expression _, Primary _
 
     | Expression Expression.Cond, Statement Statement.If
     | Statement Statement.If, Expression Expression.Cond
 
+    | Implements, Extends
+    | Extends, Implements
+    | Method _, Constructor _ | Constructor _, Method _
+
     | Type _, Type _
     | Primary _, Primary _
     | Expression _, Expression _
     | Modifier _, Modifier _
     | LocalVariableDeclaration _, LocalVariableDeclaration _
-    | Implements, Extends
-    | Extends, Implements
       -> true
 
     | l1, l2 -> anonymize2 l1 = anonymize2 l2
@@ -2279,7 +2338,6 @@ let is_named = function
   | FieldDeclaration _
   | Method _ 
   | Qualifier _
-  | ReturnType _
   | Throws _
   | MethodBody _
   | Class _
@@ -2296,10 +2354,12 @@ let is_named = function
   | IDtypeOnDemand _
   | IDsingleStatic _
   | IDstaticOnDemand _
-  | ATEDabstract _
+  | ElementDeclaration _
   | FieldDeclarations _
   | LocalVariableDeclaration _
   | InferredParameter _
+  | Resource _
+  | CatchParameter _
     -> true
 
   | _ -> false
@@ -2329,6 +2389,8 @@ let is_named_orig = function
   | IDsingleStatic _
   | IDstaticOnDemand _
   | InferredParameter _
+  | Resource _
+  | CatchParameter _
     -> true
 
   | _ -> false
@@ -2380,6 +2442,13 @@ let is_sequence = function
   | _ -> false
 
 
+(* for change pattern detection *)
+
+let is_wildcard_bounds = function
+  | WildcardBoundsExtends
+  | WildcardBoundsSuper -> true
+  | _ -> false
+
 let is_if = function
   | Statement Statement.If -> true
   | _ -> false
@@ -2392,12 +2461,12 @@ let is_do = function
   | Statement Statement.Do -> true
   | _ -> false
 
-let is_return = function
-  | Statement Statement.Return -> true
+let is_try = function
+  | Statement Statement.Try -> true
   | _ -> false
 
-let is_returntype = function
-  | ReturnType _ -> true
+let is_return = function
+  | Statement Statement.Return -> true
   | _ -> false
 
 let is_method = function
@@ -2406,6 +2475,10 @@ let is_method = function
 
 let is_parameter = function
   | Parameter _ -> true
+  | _ -> false
+
+let is_va_parameter = function
+  | Parameter(_, _, va) -> va
   | _ -> false
 
 let is_parameters = function
@@ -2422,10 +2495,6 @@ let is_typeparameters = function
 
 let is_typearguments ?(nth=1) = function
   | TypeArguments(n, _) -> n = nth
-  | _ -> false
-
-let is_retty = function
-  | ReturnType _ -> true
   | _ -> false
 
 let is_statement = function
@@ -2625,6 +2694,14 @@ let is_real_literal = function
 
 let is_name = function
   | Primary (Primary.Name _) -> true
+  | _ -> false
+
+let is_ambiguous_name = function
+  | Primary (Primary.AmbiguousName _) -> true
+  | _ -> false
+
+let is_ambiguous_method_invocation = function
+  | Primary (Primary.AmbiguousMethodInvocation _) -> true
   | _ -> false
 
 let is_instancecreation = function
@@ -2863,6 +2940,29 @@ let is_type_bound = function
   | TypeBound -> true
   | _ -> false
 
+let is_catches = function
+  | Catches -> true
+  | _ -> false
+
+let is_finally = function
+  | Finally -> true
+  | _ -> false
+
+let is_resource_spec = function
+  | ResourceSpec -> true
+  | _ -> false
+
+let is_resource = function
+  | Resource _ -> true
+  | _ -> false
+
+let is_catch_parameter = function
+  | CatchParameter _ -> true
+  | _ -> false
+
+let is_annot_dim = function
+  | AnnotDim -> true
+  | _ -> false
 
 let scope_creating lab =
   is_compilationunit lab ||
@@ -2872,7 +2972,8 @@ let scope_creating lab =
   is_class_or_interface lab ||
   is_method lab ||
   is_methodbody lab ||
-  is_block lab
+  is_block lab ||
+  is_try lab
 
 
 (* for fact extraction *)
@@ -2905,7 +3006,6 @@ let get_name lab =
     | Modifiers name
     | Method name
     | Qualifier name
-    | ReturnType name
     | Throws name
     | MethodBody name
     | Class name
@@ -2918,12 +3018,14 @@ let get_name lab =
     | AnnotationTypeBody name
     | InterfaceBody name
     | PackageDeclaration name
-    | ATEDabstract name
+    | ElementDeclaration name
     | IDsingle name
     | IDtypeOnDemand name
     | IDstaticOnDemand name 
     | FieldDeclarations name
     | InferredParameter name
+    | Resource(name, _)
+    | CatchParameter(name, _)
       -> name
 
     | LocalVariableDeclaration(_, name_dim_list) -> 
@@ -2932,7 +3034,7 @@ let get_name lab =
     | FieldDeclaration name_dim_list -> 
 	String.concat "," (List.map (fun (n, _) -> n) name_dim_list)
 
-    | IDsingleStatic(name1, name2) -> String.concat "," [name1; name2]
+    | IDsingleStatic(name1, name2) -> String.concat "." [name1; name2]
 
     | _ -> raise Not_found
   in
@@ -2977,11 +3079,11 @@ let is_phantom = function
   | Modifiers _
   | ImportDeclarations
   | TypeDeclarations
-  | ReturnType _
   | Specifier _
     -> true
   | _ -> false
 
+let is_special _ = false
 
 
 open Astml.Attr
@@ -3097,7 +3199,7 @@ let of_elem_data =
     "Transient",    (fun a -> mkmod Modifier.Transient);
     "Volatile",     (fun a -> mkmod Modifier.Volatile);
     "Strictfp",     (fun a -> mkmod Modifier.Strictfp);
-    "Annotation",   (fun a -> mkmod Modifier.Annotation);
+(*    "Annotation",   (fun a -> mkmod Modifier.Annotation);*)
     "Default",      (fun a -> mkmod Modifier.Default);
 
     "Name",                          (fun a -> mkp a Primary.(Name(find_name a)));
@@ -3218,7 +3320,6 @@ let of_elem_data =
     "MethodDeclaration",         (fun a -> Method(find_name a));
     "Super",                     (fun a -> Super);
     "Qualifier",                 (fun a -> Qualifier(find_name a));
-    "ReturnType",                (fun a -> ReturnType(find_name a));
     "Throws",                    (fun a -> Throws(find_name a));
     "MethodBody",                (fun a -> MethodBody(find_name a));
 
@@ -3248,12 +3349,15 @@ let of_elem_data =
     "StaticImportOnDemandDeclaration", (fun a -> IDstaticOnDemand(find_name a));
     "ImportDeclarations",                       (fun a -> ImportDeclarations);
     "TypeDeclarations",                         (fun a -> TypeDeclarations);
-    "AbstractAnnotationTypeElementDeclaration", (fun a -> ATEDabstract(find_name a));
+    "AnnotationTypeElementDeclaration",         (fun a -> ElementDeclaration(find_name a));
     "FieldDeclarations",                        (fun a -> FieldDeclarations(find_name a));
     "InferredParameters",                       (fun a -> InferredParameters);
     "InferredParameter",                        (fun a -> InferredParameter(find_name a));
-    "ReferenceTypeElem",                        (fun a -> ReferenceTypeElem(find_name a));
     "CompilationUnit",                          (fun a -> CompilationUnit);
+    "ResourceSpec",                             (fun a -> ResourceSpec);
+    "Resource",                                 (fun a -> Resource(find_name a, find_dims a));
+    "CatchParameter",                           (fun a -> CatchParameter(find_name a, find_dims a));
+    "AnnotDim",                                 (fun a -> AnnotDim);
     "Error",                                    (fun a -> Error);
    ]
   in

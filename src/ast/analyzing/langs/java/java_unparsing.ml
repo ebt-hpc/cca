@@ -27,7 +27,15 @@ open Unparsing_base
 
 let pb = new ppbox
 
-let getlab nd = (Obj.obj nd#data#_label : L.t)
+let getlab nd =
+  match nd#data#orig_lab_opt with
+  | Some o -> (Obj.obj o : L.t)
+  | None -> (Obj.obj nd#data#_label : L.t)
+
+let has_orig_lab nd =
+  match nd#data#orig_lab_opt with
+  | Some o -> (Obj.obj o : L.t) <> (Obj.obj nd#data#_label : L.t)
+  | None -> false
 
 
 (* precedence of operators
@@ -61,7 +69,7 @@ let prec_of_assignment_operators = 1
 
 
 let get_prec_of_primary = function
-  | L.Primary.Name _ -> 15
+  | L.Primary.Name _ | L.Primary.AmbiguousName _ -> 15
   | L.Primary.InstanceCreation _
   | L.Primary.ArrayCreationDims _
   | L.Primary.ArrayCreationInit -> 13
@@ -138,10 +146,25 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
   match getlab node with
   | L.Error -> ()
 
-  | L.ReferenceTypeElem n ->
-      pr_selected ~sep:pr_space ~tail:pr_space L.is_annotation children;
-      pr_name n;
-      pr_selected L.is_typearguments children
+  | L.CatchParameter(n, dims) ->
+      pb#open_box 0;
+      pr_selected ~tail:pr_space L.is_modifiers children;
+      pr_selected ~sep:pr_bor ~tail:pr_space L.is_type children;
+      pr_id n; pr_dims dims;
+      pb#close_box()
+
+  | L.ResourceSpec ->
+      pr_lparen();
+      pb#pr_hova pr_semicolon pr_node children;
+      pr_rparen()
+
+  | L.Resource(n, dims) ->
+      pb#open_box 0;
+      pr_selected ~tail:pr_space L.is_modifiers children;
+      pr_selected ~tail:pr_space L.is_type children;
+      pr_id n; pr_dims dims; pad 1; pr_string "="; pr_space();
+      pr_selected L.is_expression children;
+      pb#close_box()
 
   | L.InferredParameter n -> pr_string n
   | L.InferredParameters ->
@@ -193,7 +216,7 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
       | L.Modifier.Transient    -> pr_string "transient"
       | L.Modifier.Volatile     -> pr_string "volatile"
       | L.Modifier.Strictfp     -> pr_string "strictfp"
-      | L.Modifier.Annotation   -> pr_node children.(0)
+(*      | L.Modifier.Annotation   -> pr_node children.(0)*)
       | L.Modifier.Default      -> pr_string "default"
   end
 
@@ -224,7 +247,9 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
       pr_selected ~tail:pr_space L.is_modifiers specs;
       pr_string "enum "; pr_id i; 
       pr_selected L.is_implements specs;
-      pb#close_box(); pr_selected ~blk_style L.is_enumbody children; pb#close_box()
+      pb#close_box();
+      pr_selected ~blk_style L.is_enumbody children;
+      pb#close_box()
 
   | L.Interface i ->
       let specs = get_specs children in
@@ -239,9 +264,10 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
       pb#close_box()
 
   | L.AnnotationType i ->
+      let specs = get_specs children in
       pb#open_vbox 0;
       pb#open_box 0;
-      pr_selected ~tail:pr_space L.is_modifiers children;
+      pr_selected ~tail:pr_space L.is_modifiers specs;
       pr_string "@interface "; pr_id i;
       pb#close_box(); 
       pr_selected ~blk_style L.is_annotationtypebody children; 
@@ -260,9 +286,9 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
         if nchildren = 0 then
           pr_string "{}"
         else begin
-          pr_selected ~pra:pb#pr_hova ~sep:pr_comma L.is_enumconstant children;
           pb#pr_block_begin_tall(); 
-          pr_selected ~blk_style ~sep:pr_space L.is_classbodydecl children;
+          pr_selected ~pra:pb#pr_hova ~sep:pr_comma L.is_enumconstant children;
+          pr_selected ~blk_style ~head:pr_semicolon ~sep:pr_space L.is_classbodydecl children;
           pb#pr_block_end()
         end
 
@@ -285,9 +311,9 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
         end
 
   | L.EnumConstant i ->
-      pr_selected ~blk_style L.is_annotations children;
+      pr_selected ~blk_style ~tail:pr_space L.is_annotations children;
       pr_id i;
-      pr_arguments children;
+      pr_selected ~head:pr_lparen ~tail:pr_rparen L.is_arguments children;
       pr_selected ~blk_style L.is_classbody children
 
   | L.Super -> ()
@@ -345,9 +371,13 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
         pb#pr_block_end()
       end
 
-  | L.Wildcard -> pr_string "?"
-  | L.WildcardBoundsExtends -> pr_string "? extends "; pr_node children.(0)
-  | L.WildcardBoundsSuper -> pr_string "? super "; pr_node children.(0)
+  | L.Wildcard ->
+      pr_selected ~sep:pr_space ~tail:pr_space L.is_annotations children;
+      pr_string "?";
+      pr_selected L.is_wildcard_bounds children
+
+  | L.WildcardBoundsExtends -> pr_string " extends "; pr_node children.(0)
+  | L.WildcardBoundsSuper -> pr_string " super "; pr_node children.(0)
 
   | L.Extends ->
       pr_break 1 pb#indent; 
@@ -364,12 +394,18 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
       pr_string "extends "; 
       pb#pr_hova pr_comma pr_node children
 
-  | L.ATEDabstract i ->
+  | L.ElementDeclaration i ->
       pb#open_box 0;
       pr_selected ~tail:pad1 L.is_modifiers children;
-      pr_selected L.is_type children; pad 1; pr_id i;
-      pr_selected L.is_elementvalue children;
-      pr_semicolon()
+      pr_selected L.is_type children; pad 1; pr_id i; pr_string "()";
+      pr_selected L.is_annot_dim children;
+      pr_selected ~head:(fun _ -> pr_string " default ") L.is_elementvalue children;
+      pr_semicolon();
+      pb#close_box()
+
+  | L.AnnotDim ->
+      pr_selected ~sep:pr_space ~tail:pr_space L.is_annotations children;
+      pr_string "[]";
 
   | L.FieldDeclarations _ -> pb#pr_a pr_space pr_node children
 
@@ -384,11 +420,13 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
 
   | L.Expression e -> pr_expression ~prec e children
 
-  | L.TypeArguments _ -> pr_string "<"; pb#pr_a pr_comma pr_node children; pr_string ">";
+  | L.TypeArguments _ ->
+      pr_string "<"; pb#pr_a _pr_comma pr_node children; pr_string ">";
 
   | L.NamedArguments _ | L.Arguments -> pb#pr_a pr_comma pr_node children
 
-  | L.TypeParameters _ -> pr_string "<"; pb#pr_a pr_comma pr_node children; pr_string ">"
+  | L.TypeParameters _ ->
+      pr_string "<"; pb#pr_a _pr_comma pr_node children; pr_string ">"
 
   | L.TypeParameter i ->
       pr_selected ~sep:pr_space ~tail:pr_space L.is_annotation children;
@@ -397,7 +435,7 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
 
   | L.TypeBound -> pb#pr_a pr_amp pr_node children
 
-  | L.Type ty -> 
+  | L.Type ty ->
       if nchildren = 0 then begin
         pr_string (type_to_string ty)
       end
@@ -410,15 +448,18 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
           | L.Type.Char
           | L.Type.Float
           | L.Type.Double
-          | L.Type.Boolean -> 
+          | L.Type.Boolean -> begin
               pr_selected ~sep:pr_space ~tail:pr_space L.is_annotation children;
               pr_string (type_to_string ty)
-
-          | L.Type.ClassOrInterface _
-          | L.Type.Class _
-          | L.Type.Interface _ ->
-              pb#pr_a pr_dot pr_node children
-                
+          end
+          | L.Type.ClassOrInterface n
+          | L.Type.Class n
+          | L.Type.Interface n -> begin
+              pr_selected ~tail:pr_dot L.is_type children;
+              pr_selected ~sep:pr_space ~tail:pr_space L.is_annotation children;
+              pr_name n;
+              pr_selected L.is_typearguments children
+          end
           | L.Type.Array(ty, dims)    -> pr_ty ty; pr_string (dims_to_string dims)
 
           | L.Type.Void               -> pr_string "void"
@@ -434,8 +475,6 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
 
   | L.Throws _ -> pr_break 1 pb#indent; pr_string "throws "; pr_types children; pr_space()
 
-  | L.ReturnType _ -> pr_node children.(0)
-
   | L.Parameters _ -> pb#pr_hova pr_comma pr_node children
 
   | L.Parameter(i, dims, va) ->
@@ -450,7 +489,7 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
       pb#open_box 0;
       pr_selected ~tail:pad1 L.is_modifiers children;
       pr_typeparameters children;
-      pr_selected L.is_returntype children; pad 1;
+      pr_selected L.is_type children; pad 1;
       pr_id i; 
       pr_parameters children;
       pr_selected ~head:pad1 L.is_throws children;
@@ -476,7 +515,7 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
   | L.CatchClause ->
       pr_string "catch ("; 
       pr_node children.(0);
-      pr_rparen();
+      pr_rparen(); pr_space();
       pr_node children.(1)
 
   | L.SLconstant -> pr_string "case "; pr_node children.(0); pr_string ":"
@@ -488,11 +527,13 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
       pb#pr_block_end()
 
   | L.SwitchBlockStatementGroup ->
+      pb#open_vbox 0;
       pr_selected ~sep:pr_space L.is_switchlabel children; pr_break 1 pb#indent;
       pb#open_vbox 0;
       pr_selected ~sep:pr_space
         (fun lab -> L.is_block lab || L.is_blockstatement lab)
         children;
+      pb#close_box();
       pb#close_box()
 
   | L.Statement stmt -> begin
@@ -507,17 +548,37 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
           pr_semicolon()
 
       | L.Statement.If ->
-          pr_string "if ("; pr_node children.(0); pr_rparen(); pad 1;
-          pr_node children.(1);
-          if nchildren > 2 then begin
-            pr_string " else "; pr_node children.(2)
+          pr_string "if ("; pr_node children.(0); pr_rparen();
+          begin
+            try
+              if L.is_block (getlab (children.(1))) then
+                pad 1
+              else
+                pr_break 1 pb#indent;
+            with
+              _ -> pad 1
+          end;
+          if nchildren < 2 then
+            pr_string "{}"
+          else begin
+            pr_node children.(1);
+            if nchildren > 2 then begin
+              let else_part = children.(2) in
+              pr_space(); pr_string "else";
+              let else_lab = getlab else_part in
+              if L.is_block else_lab || L.is_if else_lab then
+                pad 1
+              else
+                pr_break 1 pb#indent;
+              pr_node else_part
+            end
           end
 
       | L.Statement.For ->
           pr_string "for ("; 
           pr_selected L.is_forinit children; pr_semicolon();
           pr_selected L.is_forcond children; pr_semicolon();
-          pr_selected L.is_forupdate children; pr_rparen(); pad 1;
+          pr_selected L.is_forupdate children; pr_rparen(); pr_space();
           pr_selected ~blk_style L.is_statement_or_block children
 
       | L.Statement.ForEnhanced ->
@@ -526,11 +587,11 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
           pr_string " : ";
           pr_node children.(1);
           pr_rparen();
-          pad 1;
+          pr_space();
           pr_node children.(2)
 
       | L.Statement.While ->
-          pr_string "while ("; pr_nth_child 0; pr_rparen(); pad 1;
+          pr_string "while ("; pr_nth_child 0; pr_rparen(); pr_space();
           pr_nth_child 1
 
       | L.Statement.Do ->
@@ -538,22 +599,18 @@ let rec pr_node ?(blk_style=BSshort) ?(prec=0) node =
           pr_string " while ("; pr_node children.(1); pr_rparen(); pr_semicolon()
 
       | L.Statement.Try ->
-          pr_string "try "; pr_node children.(0);
-          if nchildren > 2 then begin
-	    pr_node children.(1); pad 1;
-	    pr_node children.(2)
-          end
-          else if nchildren = 2 then begin
-            pad 1;
-            pr_node children.(1)
-          end
+          pr_string "try ";
+          pr_selected ~tail:pad1 L.is_resource_spec children;
+          pr_selected ~tail:pad1 L.is_block children;
+          pr_selected ~tail:pad1 L.is_catches children;
+          pr_selected ~tail:pad1 L.is_finally children
 
       | L.Statement.Switch ->
-          pr_string "switch ("; pr_node children.(0); pr_rparen(); pad 1;
+          pr_string "switch ("; pr_node children.(0); pr_rparen(); pr_space();
           pr_node children.(1)
 
       | L.Statement.Synchronized ->
-          pr_string "synchronized ("; pr_node children.(0); pr_rparen(); pad 1;
+          pr_string "synchronized ("; pr_node children.(0); pr_rparen(); pr_space();
           pr_node children.(1)
 
       | L.Statement.Return ->
@@ -735,7 +792,7 @@ and pr_primary ?(prec=0) p children =
 
   | L.Primary.SimpleMethodInvocation i ->
       pb#open_box 0; 
-      pr_selected L.is_qualifier children; pr_id (undeco i); pr_cut();
+      pr_selected L.is_qualifier children; pr_id (undeco i);
       pr_arguments children;
       pb#close_box()
 
@@ -743,25 +800,32 @@ and pr_primary ?(prec=0) p children =
       pb#open_box 0; 
       pr_selected ~prec:(get_prec_of_sym ".") L.is_primary children; pr_dot(); 
       pr_typearguments children;
-      pr_id (undeco i); pr_cut(); pr_arguments children;
+      pr_id (undeco i); pr_arguments children;
+      pb#close_box()
+
+  | L.Primary.AmbiguousMethodInvocation i ->
+      pb#open_box 0;
+      pr_selected ~prec:(get_prec_of_sym ".") L.is_primary children; pr_dot();
+      pr_typearguments children;
+      pr_id (undeco i); pr_arguments children;
       pb#close_box()
 
   | L.Primary.TypeMethodInvocation(n, i) ->
       pb#open_box 0; 
       pr_name n; pr_dot(); pr_typearguments children;
-      pr_id (undeco i); pr_cut(); pr_arguments children;
+      pr_id (undeco i); pr_arguments children;
       pb#close_box()
 
   | L.Primary.SuperMethodInvocation i ->
       pb#open_box 0; 
       pr_string "super."; pr_typearguments children; 
-      pr_id (undeco i); pr_cut(); pr_arguments children;
+      pr_id (undeco i); pr_arguments children;
       pb#close_box()
 
   | L.Primary.ClassSuperMethodInvocation i ->
       pb#open_box 0; 
       pr_selected L.is_type children; pr_string ".super."; pr_typearguments children; 
-      pr_id (undeco i); pr_cut(); pr_arguments children;
+      pr_id (undeco i); pr_arguments children;
       pb#close_box()
 
   | L.Primary.ArrayAccess ->
@@ -782,7 +846,9 @@ and pr_primary ?(prec=0) p children =
 
   | L.Primary.Paren _ ->
       let e = children.(0) in
-      begin
+      (*if (get_prec (getlab e)) >= prec then
+        pr_node e
+      else *)begin
         pr_lparen(); pr_node e; pr_rparen()
       end
 
@@ -812,6 +878,7 @@ and pr_primary ?(prec=0) p children =
       pr_name n; pr_cc(); pr_typearguments children; pr_string "new";
       pb#close_box()
 
+  | L.Primary.AmbiguousName n -> pr_name (norm_fqn n)
 
 and pr_expression ?(prec=0) e children =
   let prec' = get_prec_of_expression e in
@@ -897,7 +964,7 @@ and pr_expression ?(prec=0) e children =
 
 let unparse t = 
   pb#open_box 0;
-  pr_string "// generated by CCA Java Unparser"; force_newline();
+  pr_string "// generated by Diff/AST Java Unparser"; force_newline();
   pr_node t;
   pb#close_box();
   pr_flush()

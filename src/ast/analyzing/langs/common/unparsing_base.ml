@@ -42,8 +42,11 @@ let pr_char        = Format.print_char
 let pr_bool        = Format.print_bool
 let pr_flush       = Format.print_flush
 
-let pr_comma()     = pr_string ", "
+let _pr_comma()    = pr_string ","
+let _pr_eq()       = pr_string "="
+let pr_comma()     = pr_string ","; pr_space()
 let pr_eq()        = pr_string " = "
+
 let pr_lparen()    = pr_string "("
 let pr_rparen()    = pr_string ")"
 let pr_lbracket()  = pr_string "["
@@ -56,6 +59,7 @@ let pr_ellipsis()  = pr_string "..."
 let pr_amp()       = pr_string "&"
 let pr_colon()     = pr_string ":"
 let pr_semicolon() = pr_string ";"
+let pr_bor()       = pr_string "|"
 let pr_none()      = ()
 
 let force_newline = Format.force_newline
