@@ -196,7 +196,7 @@ let _to_string = function
   | DataStmt                    -> "DataStmt"
   | DeallocateStmt              -> "DeallocateStmt"
   | DerivedTypeStmt n           -> "DerivedTypeStmt:"^n
-  | DimensionStmt               -> "DimentionStmt"
+  | DimensionStmt               -> "DimensionStmt"
   | DoStmt(n_opt, l_opt, v_opt) -> "DoStmt"^(string_opt_to_string ~prefix:":" n_opt)^(string_opt_to_string ~prefix:":" l_opt)^(string_opt_to_string ~prefix:":" v_opt)
   | ElseIfStmt n_opt            -> "ElseIfStmt"^(string_opt_to_string ~prefix:":" n_opt)
   | ElseStmt n_opt              -> "ElseStmt"^(string_opt_to_string ~prefix:":" n_opt)
@@ -507,7 +507,7 @@ let _to_tag = function
   | DataStmt                    -> "DataStmt", []
   | DeallocateStmt              -> "DeallocateStmt", []
   | DerivedTypeStmt n           -> "DerivedTypeStmt", [name_attr_name,n]
-  | DimensionStmt               -> "DimentionStmt", []
+  | DimensionStmt               -> "DimensionStmt", []
   | DoStmt(n_opt, l_opt, v_opt) -> "DoStmt", (string_opt_to_attr name_attr_name n_opt) @ (string_opt_to_attr label_attr_name l_opt) @ (string_opt_to_attr var_attr_name v_opt)
   | ElseIfStmt n_opt            -> "ElseIfStmt", (string_opt_to_attr name_attr_name n_opt)
   | ElseStmt n_opt              -> "ElseStmt", (string_opt_to_attr name_attr_name n_opt)
