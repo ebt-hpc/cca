@@ -360,7 +360,7 @@ let ___make_file_entity enc_str fid_str =
 let __make_file_entity options ?(force_PVF=false) ~digest ~path proj_root (vkind, version) =
   let enc_str = get_enc_str options ~force_PVF () in
   let file_id_str = 
-    _encode_fid options ~force_PVF ~digest ~path proj_root (vkind, version) 
+    _encode_fid options ~force_PVF ~digest ~path proj_root (vkind, version)
   in
   ___make_file_entity enc_str file_id_str
 
@@ -427,8 +427,7 @@ let make_binding ?(loc_opt=None) options tree bid =
           end
       | None -> tree#source_digest, tree#source_path
     in
-    _make_binding options 
-      ~digest ~path tree#proj_root (tree#vkind, tree#version) bid
+    _make_binding options ~digest ~path tree#proj_root (tree#vkind, tree#version) bid
   end
   else
     make_qname binding_prefix (BID.to_raw bid)
@@ -603,7 +602,7 @@ class dumper_gen ?(overwrite=true) ?(comp=C.none) (dest : Xchannel.Destination.t
   val ch = new Xchannel.out_channel ~overwrite ~comp dest
 
   method _printf fmt =
-    Printf.ksprintf (fun s -> ignore (ch#output s 0 (String.length s))) fmt
+    Printf.ksprintf (fun s -> ignore (ch#output_ s 0 (String.length s))) fmt
 	
   method output_triple tri =
     try

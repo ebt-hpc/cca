@@ -121,3 +121,7 @@ let get_bid_opt = function
 let get_use_count = function
   | Def(_, Used n) -> n
   | _ -> raise Not_found
+
+let get_loc = function
+  | Use(_, Some loc) -> loc
+  | _ -> raise Not_found

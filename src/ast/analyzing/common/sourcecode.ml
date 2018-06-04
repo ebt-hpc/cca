@@ -253,7 +253,6 @@ module Tree (L : Spec.LABEL_T) = struct
         if not (List.mem b bindings) then
           bindings <- b :: bindings
 
-
       method get_ident_use = L.get_ident_use lab
 
       val mutable origin = unknown_origin
