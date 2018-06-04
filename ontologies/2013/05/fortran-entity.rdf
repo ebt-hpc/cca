@@ -27,47 +27,6 @@
     
 
 
-    <!-- http://codinuum.com/ontologies/2012/10/source-code-entity#treeDigest -->
-
-    <rdf:Description rdf:about="http://codinuum.com/ontologies/2012/10/source-code-entity#treeDigest">
-        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
-    </rdf:Description>
-    
-
-
-    <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig -->
-
-    <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig">
-        <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#ArrayAccess"/>
-        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig0 -->
-
-    <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig0">
-        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig"/>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig1 -->
-
-    <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig1">
-        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig"/>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig2 -->
-
-    <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig2">
-        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig"/>
-    </owl:ObjectProperty>
-    
-
-
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#declarationTypeSpec -->
 
     <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#declarationTypeSpec"/>
@@ -739,15 +698,6 @@
     
 
 
-    <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#name -->
-
-    <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#name">
-        <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
-        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
-    </owl:ObjectProperty>
-    
-
-
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#provides -->
 
     <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#provides">
@@ -775,14 +725,6 @@
     
 
 
-    <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#signature -->
-
-    <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#signature">
-        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
-    </owl:ObjectProperty>
-    
-
-
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#stride -->
 
     <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#stride">
@@ -797,15 +739,6 @@
     <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#terminal">
         <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#DoConstruct"/>
         <rdfs:range rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Expr"/>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#value -->
-
-    <owl:ObjectProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#value">
-        <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
-        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
     </owl:ObjectProperty>
     
 
@@ -832,31 +765,43 @@
 
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig -->
 
-    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig"/>
+    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig">
+        <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#ArrayAccess"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+    </owl:DatatypeProperty>
     
 
 
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig0 -->
 
-    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig0"/>
+    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig0">
+        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig"/>
+    </owl:DatatypeProperty>
     
 
 
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig1 -->
 
-    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig1"/>
+    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig1">
+        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig"/>
+    </owl:DatatypeProperty>
     
 
 
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig2 -->
 
-    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig2"/>
+    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig2">
+        <rdfs:subPropertyOf rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#arrayRefSig"/>
+    </owl:DatatypeProperty>
     
 
 
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#name -->
 
-    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#name"/>
+    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#name">
+        <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+    </owl:DatatypeProperty>
     
 
 
@@ -871,19 +816,28 @@
 
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#signature -->
 
-    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#signature"/>
+    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#signature">
+        <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+    </owl:DatatypeProperty>
     
 
 
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#typeSpec -->
 
-    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#typeSpec"/>
+    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#typeSpec">
+        <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+    </owl:DatatypeProperty>
     
 
 
     <!-- http://codinuum.com/ontologies/2013/05/fortran-entity#value -->
 
-    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#value"/>
+    <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#value">
+        <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+    </owl:DatatypeProperty>
     
 
 
@@ -891,6 +845,7 @@
 
     <owl:DatatypeProperty rdf:about="http://codinuum.com/ontologies/2013/05/fortran-entity#variableName">
         <rdfs:domain rdf:resource="http://codinuum.com/ontologies/2013/05/fortran-entity#Entity"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
     </owl:DatatypeProperty>
     
 
