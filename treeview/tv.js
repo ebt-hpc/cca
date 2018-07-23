@@ -48,7 +48,7 @@ function scrollTo(id, align_top) {
     var top = pos.top;
     var left = pos.left;
     if (align_top) {
-      top -= 24;
+      //top -= 24;
     } else {
       var h = get_window_height();
       top -= h / 2;
@@ -326,6 +326,64 @@ function recover_last_view(jstree) {
   }
 }
 
+function handle_search_result(jstree, kw, parents, nodes) {
+  var m = jstree._model.data;
+  var count = nodes.length;
+
+  if (count == 0) {
+    $('#count').text(0);
+
+  } else if (count > 0) {
+
+    var need_to_redraw = [];
+
+    parents = $.vakata.array_unique(parents);
+
+    for (var i = 0; i < parents.length; i++) {
+      parent = m[parents[i]];
+      if (!parent.state.opened && parent.id !== '#') {
+        parent.state.opened = true;
+        need_to_redraw.push(parent);
+      }
+    }
+
+    $('#count').text(count);
+    console.log('hits:', count);
+
+    console.log('need_to_redraw:', need_to_redraw.length);
+
+    for (var i = 0; i < need_to_redraw.length; i++) {
+      //console.log(need_to_redraw[i]);
+      redraw_node(need_to_redraw[i], jstree);
+    }
+    for (var i = 0; i < nodes.length; i++) {
+      redraw_node(nodes[i], jstree);
+    }
+
+    //console.log(nodes);
+
+    nodes.sort(function (x0, x1) {
+      return cmp_lns(get_lns(m, x0), get_lns(m, x1));
+    });
+
+    //console.log(nodes.map(function(x){return get_lns(m, x).join();}));
+
+    jstree.search_result = {'kw':kw,'nodes':nodes,'idx':0};
+
+    var id0 = nodes[0].id;
+    console.log('id0:', id0);
+
+    window.requestAnimationFrame(function (timestamp) {
+      var elem = document.getElementById(id0);
+      if (elem) {
+        scrollTo(id0);
+        set_cur(0);
+      }
+    });
+
+  }
+}
+
 function jump_to_callee(node) {
   if (node.children.length == 0) {
     var jstree, callee_name, callees;
@@ -336,7 +394,14 @@ function jump_to_callee(node) {
       console.log('callees: '+callee_name+' -> ',callees);
       if (callees) {
         add_to_history(jstree, node.id);
-        scrollTo(callees[0], true);
+        var nodes = [], nd, parents = [];
+        for (var i in callees) {
+          nd = jstree.get_node(callees[i]);
+          nodes.push(nd);
+          nd.state.selected = true;
+          parents = parents.concat(nd.parents);
+        }
+        handle_search_result(jstree, '', parents, nodes);
       }
     }
   }
@@ -360,7 +425,14 @@ function jump_to_callee_or(node, open_source) {
           'Jump to callee': function () {
             $(this).dialog('close');
             add_to_history(jstree, node.id);
-            scrollTo(callees[0], true);
+            var nodes = [], nd, parents = [];
+            for (var i in callees) {
+              nd = jstree.get_node(callees[i]);
+              nodes.push(nd);
+              nd.state.selected = true;
+              parents = parents.concat(nd.parents);
+            }
+            handle_search_result(jstree, '', parents, nodes);
             //$(this).dialog('destroy');
           },
           'Open source' : function () {
@@ -821,6 +893,7 @@ function list_comments() {
   dialog.dialog('open');
 
 }
+
 
 function treeview(data_url, vkind, vid, algo, meth) {
   global_timer.start();
@@ -1338,60 +1411,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
           }
         });
 
-        var count = nodes.length;
-
-        if (count == 0) {
-          $('#count').text(0);
-
-        } else if (count > 0) {
-          
-          var need_to_redraw = [];
-
-          parents = $.vakata.array_unique(parents);
-          
-          for (var i = 0; i < parents.length; i++) {
-            parent = m[parents[i]];
-            if (!parent.state.opened && parent.id !== '#') {
-              parent.state.opened = true;
-              need_to_redraw.push(parent);
-            }
-          }
-
-          $('#count').text(count);
-          console.log('hits:', count);
-
-          console.log('need_to_redraw:', need_to_redraw.length);
-
-          for (var i = 0; i < need_to_redraw.length; i++) {
-            //console.log(need_to_redraw[i]);
-            redraw_node(need_to_redraw[i], jstree);
-          }
-          for (var i = 0; i < nodes.length; i++) {
-            redraw_node(nodes[i], jstree);
-          }
-
-          //console.log(nodes);
-
-          nodes.sort(function (x0, x1) {
-            return cmp_lns(get_lns(m, x0), get_lns(m, x1));
-          });
-
-          //console.log(nodes.map(function(x){return get_lns(m, x).join();}));
-          
-          jstree.search_result = {'kw':kw,'nodes':nodes,'idx':0};
-
-          var id0 = nodes[0].id;
-          console.log('id0:', id0);
-
-          window.requestAnimationFrame(function (timestamp) {
-            var elem = document.getElementById(id0);
-            if (elem) {
-              scrollTo(id0);
-              set_cur(0);
-            }
-          });
-
-        }
+        handle_search_result(jstree, kw, parents, nodes);
 
       }, 200);
     }
