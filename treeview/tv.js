@@ -11,6 +11,10 @@ var EXPAND_RELEVANT_LOOPS = 'expand_relevant_loops'
 var EXPAND_ALL            = 'expand_all'
 var COLLAPSE_ALL          = 'collapse_all'
 
+var ALL     = 'All'
+var CODE    = 'Code'
+var COMMENT = 'Comment'
+
 var ICONS_DIR = '../treeview/icons'
 
 var USER = $('#user').text();
@@ -20,6 +24,15 @@ var VER = $('#ver').text();
 var PID = PROJ.replace(/_git$/, '.git');
 
 var HISTORY_LENGTH = 3
+
+var ua = window.navigator.userAgent.toLowerCase();
+var safari = ua.indexOf("safari") != -1 && ua.indexOf("chrome") == -1;
+var kernel_button_bg = $('#kernelButton').css('background-color');
+var go_button_bg = $('#goButton').css('background-color');
+var prev_button_bg = $('#prevButton').css('background-color');
+var next_button_bg = $('#nextButton').css('background-color');
+var clear_button_bg = $('#clearButton').css('background-color');
+
 
 function Timer() {
   this.start_time = 0;
@@ -825,10 +838,20 @@ function jump_to_next() {
 function jump_to_comment() {
   var sel = $('#comments');
   sel.removeClass('ui-state-error');
-  var i = sel.val();
-  if (i != '') {
-    console.log('jump_to_comment:', i);
-    scrollTo(i);
+  var comments = sel.val();
+  if (comments) {
+    var jstree = get_jstree();
+    var nodes = [], nd, parents = [];
+    for (var i in comments) {
+      var j = comments[i];
+      if (j) {
+        nd = jstree.get_node(comments[i]);
+        nodes.push(nd);
+        nd.state.selected = true;
+        parents = parents.concat(nd.parents);
+      }
+    }
+    handle_search_result(jstree, '', parents, nodes);
   }
   $('#dialog').dialog('close');
 }
@@ -855,7 +878,7 @@ function list_comments() {
   var dialog = $('#dialog').dialog('option', {
     autoOpen : true,
     width   : 400,
-    title   : 'Jump to comment',
+    title   : 'Comment list',
     buttons : {
       "Jump": function () {
         jump_to_comment();
@@ -873,8 +896,8 @@ function list_comments() {
 
   var mes = '<p>';
   mes += '<form>';
-  mes += '<select name="comments" id="comments" size=1 style="width:370px;">';
-  mes += '<option value="">Select a comment</option>'
+  mes += '<select multiple name="comments" id="comments" size=1 style="width:370px;">';
+  mes += '<option value="">Select comment(s)</option>'
   for (var i in comments) {
     mes += '<option value="'+comments[i][1]+'">'+comments[i][0]+'</option>';
   }
@@ -1118,7 +1141,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
             },
           },
           "list_comments" : {
-            "label" : "Jump to Comment",
+            "label" : "List Comments",
             "icon"  : ICONS_DIR+"/Bubble.png",
             "action" : function (obj) {
               list_comments();
@@ -1347,79 +1370,132 @@ function treeview(data_url, vkind, vid, algo, meth) {
   });
 
   var to = false;
-  $('#search').keypress(function (ev) {
-    if (ev.which == 13) {
-      $('#search').blur();
 
-      if (to) {
-        clearTimeout(to);
-      }
-      to = setTimeout(function () {
+  function search() {
+    var data_source = $('#datasrc').val();
 
-        var jstree = get_jstree();
-        console.log('search result:', jstree.search_result);
-        var kw = $('#search').val().toLowerCase();
+    console.log('search: '+data_source);
 
-        if (kw == '') {
-          clear_search();
+    if (to) {
+      clearTimeout(to);
+    }
+    to = setTimeout(function () {
+
+      var jstree = get_jstree();
+      console.log('search result:', jstree.search_result);
+      var kw = $('#search').val().toLowerCase();
+
+      if (kw == '') {
+        clear_search();
+        return;
+
+      } else {
+        var prev_kw = jstree.search_result['kw'];
+        if (kw == prev_kw) {
+          var idx = jstree.search_result['idx'] + 1;
+          var nds = jstree.search_result['nodes'];
+
+          if (idx >= nds.length) {
+            idx = 0;
+          }
+          //console.log(idx, nds[idx].original.code);
+
+          jstree.search_result['idx'] = idx;
+          var elem = document.getElementById(nds[idx].id);
+          if (elem) {
+            //elem.scrollIntoView();
+            scrollTo(nds[idx].id);
+          }
           return;
 
         } else {
-          var prev_kw = jstree.search_result['kw'];
-          if (kw == prev_kw) {
-            var idx = jstree.search_result['idx'] + 1;
-            var nds = jstree.search_result['nodes'];
+          clear_search();
+        }
+      }
+      console.log('searching for "%s"', kw);
 
-            if (idx >= nds.length) {
-              idx = 0;
-            }
-            //console.log(idx, nds[idx].original.code);
+      var d = mkpost();
+      d['search'] = kw;
+      d['datasrc'] = data_source;
+      post_log(d)
 
-            jstree.search_result['idx'] = idx;
-            var elem = document.getElementById(nds[idx].id);
-            if (elem) {
-              //elem.scrollIntoView();
-              scrollTo(nds[idx].id);
-            }
-            return;
+      //$('#outline').jstree(true).search(kw, true);
 
-          } else {
-            clear_search();
+      var nodes = [];
+      var root = jstree.get_node('#');
+      var m = jstree._model.data;
+      var parents = [], node, parent;
+
+      var search_comment = data_source == COMMENT;
+      var search_code = data_source == CODE;
+
+      if (data_source == ALL) {
+        search_comment = true;
+        search_code = true;
+      }
+
+      $.each(root.children_d, function (ii, i) {
+        node = m[i];
+
+        hit = false;
+
+        if (node.original.code && search_code) {
+          if (node.original.code.toLowerCase().includes(kw)) {
+            hit = true;
           }
         }
-        console.log('searching for "%s"', kw);
-
-        var d = mkpost();
-        d['search'] = kw;
-        post_log(d)
-
-        //$('#outline').jstree(true).search(kw, true);
-
-        var nodes = [];
-        var root = jstree.get_node('#');
-        var m = jstree._model.data;
-        var parents = [], node, parent;
-
-        $.each(root.children_d, function (ii, i) {
-          node = m[i];
-          if (node.original.code) {
-            if (node.original.code.toLowerCase().includes(kw)) {
-              node.state.selected = true;
-              nodes.push(node);
-              parents = parents.concat(node.parents);
-            }
+        if (node.a_attr.title && search_comment) {
+          if (node.a_attr.title.toLowerCase().includes(kw)) {
+            hit = true;
           }
-        });
+        }
 
-        handle_search_result(jstree, kw, parents, nodes);
+        if (hit) {
+          node.state.selected = true;
+          nodes.push(node);
+          parents = parents.concat(node.parents);
+        }
 
-      }, 200);
+      });
+
+      handle_search_result(jstree, kw, parents, nodes);
+
+    }, 200);
+
+  }
+
+  $('#search').keypress(function (ev) {
+    if (ev.which == 13) {
+      $('#search').blur();
+      search();
     }
   });
 
+  $('#goButton').on('click', function (ev) {
+    if (safari) {
+      $(ev.target).css('background-color', go_button_bg);
+    }
+    console.log('goButton: click');
+    search();
+  });
+
+  $('#datasrc').on('change', function () {
+    var datasrc = $('#datasrc').val();
+    console.log('datasrc: change: '+datasrc);
+    var kw = $('#search').val();
+    if (kw) {
+      clear_search();
+      search();
+    }
+  });
+
+
   get_jstree().search_result = {'kw':'','nodes':[],'idx':0};
 
-  $('#clearButton').on('click', function () {
+  $('#clearButton').on('click', function (ev) {
+    if (safari) {
+      $(ev.target).css('background-color', clear_button_bg);
+    }
     console.log('clearButton: click');
     $('#search').val('');
 
@@ -1430,25 +1506,44 @@ function treeview(data_url, vkind, vid, algo, meth) {
 
   });
 
-  $('#prevButton').on('click', function () {
+  $('#prevButton').on('click', function (ev) {
+    if (safari) {
+      $(ev.target).css('background-color', prev_button_bg);
+    }
     console.log('prevButton: click');
     jump_to_prev();
   });
 
-  $('#nextButton').on('click', function () {
+  $('#nextButton').on('click', function (ev) {
+    if (safari) {
+      $(ev.target).css('background-color', next_button_bg);
+    }
     console.log('nextButton: click');
     jump_to_next();
   });
 
-  $('#jumpToTarget').on('click', function () {
+  $('#kernelButton').on('click', function (ev) {
+    if (safari) {
+      $(ev.target).css('background-color', target_button_bg);
+    }
     var jstree = get_jstree();
     if (jstree.target_info) {
-      var idx = jstree.target_info['idx'];
+      var nodes = [], node, parents = [];
+      //var idx = jstree.target_info['idx'];
       var ids = jstree.target_info['ids'];
-
+      for (var i in ids) {
+        var elem = document.getElementById(ids[i]);
+        if (elem) {
+          node = jstree.get_node(ids[i]);
+          nodes.push(node);
+          //node.state.selected = true;
+          parents = parents.concat(node.parents);
+        }
+      }
+      handle_search_result(jstree, '', parents, nodes);
+/*
       var elem = document.getElementById(ids[idx]);
       if (elem)
-        //elem.scrollIntoView();
         scrollTo(ids[idx]);
 
       if (idx >= (ids.length - 1)) {
@@ -1456,6 +1551,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
       } else {
         jstree.target_info.idx += 1;
       }
+*/
     }
   });
 

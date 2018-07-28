@@ -55,11 +55,19 @@ HTML_TEMPL = '''<html>
 <table style="border-radius:20px 0px 0px 20px;float:right;background:#CADFF4;">
 <tr>
 <td><label>&nbsp;&nbsp;</label></td>
-<td><button id="jumpToTarget">Jump to Target</button></td>
-<td><label style="margin:3px;">&nbsp;&nbsp;&nbsp;&nbsp;Search:</label></td>
+<td><button id="kernelButton">Kernel?</button></td>
+<td><label style="margin:3px;">&nbsp;&nbsp;</label></td>
+<td><input class="search" type="text" size="28" id="search" value="" /></td>
 <td>
-<input class="search type="text" size="24" id="search" value=""></input>
+<div class="datasrc sel">
+<select id="datasrc" required>
+<option value="Code" selected>Code</option>
+<option value="Comment">Comment</option>
+<option value="All">All</option>
+</select>
+</div>
 </td>
+<td><button id="goButton"></button></td>
 <td style="padding-right:0px;"><button id="prevButton">&lt;</button></td>
 <td style="padding-left:0px;"><button id="nextButton">&gt;</button></td>
 <td><button id="clearButton">Clear</button></td>

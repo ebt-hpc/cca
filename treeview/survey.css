@@ -7,7 +7,7 @@ body {
     background: white ;
     margin: 0 ;
 
-    -webkit-touch-callout: none;
+    /*-webkit-touch-callout: none;*/
     -webkit-user-select: none;
     -khtml-user-select: none;
     -moz-user-select: none;
@@ -137,21 +137,101 @@ div.barValue {
 }
 
 input.search {
-    margin:0em 0em 0em 0em;
-    display:block;
-    padding:4px;
-    border:1px solid silver;
-
+    margin: 0em 0em 0em 0em;
+    display: block;
+    padding: 2px;
+    border: 1px solid silver;
+/*
     -moz-border-radius: 4px;
     -webkit-border-radius: 4px;
     border-radius:4px;
+*/
+}
+
+.datasrc {
+    overflow: hidden;
+    width: 98%;
+    margin: 0em 0em 0em 0em;
+    padding: 0; 
+    text-align: center;
+}
+.datasrc select {
+    width: 100%;
+    padding-right: 1em;
+    cursor: pointer;
+    text-indent: 0.01px;
+    text-overflow: ellipsis;
+    border: none;
+    outline: none;
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.datasrc select::-ms-expand {
+    display: none;
+}
+.datasrc.sel {
+    position: relative;
+    border: 1px solid silver;
+    /*border-radius: 2px;*/
+    background: #ffffff;
+}
+.datasrc.sel::before {
+    position: absolute;
+    top: 0.5em;
+    right: 0.9em;
+    width: 0;
+    height: 0;
+    padding: 0;
+    content: '';
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #666666;
+    pointer-events: none;
+}
+.datasrc.sel select {
+    margin: 0em 0em 0em 0em;
+    padding: 2px 38px 2px 8px;
+    color: #333333;
+}
+
+#kernelButton {
+    background-color: #fffbc6;
+    color: #492ba3;
+    height: 19px;
+}
+#kernelButton:active {
+    background-color: #dfdba6;
+    color: #391b93;
+}
+
+#goButton {
+    height: 19px;
+    width: 25px;
+    border: 0;
+    background: url(icons/Magnifying_glass.png) no-repeat 5px 2px;
+    background-color: #508ee6;
+    /*color: white;*/
+}
+#goButton:active {
+    background-color: #306ec6;
+    color: white;
 }
 
 #prevButton {
+    height: 19px;
     margin-right: 0px;
 }
-#nectButton {
+#nextButton {
+    height: 19px;
     margin-left: 0px;
+}
+
+#clearButton {
+    height: 19px;
 }
 
 .hit {
@@ -170,11 +250,11 @@ input.search {
 }
 
 button {
-    background-color: white;
+    background-color: #ffffff;
     color: black;
     border: 1px solid black;
     outline: none;
-    height: 115%;
+    height: 110%;
 
     -moz-border-radius: 4px;
     -webkit-border-radius: 4px;
@@ -227,6 +307,10 @@ span.metrics {
 label.es {
     margin: 3px;
     vertical-align: middle ;
+}
+
+.target_node select {
+    margin-bottom: 2px !important;
 }
 
 .on_level {
