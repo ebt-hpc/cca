@@ -74,8 +74,7 @@ else:
     if _node_data:
         node_data = json.loads(_node_data)
     else:
-        node_data = None
-
+        node_data = [{}]
     
     if proj and ver and node_data:
 

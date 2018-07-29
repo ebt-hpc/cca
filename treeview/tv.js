@@ -6,6 +6,10 @@
    @licence Apache-2.0
 */
 
+var HISTORY_SIZE = 3
+var MAX_COMMENT_LIST_SIZE = 10;
+var AJAX_TIMEOUT = 5000 //msec
+
 var EXPAND_TARGET_LOOPS   = 'expand_target_loops'
 var EXPAND_RELEVANT_LOOPS = 'expand_relevant_loops'
 var EXPAND_ALL            = 'expand_all'
@@ -22,8 +26,6 @@ var PROJ = $('#proj').text();
 var VER = $('#ver').text();
 
 var PID = PROJ.replace(/_git$/, '.git');
-
-var HISTORY_LENGTH = 3
 
 var ua = window.navigator.userAgent.toLowerCase();
 var safari = ua.indexOf("safari") != -1 && ua.indexOf("chrome") == -1;
@@ -249,7 +251,7 @@ function mkpost() { // mkpost([node])
     }
   }
 
-  if (node_data) {
+  if (node_data.length > 0) {
     d['node_data'] = JSON.stringify(node_data);
   }
 
@@ -263,6 +265,7 @@ function post_log(rec) {
     type: 'POST',
     url: '../cgi-bin/log',
     data: rec,
+    timeout: AJAX_TIMEOUT,
     success: function (data, status, xhr) {
       if (status == 'success') {
 
@@ -322,7 +325,7 @@ function setup_targets(jstree) {
 
 function add_to_history(jstree, x) {
   jstree.history.unshift(x);
-  if (jstree.history.length > HISTORY_LENGTH) {
+  if (jstree.history.length > HISTORY_SIZE) {
     jstree.history.pop();
   }
 }
@@ -870,7 +873,9 @@ function list_comments() {
     }
   });
 
-  if (comments.length == 0)
+  var ncomments = comments.length
+
+  if (ncomments == 0)
     return;
 
   var form;
@@ -894,9 +899,12 @@ function list_comments() {
     },
   });
 
+  var sz = ncomments > MAX_COMMENT_LIST_SIZE ? MAX_COMMENT_LIST_SIZE : ncomments;
+  sz++;
+
   var mes = '<p>';
   mes += '<form>';
-  mes += '<select multiple name="comments" id="comments" size=1 style="width:370px;">';
+  mes += '<select multiple name="comments" id="comments" size='+sz+' style="width:370px;">';
   mes += '<option value="">Select comment(s)</option>'
   for (var i in comments) {
     mes += '<option value="'+comments[i][1]+'">'+comments[i][0]+'</option>';
