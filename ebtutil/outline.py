@@ -26,7 +26,7 @@ import os
 
 from common import log, cca_path, create_argparser, predict_kernels, collect_readme
 from common import AnalyzerBase, OutlineForSurvey
-from common import METRICS_DIR, TARGET_DIR_NAME
+from common import METRICS_DIR, TARGET_DIR_NAME, DEFAULT_PORT
 
 OMITTED = set(['execution-part','do-block'])
 MODEL = 'minami'
@@ -36,6 +36,11 @@ BF1L, BF1U = -0.1, float('inf')
 BF2L, BF2U = -0.1, float('inf')
 
 class Analyzer(AnalyzerBase):
+
+    def __init__(self, mem=4, pw=None, port=DEFAULT_PORT, all_roots=False):
+        AnalyzerBase.__init__(self, mem=mem, pw=pw, port=port)
+        self._all_roots = all_roots
+
     def analyze_facts(self, proj_dir, proj_id, ver, dest_root, lang='fortran',
                       bf0l=BF0L, bf0u=BF0U,
                       bf1l=BF1L, bf1u=BF1U,
@@ -51,7 +56,7 @@ class Analyzer(AnalyzerBase):
                               ver=ver,
                               simple_layout=True)
 
-        ol.gen_data(lang, dest_root, omitted=OMITTED)
+        ol.gen_data(lang, dest_root, omitted=OMITTED, all_roots=self._all_roots)
 
         index = cca_path(os.path.join('lsi', 'survey-lsi-160.index'))
 
@@ -80,9 +85,12 @@ class Analyzer(AnalyzerBase):
 def main():
     parser = create_argparser('Analyze Fortran programs for outlining')
 
+    parser.add_argument('-a', '--all-roots', dest='all_roots', action='store_true',
+                        help='allow subprograms to be root nodes in addition to main programs')
+
     args = parser.parse_args()
 
-    a = Analyzer(mem=args.mem, pw=args.pw, port=args.port)
+    a = Analyzer(mem=args.mem, pw=args.pw, port=args.port, all_roots=args.all_roots)
 
     a.analyze_dir(args.proj_dir, proj_id=args.proj, keep_fb=args.keep_fb)
 

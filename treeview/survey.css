@@ -275,6 +275,12 @@ span.metrics {
     color: #a1522d;
 }
 
+.info {
+    font-style: italic;
+    font-size: 90%;
+    color: #505050;
+}
+
 .node {
     display: -webkit-inline-flex;
     display: inline-flex;

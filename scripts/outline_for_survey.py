@@ -150,6 +150,17 @@ TYPE_TBL = { # cat -> type
     'call-stmt*'                     : 'call*'
 }
 
+def get_root_entities(full=False):
+    s = set(['main-program'])
+    if full:
+        s |= set([
+            'subroutine-external-subprogram',
+            'subroutine-module-subprogram',
+            'function-external-subprogram',
+            'function-module-subprogram',
+        ])
+    return s
+
 #
 
 def is_compiler_directive(cats):
@@ -1329,6 +1340,8 @@ class Node(dp.base):
 
         is_filtered_out = False
 
+        self.ignored_callee_count = 0
+
         if is_caller:
             ancl_ = [self] + ancl
 
@@ -1389,8 +1402,14 @@ class Node(dp.base):
             # if self._callee_name in TARGET_NAMES:
             #     print('!!! 1 children_l=%s' % (node_list_to_string(children_l)))
 
+            def check_mark(nd):
+                b = is_marked(nd)
+                if not b and nd.cats & SUBPROGS:
+                    self.ignored_callee_count += 1
+                return b
+
             if is_marked:
-                children_l = filter(lambda c: is_marked(c), children_l)
+                children_l = filter(check_mark, children_l)
 
             # if self._callee_name in TARGET_NAMES:
             #     print('!!! 2 children_l=%s' % (node_list_to_string(children_l)))
@@ -1438,6 +1457,9 @@ class Node(dp.base):
             'el'       : self.get_end_line(),
             'children' : children,
         }
+
+        if self.ignored_callee_count:
+            d['ignored_callee_count'] = self.ignored_callee_count
 
         vpu = self.get_vpu()
         if vpu:
@@ -1854,6 +1876,9 @@ class Outline(dp.base):
             node = obj
             self._node_tbl[obj.key] = obj
         return node
+
+    def mark_node(self, nd):
+        self._marked_nodes.add(nd)
     
     def add_edge(self, lang, parent, child, mark=True):
         if parent is child:
@@ -1877,7 +1902,7 @@ class Outline(dp.base):
                 bf1 = mtbl[metrics.BF[1]]
                 bf2 = mtbl[metrics.BF[2]]
                 if bf0 or bf1 or bf2:
-                    self._marked_nodes.add(c)
+                    self.mark_node(c)
                 
             except KeyError:
                 pass
@@ -2362,7 +2387,7 @@ class Outline(dp.base):
         self._fid_idx_tbl_tbl = fid_idx_tbl_tbl
 
 
-    def gen_data(self, lang, outdir='.', extract_metrics=True, omitted=set()):
+    def gen_data(self, lang, outdir='.', extract_metrics=True, omitted=set(), all_roots=False):
 
         outline_dir = os.path.join(outdir, self._outline_dir)
         outline_v_dir = os.path.join(outline_dir, 'v')
@@ -2381,10 +2406,12 @@ class Outline(dp.base):
 
         count = 0
 
+        root_entities = get_root_entities(full=all_roots)
+
         # filter out trees that do not contain loops
         for root in tree['roots']:
             try:
-                if 'main-program' in root.cats:
+                if root.cats & root_entities:
                     for x in root.get_descendants():
                         if 'do-construct' in x.cats:
                             raise Exit
@@ -2971,6 +2998,9 @@ def main():
     parser.add_argument('--simple-layout', dest='simple_layout',
                         action='store_true', help='assumes simple directory layout')
 
+    parser.add_argument('-a', '--all-roots', dest='all_roots', action='store_true',
+                        help='allow subprograms to be root nodes in addition to main programs')
+
     parser.add_argument('-o', '--outdir', dest='outdir', default='.',
                         metavar='DIR', type=str, help='dump data into DIR')
 
@@ -3014,7 +3044,7 @@ def main():
         )
 
         for lang in QUERY_TBL.keys():
-            ol.gen_data(lang, args.outdir, omitted=set(OMITTED))
+            ol.gen_data(lang, args.outdir, omitted=set(OMITTED), all_roots=args.all_roots)
 
             if args.index:
                 dp.message('generating topic data...')
