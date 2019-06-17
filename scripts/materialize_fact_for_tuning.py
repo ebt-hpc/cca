@@ -45,7 +45,6 @@ QUERIES = { 'fortran' :
                 'materialize_stride.rq',
                 'materialize_stmt_in_loop.rq',
                 'materialize_loop_in_loop.rq',
-                'materialize_callee.rq',
                 'materialize_array_ref_sig0.rq',
                 'materialize_array_ref_sig1.rq',
                 'materialize_array_ref_sig2_0.rq',
@@ -54,6 +53,7 @@ QUERIES = { 'fortran' :
                 'materialize_compo_type_spec.rq',
                 'materialize_included_module_subprogram.rq',
                 'materialize_macro_type_spec.rq',
+                'materialize_callee.rq',
             ],
 }
 

@@ -1148,7 +1148,7 @@ class Outline(outline_for_survey.Outline):
 
             if ensure_dir(lver_dir):
                 for json_d in json_ds:
-                    json_file_name = self.gen_json_file_name(json_d['fid'])
+                    json_file_name = '%s.json' % json_d['fid']
                     json_path = os.path.join(lver_dir, json_file_name)
 
                     self.message('dumping JSON into "%s"...' % json_path)

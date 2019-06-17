@@ -1,6 +1,6 @@
 #
 # Copyright 2013-2018 RIKEN
-# Copyright 2018 Chiba Institute of Technology
+# Copyright 2018-2019 Chiba Institute of Technology
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-# Author: Masatomo Hashimoto <m.hashimoto@riken.jp>
+# Author: Masatomo Hashimoto <m.hashimoto@stair.center>
 
 
 DEFINE input:inference "ont.cpi"
@@ -143,29 +143,72 @@ WHERE {
   }
   UNION
   {
-    ?call f:refersTo ?pdecl .
+    {
+      SELECT DISTINCT ?call ?x
+      WHERE {
+        ?call f:refersTo ?pdecl .
 
-    ?pdecl a f:ProcDecl ;
+        ?pdecl a f:ProcDecl ;
+               src:binding ?b .
+
+        ?x a f:Name ;
            src:binding ?b .
-
-    ?x a f:Name ;
-       src:binding ?b .
+      } GROUP BY ?call ?x
+    }
     {
       ?x f:refersTo ?callee .
     }
     UNION
     {
-      ?x src:parent ?m .
-      ?m a ?mcat OPTION (INFERENCE NONE) .
-      FILTER (?mcat IN (f:AssignmentStmt,f:PointerAssignmentStmt))
+      ?x src:parent ?assign .
+      ?assign a ?assign_cat OPTION (INFERENCE NONE) .
+      FILTER (?assign_cat IN (f:AssignmentStmt,f:PointerAssignmentStmt))
       [] rdf:first ?x ;
-         rdf:rest/rdf:first ?y .
-      ?y src:binding ?b0 .
-      ?callee src:binding ?b0 .
+         rdf:rest/rdf:first ?rhs .
+      FILTER EXISTS {
+        ?rhs src:binding ?b0 .
+        ?callee src:binding ?b0 .
+      }
     }
-
     ?callee a f:Subprogram ;
             f:name ?callee_name .
+  }
+  UNION
+  {
+    ?assign a ?assign_cat OPTION (INFERENCE NONE) ;
+            src:children/rdf:first ?lhs ;
+            src:children/rdf:rest/rdf:first ?rhs .
+    FILTER (?assign_cat IN (f:AssignmentStmt,f:PointerAssignmentStmt))
+
+    ?rhs src:binding ?b .
+
+    ?callee a f:Subprogram ;
+            f:name ?callee_name ;
+            src:binding ?b .
+
+    ?dvar a f:PartName ;
+          src:parent+ ?lhs ;
+          f:declarator ?dtor .
+
+    ?var a f:PartName ;
+         f:declarator ?dtor ;
+         src:parent ?pdesig .
+
+    ?pdesig a f:ProcedureDesignator ;
+            src:parent ?call ;
+            f:name ?pdesig_name .
+
+    ?call f:name ?call_name .
+
+    [] rdf:first ?dvar ;
+       rdf:rest/rdf:first ?compo ;
+       rdf:rest/rdf:rest rdf:nil .
+
+    ?compo a ?compo_cat OPTION (INFERENCE NONE) ;
+           f:name ?call_name .
+
+    [] rdf:first ?var ;
+       rdf:rest/rdf:rest rdf:nil .
   }
 
 }
