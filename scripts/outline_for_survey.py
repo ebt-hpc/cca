@@ -5,7 +5,7 @@
   A script for outlining Fortran programs
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2018 Chiba Institute of Technology
+  Copyright 2017-2019 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import sys
@@ -1637,7 +1637,8 @@ class Outline(dp.base):
                  gitrepo=GIT_REPO_BASE,
                  proj_dir=PROJECTS_DIR,
                  ver='unknown',
-                 simple_layout=False):
+                 simple_layout=False,
+                 all_sps=False):
 
         self._proj_id = proj_id
         self._graph_uri = FB_NS + proj_id
@@ -1652,6 +1653,7 @@ class Outline(dp.base):
         self._metrics_dir = os.path.join(METRICS_DIR, self._proj_id)
 
         self._simple_layout = simple_layout
+        self._all_sps = all_sps
 
         self._conf = project.get_conf(proj_id)
         if not self._conf:
@@ -1906,6 +1908,9 @@ class Outline(dp.base):
                 
             except KeyError:
                 pass
+
+        elif mark and self._all_sps and c.cats & SUBPROGS and p.cats & CALLS:
+            self.mark_node(c)
 
     def get_tree(self, lang, callgraph=True, other_calls=True, directives=True, mark=True):
         t = self._tree_tbl.get(lang, None)
