@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institude of Technology
+   Copyright 2018-2019 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 (* fact extractor *)
 
 
@@ -200,8 +200,11 @@ module F (L : Label.T) = struct
                         self#add (entity, p_type_spec, tspec_lit)
                       end;
                       let a = spec#attr in
-                      let rank_lit = mklit ~ty:lit_ty_nn_int (string_of_int a#get_rank) in
-                      self#add (entity, p_rank, rank_lit)
+                      try
+                        let rank_lit = mklit ~ty:lit_ty_nn_int (string_of_int a#get_rank) in
+                        self#add (entity, p_rank, rank_lit)
+                      with
+                        Failure _ -> ()
                     with
                       Not_found -> ()
                   end;

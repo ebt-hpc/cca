@@ -699,9 +699,13 @@ GRAPH <%%(proj)s> {
 
       FILTER (?call_cat0 IN (f:CallStmt, f:FunctionReference, f:PartName))
 
-      FILTER NOT EXISTS {
-        ?call f:inContainerUnit ?c .
-      }
+      FILTER (NOT EXISTS {
+        ?call f:inContainerUnit [] .
+      } || EXISTS {
+        ?call f:inExecutionPart [] .
+      } || EXISTS {
+        ?call f:inDoBlock [] .
+      })
 
       GRAPH <http://codinuum.com/ont/cpi> {
         ?call_cat0 rdfs:label ?call_cat .

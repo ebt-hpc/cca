@@ -5,7 +5,7 @@
   Common functions
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2018 Chiba Institute of Technology
+  Copyright 2017-2019 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import sys
 import os
