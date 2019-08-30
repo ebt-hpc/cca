@@ -904,7 +904,8 @@ def index(idx_gen, data, callees_tbl):
 class Node(dp.base):
     def __init__(self, ver, loc, uri, cat='',
                  prog=None, sub=None,
-                 callee_name=None, pu_name=None, vpu_name=None):
+                 callee_name=None, pu_name=None, vpu_name=None,
+                 all_sps=False):
 
         self.relevant = False
         self.ver = ver
@@ -943,6 +944,8 @@ class Node(dp.base):
         self._parents_in_container = set() # exclude self
         self._nparent_loops_in_container = None
         self._max_chain = None
+
+        self._all_sps = all_sps
 
 
     def __eq__(self, other):
@@ -983,11 +986,14 @@ class Node(dp.base):
         if self.cats & LOOPS:
             b = True
         elif self.cats & CALLS:
-            m = MARKER_CALLEE_PAT.match(self._callee_name)
-            if m:
+            if self._all_sps:
                 b = True
             else:
-                b = self._callee_name.startswith('mpi_')
+                m = MARKER_CALLEE_PAT.match(self._callee_name)
+                if m:
+                    b = True
+                else:
+                    b = self._callee_name.startswith('mpi_')
         return b
 
     def count_parent_loops_in_container(self):
@@ -1955,7 +1961,7 @@ class Outline(dp.base):
                 call_node = Node(ver, loc, call, cat=call_cat, prog=prog, sub=sub,
                                  callee_name=callee_name,
                                  pu_name=pu_name,
-                                 vpu_name=vpu_name)
+                                 vpu_name=vpu_name, all_sps=self._all_sps)
 
                 parent_constr = row.get('constr', None)
 
@@ -2010,7 +2016,7 @@ class Outline(dp.base):
                 call_node = Node(ver, loc, call, cat=call_cat, prog=prog, sub=sub,
                                  callee_name=callee_name,
                                  pu_name=pu_name,
-                                 vpu_name=vpu_name)
+                                 vpu_name=vpu_name, all_sps=self._all_sps)
 
                 self.add_edge(lang, constr_node, call_node, mark=mark)
 
@@ -2172,7 +2178,7 @@ class Outline(dp.base):
                 call_node = Node(ver, loc, call, cat=cat, prog=prog, sub=sub,
                                  callee_name=callee_name,
                                  pu_name=pu_name,
-                                 vpu_name=vpu_name)
+                                 vpu_name=vpu_name, all_sps=self._all_sps)
 
                 if True or call_node.is_relevant():
                     self._relevant_nodes.add(call_node)
