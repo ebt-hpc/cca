@@ -291,7 +291,7 @@ def compute_state(user, proj, ver):
                     elif key == 'target':
                         snames = [EXPAND_TARGET_LOOPS]
                     else:
-                        snames = [EXPAND_RELEVANT_LOOPS,EXPAND_TARGET_LOOPS,EXPAND_ALL]
+                        snames = [EXPAND_RELEVANT_LOOPS,EXPAND_TARGET_LOOPS,EXPAND_ALL,COLLAPSE_ALL]
 
                     for sname in snames:
                         if stat.has_key(sname):
@@ -367,10 +367,10 @@ def compute_state(user, proj, ver):
                     clear_opened(filt=filt)
 
                 if stat.get(EXPAND_RELEVANT_LOOPS, False):
-                    clear_opened(filt=filt, key='relevant')
+                    clear_opened(filt=filt, key='relevant', clear_root=True)
 
                 if stat.get(EXPAND_TARGET_LOOPS, False):
-                    clear_opened(filt=filt, key='target')
+                    clear_opened(filt=filt, key='target', clear_root=True)
 
                 if stat.get(COLLAPSE_ALL, False):
                     clear_opened(filt=filt, clear_root=True)
