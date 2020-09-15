@@ -146,12 +146,13 @@ function findPos(obj) {
   }
 }
 
-function clear_search() {
+function clear_search(jstree) {
   console.log('clear_search');
   $('#count').text('');
   $('#cur').text('');
-
-  var jstree = get_jstree();
+  if (!jstree) {
+    jstree = get_jstree();
+  }
   var nds = jstree.search_result['nodes']
   var n = nds.length, nd;
   for (var i = 0; i < n; i++) {
@@ -404,6 +405,7 @@ function jump_to_callee(node) {
   if (node.children.length == 0) {
     var jstree, callee_name, callees;
     jstree = get_jstree();
+    clear_search(jstree);
     if (jstree.callees_tbl) {
       callee_name = node.original.callee;
       callees = jstree.callees_tbl[callee_name];
@@ -427,6 +429,7 @@ function jump_to_callee_or(node, open_source) {
   if (node.children.length == 0) {
     var jstree, callee_name, callees;
     jstree = get_jstree();
+    clear_search(jstree);
     callee_name = node.original.callee;
     if (jstree.callees_tbl) {
       callees = jstree.callees_tbl[callee_name];
@@ -1394,7 +1397,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
       var kw = $('#search').val().toLowerCase();
 
       if (kw == '') {
-        clear_search();
+        clear_search(jstree);
         return;
 
       } else {
@@ -1417,7 +1420,7 @@ function treeview(data_url, vkind, vid, algo, meth) {
           return;
 
         } else {
-          clear_search();
+          clear_search(jstree);
         }
       }
       console.log('searching for "%s"', kw);
