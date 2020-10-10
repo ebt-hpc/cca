@@ -1,10 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   Counting operations in Fortran programs
 
-  Copyright 2013-2017 RIKEN
+  Copyright 2013-2018 RIKEN
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -19,11 +20,11 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import re
-from urllib import urlencode
+from urllib.parse import urlencode
 import json
 
 import pathsetup
@@ -119,7 +120,7 @@ def collect_readme(proj, outdir, gitrepo=GIT_REPO_BASE):
             with open(json_path, 'w') as jsonf:
                 json.dump(links, jsonf)
 
-        except Exception, e:
+        except Exception as e:
             dp.warning(str(e))
 
     for d in links:

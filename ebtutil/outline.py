@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   Outlining Fortran programs
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2019 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.

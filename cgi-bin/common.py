@@ -1,11 +1,10 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 '''
   Common functions for cgi-bin
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2018 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,7 +19,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 from pymongo import MongoClient, ASCENDING, DESCENDING
 import os
@@ -30,8 +29,10 @@ import simplejson
 
 #
 
-BASE_DIR = '/var/www/outline/treeview'
-BASE_URL = '/outline/treeview'
+#BASE_DIR = '/var/www/outline/treeview'
+#BASE_URL = '/outline/treeview'
+BASE_DIR = '/Users/mstm/CCAX/treeview'
+BASE_URL = '/treeview'
 
 MONGO_PORT = 27017
 
@@ -171,7 +172,7 @@ def get_path_list(ver_path):
     try:
         with open(os.path.join(ver_path, 'path_list.json'), 'r') as plf:
             path_list = simplejson.load(plf)
-    except Exception, e:
+    except Exception as e:
         pass
     return path_list
 
@@ -180,7 +181,7 @@ def get_fid_list(ver_path):
     try:
         with open(os.path.join(ver_path, 'fid_list.json'), 'r') as flf:
             fid_list = simplejson.load(flf)
-    except Exception, e:
+    except Exception as e:
         pass
     return fid_list
 
@@ -189,7 +190,7 @@ def get_proj_index(proj_path):
     try:
         with open(os.path.join(proj_path, 'index.json'), 'r') as pif:
             pi_tbl = simplejson.load(pif)
-    except Exception, e:
+    except Exception as e:
         pass
     return pi_tbl
 
@@ -198,7 +199,7 @@ def get_ver_index(ver_path):
     try:
         with open(os.path.join(ver_path, 'index.json'), 'r') as vif:
             vi_tbl = simplejson.load(vif)
-    except Exception, e:
+    except Exception as e:
         pass
     return vi_tbl
 
@@ -265,7 +266,7 @@ def compute_state(user, proj, ver):
         ).sort('time', ASCENDING)
 
         def clear_opened(filt=None, key=None, clear_root=False):
-            for (idx, stat) in node_stat_tbl.iteritems():
+            for (idx, stat) in node_stat_tbl.items():
                 cond = True
                 if filt:
                     (st, ed) = filt
@@ -275,11 +276,11 @@ def compute_state(user, proj, ver):
                         cond = st <= idx < ed
 
                 if (clear_root and st <= idx < ed) or (not clear_root and st <= idx <= ed):
-                    if stat.has_key(COLLAPSE_ALL):
+                    if COLLAPSE_ALL in stat:
                         del stat[COLLAPSE_ALL]
 
                 if cond:
-                    if stat.has_key('opened'):
+                    if 'opened' in stat:
                         b = True
                         if key:
                             b = stat.get(key, False)
@@ -294,18 +295,18 @@ def compute_state(user, proj, ver):
                         snames = [EXPAND_RELEVANT_LOOPS,EXPAND_TARGET_LOOPS,EXPAND_ALL,COLLAPSE_ALL]
 
                     for sname in snames:
-                        if stat.has_key(sname):
+                        if sname in stat:
                             del stat[sname]
 
         def clear_key(key, filt):
-            for (idx, stat) in node_stat_tbl.iteritems():
+            for (idx, stat) in node_stat_tbl.items():
                 cond = True
                 if filt:
                     (st, ed) = filt
                     cond = st <= idx < ed
 
                 if cond:
-                    if stat.has_key(key):
+                    if key in stat:
                         del stat[key]
 
 
@@ -316,7 +317,7 @@ def compute_state(user, proj, ver):
             leftmost_idx = record.get('lmi', None)
 
             if idx and leftmost_idx:
-                if not leftmost_tbl.has_key(idx):
+                if idx not in leftmost_tbl:
                     leftmost_tbl[idx] = leftmost_idx
 
                 try:
@@ -330,13 +331,13 @@ def compute_state(user, proj, ver):
                         if record[key]:
                             stat[key] = True
                         else:
-                            if stat.has_key(key):
+                            if key in stat:
                                 del stat[key]
                     else:
-                        if record.has_key(key):
+                        if key in record:
                             if filt:
                                 clear_key(key, filt)
-                            if stat.has_key(key):
+                            if key in stat:
                                 del stat[key]
                             else:
                                 stat[key] = False
@@ -376,7 +377,7 @@ def compute_state(user, proj, ver):
                     clear_opened(filt=filt, clear_root=True)
                     #del stat[COLLAPSE_ALL]
                     collapse_all_to_be_deleted = [] # idx list
-                    for (i, li) in collapse_all_tbl.iteritems():
+                    for (i, li) in collapse_all_tbl.items():
                         if li <= leftmost_idx and idx < i:
                             collapse_all_to_be_deleted.append(i)
                     for i in collapse_all_to_be_deleted:
@@ -386,9 +387,9 @@ def compute_state(user, proj, ver):
 
         # clean up
         to_be_deleted = []
-        for (idx, stat) in node_stat_tbl.iteritems():
-            if stat.has_key(COLLAPSE_ALL):
-                if not collapse_all_tbl.has_key(idx):
+        for (idx, stat) in node_stat_tbl.items():
+            if COLLAPSE_ALL in stat:
+                if idx not in collapse_all_tbl:
                     del stat[COLLAPSE_ALL]
             if len(stat) == 0:
                 to_be_deleted.append(idx)
@@ -398,7 +399,7 @@ def compute_state(user, proj, ver):
 
         data['node_stat'] = node_stat_tbl
 
-    except Exception, e:
+    except Exception as e:
         data['failure'] = str(e)
 
 
@@ -470,7 +471,7 @@ def get_progress(TARGET_DIR, user, proj=None, ver=None, nolabel=False):
             if key in targets:
                 jtbl[key] = judgment
 
-        for (k, j) in jtbl.iteritems():
+        for (k, j) in jtbl.items():
             if j != 'NotYet':
                 nfinished += 1
 
@@ -499,7 +500,7 @@ def get_progress(TARGET_DIR, user, proj=None, ver=None, nolabel=False):
         else:
             progress = NO_BAR_FMT % prefix
 
-    except Exception, e:
+    except Exception as e:
         #raise
         pass
 
@@ -526,7 +527,7 @@ def get_last_judged(users):
                 tbl[user] = time
                 break
 
-    except Exception, e:
+    except Exception as e:
         pass
 
     return tbl

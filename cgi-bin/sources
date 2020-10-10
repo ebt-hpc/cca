@@ -1,11 +1,10 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+#!/usr/bin/env python3
 
 '''
   Source code listing
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2018 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,7 +19,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import sys
@@ -80,7 +79,7 @@ def is_target(proj, ver, path):
             if path not in paths:
                 b = False
 
-    except Exception, e:
+    except Exception as e:
         pass
 
     return b
@@ -117,7 +116,7 @@ if proj and ver:
         with open(os.path.join(ver_path, 'fid_list.json'), 'r') as flf:
             fid_list = simplejson.load(flf)
 
-    except Exception, e:
+    except Exception as e:
         content = str(e)
 
     if path_list and fid_list:
@@ -135,7 +134,7 @@ if proj and ver:
                 path_tbl = vi_tbl.get('path_tbl', {})
 
                 if path_tbl:
-                    for (pathi, fidi) in path_tbl.iteritems():
+                    for (pathi, fidi) in path_tbl.items():
                         path = path_list[int(pathi)]
                         d['path'] = path
                         d['fid'] = fid_list[fidi]
@@ -159,7 +158,7 @@ if proj and ver:
                     'content'  : '\n'.join(links),
                 }
 
-        except Exception, e:
+        except Exception as e:
             content = str(e)
 
 

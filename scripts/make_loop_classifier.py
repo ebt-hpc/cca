@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A script for making loop classifiers
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2018 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import csv
@@ -36,7 +36,7 @@ from sklearn.feature_selection import SelectKBest, chi2, f_classif, SelectFromMo
 #from sklearn import model_selection
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn import preprocessing as pp
-from sklearn.externals import joblib
+import joblib
 
 import pathsetup
 import dp
@@ -218,7 +218,7 @@ def import_training_set(path, selected=SELECTED, derived=DERIVED):
 
             dp.message('%d rows' % count)
 
-    except Exception, e:
+    except Exception as e:
         dp.warning(str(e))
 
     data = []

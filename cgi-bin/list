@@ -1,11 +1,10 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+#!/usr/bin/env python3
 
 '''
   Project listing
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2018 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,12 +19,13 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import sys
 import re
-from urllib import pathname2url, urlencode
+from urllib.parse import urlencode
+from urllib.request import pathname2url
 import json
 from pymongo import MongoClient, ASCENDING, DESCENDING
 import codecs
@@ -49,7 +49,7 @@ HTML_TEMPL = '''
 
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>Fortran Tree View</title>
+<title>Tree View</title>
 <link rel="stylesheet" type="text/css" href="%(base_url)s/ebt.css"/>
 <style type="text/css">
 <!--
@@ -218,7 +218,7 @@ def get_desc(proj):
     desc_fname = GIT_PAT.sub('', proj)+'.desc'
     p = os.path.join(DESC_DIR, desc_fname)
     try:
-        with codecs.open(p, encoding='utf-8') as f:
+        with codecs.open(p, encoding='utf-8', errors='replace') as f:
             desc = f.read()
     except:
         pass
@@ -234,7 +234,7 @@ def make_readme_html(proj):
         with open(json_path, 'r') as f:
             links = json.load(f)
 
-    except Exception, e:
+    except Exception as e:
         pass
 
     if links:
@@ -335,7 +335,7 @@ def get_last_judgment(user):
 
         return result
 
-    except Exception, e:
+    except Exception as e:
         raise
 
 def get_progress(user, proj=None, ver=None):
@@ -424,7 +424,7 @@ try:
                 time_tbl[(proj, ver)] = TIME_FMT % time
                 break
             
-except Exception, e:
+except Exception as e:
     pass
     
 
@@ -473,12 +473,14 @@ for proj in projs:
 
 content = '\n'.join(content_l)
 
-progress = get_progress(user)
+last_judgment = ''
+progress = '???'
 
+progress = get_progress(user)
 try:
     last_judgment = get_last_judgment(user)
 except:
-    last_judgment = ''
+    pass
 
 html = HTML_TEMPL % { 'user':user,
                       'progress':progress,
@@ -489,4 +491,4 @@ html = HTML_TEMPL % { 'user':user,
 
 sys.stdout.write('Content-Type: text/html')
 sys.stdout.write('\n\n')
-print(html.encode('utf-8'))
+print(html)

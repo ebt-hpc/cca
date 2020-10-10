@@ -1,11 +1,10 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+#!/usr/bin/env python3
 
 '''
   Data provider
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2019 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -28,7 +27,7 @@ import json
 import simplejson
 from pymongo import MongoClient, ASCENDING, DESCENDING
 import re
-from urllib import urlencode, quote_plus
+from urllib.parse import urlencode, quote_plus
 from time import time
 import msgpack
 
@@ -87,13 +86,13 @@ def check_node(node):
     node['checked'] = True
 
 def uncheck_node(node):
-    if node.has_key('checked'):
+    if 'checked' in node:
         del node['checked']
 
 def handle_comment(node, c):
     
     if c == '':
-        if has_key(node['a_attr'], 'title'):
+        if 'title' in node['a_attr']:
             del node['a_attr']['title']
     else:
         node['a_attr']['title'] = c
@@ -102,7 +101,7 @@ def handle_comment(node, c):
             'role'  : 'presentation',
             'id'    : 'c_'+node['id']
         }
-        mark = '<i %s></i>' % ' '.join(['%s="%s"' % p for p in attrs.iteritems()])
+        mark = '<i %s></i>' % ' '.join(['%s="%s"' % p for p in attrs.items()])
         node['text'] = node['text'] + mark
     
 
@@ -192,7 +191,7 @@ def apply_stat(node_mgr, node_stat_tbl):
             if stat.get('opened', False):
                 #open_node(node)
                 node_mgr.iter_parents(node, open_node, itself=True)
-            elif stat.has_key('opened'):
+            elif 'opened' in stat:
                 close_node(node)
 
             if stat.get('comment', None):
@@ -211,7 +210,7 @@ def apply_stat(node_mgr, node_stat_tbl):
 
 TEXT_FMT0 = '''
 <span class="%(code_style)s">%(code)s</span>
-[<span class="code">%(pu)s</span>:%(fname)s:%(start)s-%(end)s]
+[%(fname)s:%(start)s-%(end)s]
 %(form)s
 '''.replace('\n', '')
 
@@ -289,7 +288,7 @@ def get_last_nid(user, proj, ver, root_fidi):
                 result = record['nid']
                 break
 
-    except Exception, e:
+    except Exception as e:
         pass
 
     return result
@@ -392,7 +391,7 @@ if proj and ver and fid:
             params['aref_ranges'] = aref_ranges
 
         form = '<form style="display:none;" name="form_%s" method="POST" action="openviewer" target="_blank">' % obj['id']
-        for kv in params.iteritems():
+        for kv in params.items():
             form += "<input type='hidden' name='%s' value='%s'>" % kv
         form += '</form>'
 
@@ -401,7 +400,7 @@ if proj and ver and fid:
     def get_code_style(obj):
         style = 'code'
 
-        if obj.has_key('callee'):
+        if 'callee' in obj:
             m = MARKER_CALLEE_PAT.match(obj['callee'])
             if m:
                 style = 'marker-call'
@@ -410,7 +409,7 @@ if proj and ver and fid:
             
 
     def hook(obj):
-        if obj.has_key('id'):
+        if 'id' in obj:
             node_mgr.reg(obj)
 
             link_form = ''
@@ -421,25 +420,24 @@ if proj and ver and fid:
                 link_form = get_link_form(obj)
                 obj['a_attr'] = {}
 
-            if obj.has_key('code'):
+            if 'code' in obj:
                 text = TEXT_FMT0 % { 
                     'code'       : obj['code'],
                     'code_style' : get_code_style(obj),
-                    'pu'         : obj['pu'],
                     'fname'      : os.path.basename(path_list[obj['loc']]),
                     'start'      : obj['sl'],
                     'end'        : obj['el'],
                     'form'       : link_form,
                 }
 
-                if obj.has_key('bf0') or obj.has_key('bf1') or obj.has_key('bf2'):
+                if 'bf0' in obj or 'bf1' in obj or 'bf2' in obj:
 
                     bf = [obj['bf0'], obj['bf1'], obj['bf2']]
                     others_lv = [[], [], []]
                     others = ''
 
-                    if obj.has_key('other_metrics'):
-                        for (m, v) in obj['other_metrics'].iteritems():
+                    if 'other_metrics' in obj:
+                        for (m, v) in obj['other_metrics'].items():
 
                             x = '<span class="metrics">%s</span>:%s,' % (m, v)
 
@@ -472,13 +470,13 @@ if proj and ver and fid:
                                         'ess'    : ''.join(lvs),
                     }
 
-                if obj.has_key('nlinks'):
+                if 'nlinks' in obj:
                     text += '<i class="jstree-icon link-icon" id="l_%s" role="presentation"></i>' % nid;
 
-                if obj.has_key('ignored_callee_count'):
+                if 'ignored_callee_count' in obj:
                     c = obj['ignored_callee_count']
                     if c == 1:
-                        text += '&nbsp;<span class="info">(1 callee ignored)</span>'
+                        text += '&nbsp;<span class="info">(a callee ignored)</span>'
                     elif c > 1:
                         text += '&nbsp;<span class="info">(%d callees ignored)</span>' % c
 
@@ -490,20 +488,20 @@ if proj and ver and fid:
         try:
             tree_data_path = os.path.join(ver_path, path, fid+'.msg')
 
-            with open(tree_data_path, 'r') as treef:
+            with open(tree_data_path, 'rb') as treef:
                 st = time()
-                tree_data = msgpack.unpack(treef, object_hook=hook)
+                tree_data = msgpack.unpack(treef, object_hook=hook, raw=False)
 
-        except Exception, e:
+        except Exception as e:
             tree_data['failure'] = str(e)
 
-    if tree_data:
-        node_mgr.set_offset(tree_data['lmi'])
+    if tree_data and 'failure' not in tree_data:
+        node_mgr.set_offset(tree_data.get('lmi', 1))
         try:
             with open(os.path.join(TARGET_DIR, proj, ver+'.json'), 'r') as targetf:
                 target_data = simplejson.load(targetf)
 
-        except Exception, e:
+        except Exception as e:
             pass
 
         try:
@@ -518,7 +516,7 @@ if proj and ver and fid:
             if stat_data.get('node_stat', None):
                 apply_stat(node_mgr, stat_data['node_stat'])
 
-            tree_data['text'] = '%s (%d nodes)' % (tree_data['text'], len(node_mgr))
+            tree_data['text'] = '%s (%d nodes)' % (tree_data.get('text', ''), len(node_mgr))
 
             last_nid = get_last_nid(user, proj, ver, tree_data['fid'])
             if last_nid:
@@ -526,7 +524,7 @@ if proj and ver and fid:
 
             #tree_data['time1'] = time() - st
 
-        except Exception, e:
+        except Exception as e:
             #tree_data['failure'] = str(e)
             raise
 

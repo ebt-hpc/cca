@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A script for outlining Fortran programs
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2019 Chiba Institute of Technology
+  Copyright 2018-2019 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@ __author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 import os
 import sys
 import json
-from urllib import pathname2url, urlencode, urlopen
+from urllib.request import pathname2url, urlopen
+from urllib.parse import urlencode
 import re
 import csv
 import codecs
@@ -845,7 +846,7 @@ def ensure_dir(d):
     if not os.path.exists(d):
         try:
             os.makedirs(d)
-        except Exception, e:
+        except Exception as e:
             dp.warning(str(e))
             b = False
     return b
@@ -959,11 +960,21 @@ class Node(dp.base):
         e = not self.__eq__(other)
         return e
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         l0 = self.get_start_line()
         l1 = other.get_start_line()
-        c = cmp(l0, l1)
-        return c
+        return l0 < l1
+
+    def __gt__(self, other):
+        l0 = self.get_start_line()
+        l1 = other.get_start_line()
+        return l0 > l1
+
+    def __le__(self, other):
+        self.__eq__(other) or self.__lt__(other)
+
+    def __ge__(self, other):
+        self.__eq__(other) or self.__gt__(other)
 
     def __hash__(self):
         return hash(self.key)
@@ -1072,7 +1083,7 @@ class Node(dp.base):
 
                     max_chain = []
                     in_file_call = False
-                    start_line = sys.maxint
+                    start_line = sys.maxsize
                     loc = None
 
                     skip_count = 0
@@ -1327,7 +1338,7 @@ class Node(dp.base):
 
         _children_l = sorted(list(self._children))
 
-        children_l = filter(lambda c: c not in ancl and c.relevant, _children_l)
+        children_l = list(filter(lambda c: c not in ancl and c.relevant, _children_l))
 
         # if self._callee_name in TARGET_NAMES:
         #     print('!!! %s' % self)
@@ -1385,7 +1396,7 @@ class Node(dp.base):
                     b = False
 
                 self.debug('[LOOKUP] %s:%s:%s' % (self.sub, c, len(ancl_)))
-                hit = ntbl.has_key((self.sub, c, len(ancl_)))
+                hit = (self.sub, c, len(ancl_)) in ntbl
 
                 b = b and (not hit)
 
@@ -1600,7 +1611,7 @@ class SourceFiles(dp.base):
                 with codecs.open(path, encoding='utf-8', errors='replace') as f:
                     lines = f.readlines()
 
-        except Exception, e:
+        except Exception as e:
             self.warning(str(e))
 
         return lines
@@ -1838,7 +1849,7 @@ class Outline(dp.base):
 
         lines_tbl = self._lines_tbl.get(verURI, {})
 
-        for (loc, lines) in lines_tbl.iteritems():
+        for (loc, lines) in lines_tbl.items():
 
             self.debug('scanning "%s"...' % loc)
 
@@ -2355,7 +2366,7 @@ class Outline(dp.base):
 
         vers = set()
 
-        for ((ver, path), fid) in self._fid_tbl.iteritems():
+        for ((ver, path), fid) in self._fid_tbl.items():
             vers.add(ver)
             try:
                 path_list = path_list_tbl[ver]
@@ -2527,7 +2538,7 @@ class Outline(dp.base):
                                     df['code'] = line_text_tbl[p][ln]
                                 except KeyError:
                                     pass
-                            if df.has_key('fid'):
+                            if 'fid' in df:
                                 del df['fid']
 
                     d['aref_ranges'] = json.dumps(aref_ranges)
@@ -2643,7 +2654,7 @@ class Outline(dp.base):
             root_callees_tbl = {}
 
             self.debug('* root_collapsed_caller_tbl:')
-            for (r, collapsed_caller_tbl) in root_collapsed_caller_tbl.iteritems():
+            for (r, collapsed_caller_tbl) in root_collapsed_caller_tbl.items():
                 self.debug('root=%s:' % r)
 
                 while collapsed_caller_tbl:
@@ -2652,7 +2663,7 @@ class Outline(dp.base):
                     callees_tbl = {}
                     root_callees_tbl[r] = callees_tbl
 
-                    for (callee, d_lv_list) in collapsed_caller_tbl.iteritems():
+                    for (callee, d_lv_list) in collapsed_caller_tbl.items():
 
                         self.debug(' callee=%s' % callee)
 
@@ -2667,7 +2678,7 @@ class Outline(dp.base):
                         callee_dl = []
                         collapsed_caller_tbl_ = {}
 
-                        for (r_, tbl) in root_expanded_callee_tbl.iteritems():
+                        for (r_, tbl) in root_expanded_callee_tbl.items():
                             callee_dl = tbl.get(callee, [])
                             if callee_dl:
                                 self.debug('%d callee dicts found in %s' % (len(callee_dl), r_))
@@ -2730,7 +2741,7 @@ class Outline(dp.base):
                                 selected['children'] = copied_dl
                                 callees_tbl[callee] = [d['id'] for d in copied_dl]
                                 self.debug('callees_tbl: %s -> [%s]' % (callee, ','.join(callees_tbl[callee])))
-                            except Exception, e:
+                            except Exception as e:
                                 self.warning(str(e))
 
                     if new_collapsed_caller_tbl:
@@ -2738,7 +2749,7 @@ class Outline(dp.base):
                         self.debug('new_collapsed_caller_tbl:')
                     else:
                         collapsed_caller_tbl = {}
-                    for (callee, d_lv_list) in new_collapsed_caller_tbl.iteritems():
+                    for (callee, d_lv_list) in new_collapsed_caller_tbl.items():
                         self.debug('callee=%s' % callee)
                         for (d, lv) in d_lv_list:
                             self.debug('%s (lv=%d)' % (d['id'], lv))
@@ -2765,22 +2776,22 @@ class Outline(dp.base):
                                     except KeyError:
                                         break
 
-                                if not nid_tbl.has_key(root_nid):
-                                    print row
+                                if root_nid not in nid_tbl:
+                                    print(row)
 
                                 row.append(nid_tbl[root_nid])
 
                                 csv_writer.writerow(row)
 
-                    except Exception, e:
+                    except Exception as e:
                         self.warning(str(e))
 
 
             # clean up relevant_node_tbl
             p_to_be_del = []
-            for (p, ltbl) in relevant_node_tbl.iteritems():
+            for (p, ltbl) in relevant_node_tbl.items():
                 ln_to_be_del = []
-                for (ln, nids) in ltbl.iteritems():
+                for (ln, nids) in ltbl.items():
                     if len(nids) < 2:
                         ln_to_be_del.append(ln)
                 for ln in ln_to_be_del:
@@ -2805,14 +2816,14 @@ class Outline(dp.base):
                     with open(os.path.join(lver_dir, 'path_list.json'), 'w') as plf:
                         plf.write(json.dumps(path_list))
 
-                except Exception, e:
+                except Exception as e:
                     self.warning(str(e))
 
                 try:
                     with open(os.path.join(lver_dir, 'fid_list.json'), 'w') as flf:
                         flf.write(json.dumps(fid_list))
 
-                except Exception, e:
+                except Exception as e:
                     self.warning(str(e))
 
                 idx_gen = IndexGenerator(init=1)
@@ -2870,7 +2881,7 @@ class Outline(dp.base):
                             with open(data_path, 'wb') as f:
                                 msgpack.pack(json_d, f)
 
-                        except Exception, e:
+                        except Exception as e:
                             self.warning(str(e))
                             continue
 
@@ -2887,14 +2898,14 @@ class Outline(dp.base):
                 with open(os.path.join(lver_dir, 'index.json'), 'w') as vif:
                     vif.write(json.dumps(vitbl))
 
-            except Exception, e:
+            except Exception as e:
                 self.warning(str(e))
 
             try:
                 with open(os.path.join(lver_dir, 'idx_range.json'), 'w') as irf:
                     irf.write(json.dumps(idx_range_tbl))
 
-            except Exception, e:
+            except Exception as e:
                 self.warning(str(e))
 
         #
@@ -2907,7 +2918,7 @@ class Outline(dp.base):
             with open(os.path.join(outline_dir, 'index.json'), 'w') as pif:
                 pif.write(json.dumps(pitbl))
 
-        except Exception, e:
+        except Exception as e:
             self.warning(str(e))
 
 
@@ -2969,7 +2980,7 @@ def test2(proj):
 
     sub = None
 
-    for (k, node) in node_tbl.iteritems():
+    for (k, node) in node_tbl.items():
         if node.loc == 'ic/grafic.f90':
             if 'subroutine-external-subprogram' in node.cats:
                 sub = node

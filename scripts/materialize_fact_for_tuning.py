@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A script for EBT fact materialization
 
   Copyright 2013-2018 RIKEN
-  Copyright 2018 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os.path
 
@@ -31,30 +31,24 @@ from virtuoso import VIRTUOSO_PW, VIRTUOSO_PORT
 
 QUERY_DIR = os.path.join(pathsetup.CCA_HOME, 'queries', 'tuning')
 
-QUERIES = { 'fortran' :
-            [ 
-                'materialize_expr_sig_in_loop.rq',
-                'materialize_program_unit_in_srctree.rq',
-                'materialize_module_ref.rq',
-                'materialize_transitive_provide.rq',
-                'materialize_reference.rq',
-                'materialize_symbol_resolution.rq',
-                'materialize_logical_unit_fj.rq',
-                'materialize_logical_unit_tc.rq',
-                'materialize_loop_ctl.rq',
-                'materialize_stride.rq',
-                'materialize_stmt_in_loop.rq',
-                'materialize_loop_in_loop.rq',
-                'materialize_array_ref_sig0.rq',
-                'materialize_array_ref_sig1.rq',
-                'materialize_array_ref_sig2_0.rq',
-                'materialize_array_ref_sig2_1.rq',
-                'materialize_type_spec.rq',
-                'materialize_compo_type_spec.rq',
-                'materialize_included_module_subprogram.rq',
-                'materialize_macro_type_spec.rq',
-                'materialize_callee.rq',
-            ],
+QUERIES = {
+    'cpp' :
+    [
+        'materialize_expr_sig_in_loop.rq',
+        'materialize_translation_unit_in_srctree.rq',
+        'materialize_reference.rq',
+        'materialize_symbol_resolution.rq',
+        'materialize_stmt_in_loop.rq',
+        'materialize_loop_in_loop.rq',
+        'materialize_array_ref_sig0.rq',
+        'materialize_array_ref_sig1_0.rq',
+        'materialize_array_ref_sig1_1.rq',
+        'materialize_array_ref_sig2_0.rq',
+        'materialize_array_ref_sig2_1.rq',
+        'materialize_type_spec.rq',
+        'materialize_callee.rq',
+        'materialize_call.rq',
+    ],
 }
 
 def materialize(proj_id, pw=VIRTUOSO_PW, port=VIRTUOSO_PORT):

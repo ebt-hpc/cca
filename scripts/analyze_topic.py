@@ -1,10 +1,11 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A script for making topic models
 
-  Copyright 2013-2017 RIKEN
+  Copyright 2013-2018 RIKEN
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os.path
 import re
@@ -241,7 +242,7 @@ def get_texts(dpath, pat):
                 try:
                     words = extract_words(path)
                     texts.append(words)
-                except Exception, e:
+                except Exception as e:
                     dp.warning(str(e))
 
     dp.message('%d documents found' % len(texts))
@@ -308,5 +309,5 @@ if __name__ == '__main__':
     try:
         for t in m.show_topics(args.ntopics):
             print(t)
-    except Exception, e:
+    except Exception as e:
         print(str(e))

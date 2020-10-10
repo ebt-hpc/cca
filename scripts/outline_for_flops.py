@@ -1,10 +1,11 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A script for outlining Fortran programs
 
-  Copyright 2013-2017 RIKEN
+  Copyright 2013-2018 RIKEN
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -19,12 +20,12 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import json
 from sympy import Symbol
-from StringIO import StringIO
+from io import StringIO
 from tokenize import generate_tokens, NAME
 from keyword import iskeyword
 
@@ -584,7 +585,7 @@ def metrics_subt(m0, m1):
     if f0:
         f1 = m1.get('nfref', None)
         if f1:
-            for (fn, d0) in f0.iteritems():
+            for (fn, d0) in f0.items():
                 if f1.has_key(fn):
                     if d0.has_key('single'):
                         d0['single'] -= f1[fn].get('single', 0)
@@ -765,7 +766,7 @@ class Outline(outline_for_survey.Outline):
         self._fop_tbl = {}
         self.message('counting fops...')
         for lang in QUERY_TBL.keys():
-            for (v, q) in QUERY_TBL[lang]['fop_in_constr'].iteritems():
+            for (v, q) in QUERY_TBL[lang]['fop_in_constr'].items():
                 self.message('%s' % v)
                 query =  q % {'proj':self._graph_uri}
                 for qvs, row in self._sparql.query(query):
@@ -783,7 +784,7 @@ class Outline(outline_for_survey.Outline):
         self._zop_tbl = {}
         self.message('counting zops...')
         for lang in QUERY_TBL.keys():
-            for (v, q) in QUERY_TBL[lang]['zop_in_constr'].iteritems():
+            for (v, q) in QUERY_TBL[lang]['zop_in_constr'].items():
                 self.message('%s' % v)
                 query = q % {'proj':self._graph_uri}
                 for qvs, row in self._sparql.query(query):
@@ -880,7 +881,7 @@ class Outline(outline_for_survey.Outline):
         fref_count_tbl = {}
 
         if fref_tbl:
-            for (fref, (fn, na, dbl)) in fref_tbl.iteritems():
+            for (fref, (fn, na, dbl)) in fref_tbl.items():
                 try:
                     c = fref_count_tbl[fn]
                 except KeyError:
@@ -895,12 +896,12 @@ class Outline(outline_for_survey.Outline):
         data = {}
 
         if nfop_tbl:
-            for (k, v) in nfop_tbl.iteritems():
+            for (k, v) in nfop_tbl.items():
                 if v:
                     data[k] = v
 
         if nzop_tbl:
-            for (k, v) in nzop_tbl.iteritems():
+            for (k, v) in nzop_tbl.items():
                 if v:
                     data[k] = v
 
@@ -930,13 +931,14 @@ class Outline(outline_for_survey.Outline):
             ec = r.get_end_col()
             line = line_text_tbl[loc][sl]
             text = line[sc:ec+1]
-        except Exception, e:
+        except Exception as e:
             self.warning('%s: %s %s' % (loc, type(e), e.message))
             raise
         return text
 
 
-    def get_niter_sub(self, line_text_tbl, loc, (init, term, stride)):
+    def get_niter_sub(self, line_text_tbl, loc, init_term_stride):
+        init, term, stride = init_term_stride
         niter_ln = None
         try:
             init_ent = SourceCodeEntity(uri=init)
@@ -1098,7 +1100,7 @@ class Outline(outline_for_survey.Outline):
                 if m:
                     f = m.get('nfref', None)
                     if f:
-                        for (fn, d) in f.iteritems():
+                        for (fn, d) in f.items():
                             if d.has_key('single'):
                                 if d['single'] == 0:
                                     del d['single']
@@ -1138,7 +1140,7 @@ class Outline(outline_for_survey.Outline):
 
                             f = m.get('nfref', None)
                             if f:
-                                for (fn, sd) in f.iteritems():
+                                for (fn, sd) in f.items():
                                     if sd['single'] or sd['double']:
                                         flag1 = True
                                         break
@@ -1157,7 +1159,7 @@ class Outline(outline_for_survey.Outline):
                         with open(json_path, 'w') as jsonf:
                             json.dump(json_d, jsonf)
 
-                    except Exception, e:
+                    except Exception as e:
                         self.warning(str(e))
                         continue
 

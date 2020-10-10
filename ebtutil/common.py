@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   Common functions
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2019 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -124,7 +124,7 @@ def mktar(path, tarname, dirname):
                         tar.addfile(info, f)
         return 0
 
-    except Exception, e:
+    except Exception as e:
         log('failed to tar: %s' % str(e))
         return 1
 
@@ -135,7 +135,7 @@ def touch(path):
         with open(path, 'w') as f:
             f.write(os.path.basename(path))
             p = path
-    except Exception, e:
+    except Exception as e:
         pass
     return p
 
@@ -145,7 +145,7 @@ def rm(path):
     if os.path.exists(path):
         try:
             os.remove(path)
-        except Exception, e:
+        except Exception as e:
             log('failed to remove "%s"' % path)
             stat = 1
     return stat
@@ -159,7 +159,7 @@ def rmdir(path):
                 os.remove(path)
             else:
                 shutil.rmtree(path)
-        except Exception, e:
+        except Exception as e:
             log('failed to remove "%s"' % path)
             stat = 1
     return stat
@@ -169,7 +169,7 @@ def ensure_dir(d):
     if not os.path.exists(d):
         try:
             os.makedirs(d)
-        except Exception, e:
+        except Exception as e:
             log('%s' % str(e))
             b = False
     return b
@@ -371,7 +371,7 @@ def make_status_setter(path):
         try:
             with open(path, 'w') as f:
                 f.write(mes)
-        except Exception, e:
+        except Exception as e:
             log(str(e))
     return set_status
 
@@ -442,7 +442,7 @@ class AnalyzerBase(object):
         set_status('analyzing facts...')
         try:
             self.analyze_facts(proj_dir, proj_id, ver, dest_root)
-        except Exception, e:
+        except Exception as e:
             set_status('failed to analyze facts: %s' % e)
             reset_virtuoso(pw=self._pw, port=self._port, backup_fb=backup_fb)
             return

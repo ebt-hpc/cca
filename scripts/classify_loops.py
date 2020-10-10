@@ -1,10 +1,11 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A script for loop classification
 
-  Copyright 2013-2017 RIKEN
+  Copyright 2013-2018 RIKEN
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -19,14 +20,14 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import csv
 import numpy as np
 
 from sklearn import preprocessing as pp
-from sklearn.externals import joblib
+import joblib
 
 import pathsetup
 import dp
@@ -51,7 +52,7 @@ def import_test_set(path, selected=SELECTED_MINAMI, derived=DERIVED_MINAMI, filt
 
                 skip = False
 
-                for k0, f in filt.iteritems():
+                for k0, f in filt.items():
                     v0 = d[k0]
                     b0 = f(v0)
                     dp.debug('k0=%s d[k0]=%s f(d[k0])=%s sub=%s' % (k0, v0, b0, row['sub']))
@@ -85,7 +86,7 @@ def import_test_set(path, selected=SELECTED_MINAMI, derived=DERIVED_MINAMI, filt
 
             dp.message('%d rows' % count)
 
-    except Exception, e:
+    except Exception as e:
         dp.warning(str(e))
 
     X = np.array(_X)

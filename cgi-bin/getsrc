@@ -1,10 +1,10 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 '''
   Source code provider
 
-  Copyright 2013-2017 RIKEN
+  Copyright 2013-2018 RIKEN
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import sys
@@ -27,10 +27,8 @@ from common import BASE_DIR
 
 ###
 
-TEMPL = '''Content-Type: text/plain
+HEADER = b'Content-Type: text/plain\n\n'
 
-%s
-'''
 
 import cgi
 form = cgi.FieldStorage()
@@ -42,10 +40,11 @@ src_path = os.path.join(BASE_DIR, path)
 src = None
 
 try:
-    with open(src_path, 'r') as f: 
+    with open(src_path, 'rb') as f:
         src = f.read()
 
-except Exception, e:
+except Exception as e:
     src = str(e)
 
-print(TEMPL % src)
+sys.stdout.buffer.write(HEADER)
+sys.stdout.buffer.write(src)

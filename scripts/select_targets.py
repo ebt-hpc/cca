@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A script for selecting target loops
 
   Copyright 2013-2018 RIKEN
-  Copyright 2017-2018 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os
 import csv
@@ -45,7 +45,7 @@ TARGET_DIR = os.path.join(BASE, TARGET_DIR_NAME)
 
 
 def dump(ptbl, rtbl, filename_suffix='', target_dir=TARGET_DIR):
-    for (proj, vtbl) in ptbl.iteritems():
+    for (proj, vtbl) in ptbl.items():
         pdir = os.path.join(target_dir, proj)
 
         if os.path.exists(pdir):
@@ -57,7 +57,7 @@ def dump(ptbl, rtbl, filename_suffix='', target_dir=TARGET_DIR):
 
         print('* %s:' % pdir)
 
-        for (ver, nids) in vtbl.iteritems():
+        for (ver, nids) in vtbl.items():
             path = os.path.join(pdir, ver+filename_suffix+'.json')
 
             print('  - %s: [%s]' % (path, ','.join(nids)))
@@ -66,7 +66,7 @@ def dump(ptbl, rtbl, filename_suffix='', target_dir=TARGET_DIR):
                 with open(path, 'w') as f:
                     f.write(json.dumps(nids))
 
-            except Exception, e:
+            except Exception as e:
                 dp.warning(str(e))
                 continue
 
@@ -77,7 +77,7 @@ def dump(ptbl, rtbl, filename_suffix='', target_dir=TARGET_DIR):
                     with open(rpath, 'w') as rf:
                         rf.write(json.dumps(root_file_l))
 
-                except Exception, e:
+                except Exception as e:
                     dp.warning(str(e))
 
 def add_root_file(rtbl, proj, ver, root_file):
@@ -139,7 +139,7 @@ def predict_kernels(fname, clf_path, model='minami', filt={},
 
             dump(ptbl, rtbl, filename_suffix=filename_suffix, target_dir=target_dir)
         
-    except Exception, e:
+    except Exception as e:
         dp.error(str(e))
 
 def sample(fname, nsamples,
@@ -203,7 +203,7 @@ def sample(fname, nsamples,
                         if float(row[bf_i[lv]]) >= bf_thresh_upper[lv]:
                             del_flag = True
 
-                    except Exception, e:
+                    except Exception as e:
                         dp.warning(str(e))
 
                 if bf_thresh_lower[lv] != None:
@@ -211,7 +211,7 @@ def sample(fname, nsamples,
                         if float(row[bf_i[lv]]) <= bf_thresh_lower[lv]:
                             del_flag = True
 
-                    except Exception, e:
+                    except Exception as e:
                         dp.warning(str(e))
 
             if del_flag:
@@ -295,7 +295,7 @@ def sample(fname, nsamples,
 
             add_nid(ptbl, proj, ver, nid)
 
-        for (d, pvpls) in dtbl.iteritems():
+        for (d, pvpls) in dtbl.items():
             if len(pvpls) > 1:
                 dp.warning('duplicate found: digest="%s"' % d)
                 for pvpl in pvpls:
@@ -303,7 +303,7 @@ def sample(fname, nsamples,
 
         dump(ptbl, rtbl, filename_suffix=filename_suffix)
 
-    except Exception, e:
+    except Exception as e:
         dp.error(str(e))
 
 

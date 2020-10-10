@@ -1,11 +1,10 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 '''
-  Source code metrics for Fortran programs
+  Source code metrics for C programs
 
   Copyright 2013-2018 RIKEN
-  Copyright 2018 Chiba Institute of Technology
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -20,7 +19,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import pprint
 
@@ -158,22 +157,22 @@ def make_feature_tbl():
                     'lnum' : '',
                 },
           
-          BF[0]                   : 0.0,
-          BF[1]                   : 0.0,
-          BF[2]                   : 0.0,
+          BF[0]                : 0.0,
+          BF[1]                : 0.0,
+          BF[2]                : 0.0,
 
           N_FP_OPS             : 0,
           N_OPS                : 0,
 
-          N_A_REFS[0]             : 0,
-          N_IND_A_REFS[0]         : 0,
-          N_DBL_A_REFS[0]         : 0,
-          N_A_REFS[1]             : 0,
-          N_IND_A_REFS[1]         : 0,
-          N_DBL_A_REFS[1]         : 0,
-          N_A_REFS[2]             : 0,
-          N_IND_A_REFS[2]         : 0,
-          N_DBL_A_REFS[2]         : 0,
+          N_A_REFS[0]          : 0,
+          N_IND_A_REFS[0]      : 0,
+          N_DBL_A_REFS[0]      : 0,
+          N_A_REFS[1]          : 0,
+          N_IND_A_REFS[1]      : 0,
+          N_DBL_A_REFS[1]      : 0,
+          N_A_REFS[2]          : 0,
+          N_IND_A_REFS[2]      : 0,
+          N_DBL_A_REFS[2]      : 0,
 
           N_BRANCHES           : 0,
           N_STMTS              : 0,
@@ -246,7 +245,7 @@ def ftbl_list_to_orange(ftbl_list, outfile):
     
     try:
         data.save(outfile)
-    except Exception, e:
+    except Exception as e:
         dp.error(str(e))
 
 
@@ -260,55 +259,45 @@ GRAPH ?g {
 }
 ''' % NS_TBL
 
-Q_LOOP_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_LOOP_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?child_loop ?child_vname ?loop_d ?child_loop_d
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?child_loop ?loop_d ?child_loop_d
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?loop_d
     WHERE {
 
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
+    } GROUP BY ?ver ?loc ?loop ?loop_d
   }
 
   OPTIONAL {
-    ?child_loop a f:DoConstruct ;
+    ?child_loop a cpp:IterationStatement ;
                 src:treeDigest ?child_loop_d ;
-                f:inDoConstruct ?loop .
+                cpp:inIterationStatement ?loop .
 
-    OPTIONAL {
-      ?child_loop f:variableName ?child_vname .
-    }
     FILTER (?child_loop != ?loop)
   }
 
   OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
+    ?loop cpp:inFunctionDefinition ?fd .
+    ?fd a cpp:FunctionDefinition ;
+        cpp:provides/(cpp:name|cpp:regexp) ?fn .
     FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
+      ?loop cpp:inFunctionDefinition ?fd0 .
+      ?fd0 cpp:inFunctionDefinition ?fd .
+      FILTER (?fd != ?fd0)
     }
   }
 
@@ -316,92 +305,87 @@ GRAPH <%%(proj)s> {
 }
 ''' % NS_TBL
 
-Q_LOOP_SP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_LOOP_FD_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?loop ?vname ?callee ?callee_loc ?loop_d
+SELECT DISTINCT ?ver ?loc ?loop ?callee ?callee_loc ?loop_d
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?pu ?loop ?vname ?callee ?loc ?loop_d
+    SELECT DISTINCT ?tu ?loop ?callee ?loc ?loop_d
     WHERE {
 
       ?call a ?call_cat OPTION (INFERENCE NONE) ;
-            f:inDoConstruct ?loop ;
-            f:mayCall ?callee .
+            cpp:inIterationStatement ?loop ;
+            cpp:mayCall ?callee .
 
-      FILTER (?call_cat IN (f:CallStmt, f:FunctionReference, f:PartName))
+      FILTER (?call_cat IN (cpp:PostfixExpressionFunCall,
+                            cpp:PostfixExpressionFunCallGuarded))
 
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc .
 
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc .
-
-    } GROUP BY ?pu ?loop ?vname ?callee ?loc ?loop_d
+    } GROUP BY ?tu ?loop ?callee ?loc ?loop_d
   }
 
-  ?callee a f:Subprogram ;
-          src:inFile ?callee_file .
+  ?callee a cpp:FunctionDefinition ;
+          cpp:inTranslationUnit/src:inFile ?callee_file .
 
   ?callee_file a src:File ;
                src:location ?callee_loc ;
                ver:version ?ver .
 
   FILTER EXISTS {
-    ?pu ver:version ?ver .
+    ?tu ver:version ?ver .
   }
 
 }
 }
 ''' % NS_TBL
 
-Q_SP_SP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_FD_FD_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?callee ?callee_loc
+SELECT DISTINCT ?ver ?loc ?fd ?callee ?callee_loc
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?ver ?loc ?sp ?callee
+    SELECT DISTINCT ?ver ?loc ?fd ?callee
     WHERE {
 
       ?call a ?call_cat OPTION (INFERENCE NONE) ;
-            f:inSubprogram ?sp ;
-            f:mayCall ?callee .
+            cpp:inFunctionDefinition ?fd ;
+            cpp:mayCall ?callee .
 
-      ?sp a f:Subprogram ;
-          src:inFile ?file .
+      FILTER (?call_cat IN (cpp:PostfixExpressionFunCall,
+                            cpp:PostfixExpressionFunCallGuarded))
+
+      ?fd a cpp:FunctionDefinition ;
+          cpp:inTranslationUnit/src:inFile ?file .
 
       FILTER NOT EXISTS {
-        ?call f:inSubprogram ?sp0 .
-        ?sp0 f:inSubprogram ?sp .
-        FILTER (?sp != ?sp0)
+        ?call cpp:inFunctionDefinition ?fd0 .
+        ?fd0  cpp:inFunctionDefinition ?fd .
+        FILTER (?fd != ?fd0)
       }
 
       ?file a src:File ;
             src:location ?loc ;
             ver:version ?ver .
 
-      FILTER (?call_cat IN (f:CallStmt, f:FunctionReference, f:PartName))
-
-    } GROUP BY ?ver ?loc ?sp ?callee
+    } GROUP BY ?ver ?loc ?fd ?callee
   }
 
-  ?callee a f:Subprogram ;
-          src:inProgramUnit*/src:inFile ?callee_file .
+  ?callee a cpp:FunctionDefinition ;
+          cpp:inTranslationUnit*/src:inFile ?callee_file .
 
   ?callee_file a src:File ;
                src:location ?callee_loc ;
@@ -411,69 +395,77 @@ GRAPH <%%(proj)s> {
 }
 ''' % NS_TBL
 
-Q_ARRAYS_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_ARRAYS_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sub ?loop ?vname ?aname ?rank ?edecl ?tyc ?loop_d
+SELECT DISTINCT ?ver ?loc ?fn ?loop ?aname ?rank ?dtor ?tyc ?loop_d
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?pu ?loop ?vname ?pn ?aname ?loop_d
-     WHERE {
+    SELECT DISTINCT ?tu ?loop ?a ?aname ?loop_d ?aa ?acat
+    WHERE {
 
-       ?pn a f:PartName ;
-           src:parent ?aa ;
-           f:name ?aname .
+      ?aa a cpp:PostfixExpressionSubscr ;
+          src:child0* ?a ;
+          cpp:inIterationStatement ?loop .
 
-       ?aa a f:ArrayAccess ;
-           f:inDoConstruct ?loop .
-
-       ?loop a f:DoConstruct ;
-             src:treeDigest ?loop_d ;
-             f:inProgramUnit ?pu .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
+      FILTER NOT EXISTS {
+        ?aa src:parent+ ?aa0 .
+        ?aa0 a cpp:PostfixExpressionSubscr .
       }
 
-     } GROUP BY ?pu ?loop ?vname ?pn ?aname ?loop_d
+      ?a a ?acat OPTION (INFERENCE NONE) ;
+         cpp:name ?aname .
+
+      FILTER NOT EXISTS {
+        ?a0 src:parent+ ?a ;
+            cpp:name [] .
+      }
+
+      ?loop a cpp:IterationStatement ;
+            src:treeDigest ?loop_d ;
+            cpp:inTranslationUnit ?tu .
+
+    } GROUP BY ?tu ?loop ?a ?aname ?loop_d ?aa ?acat
   }
 
-  ?loop f:inProgramUnitOrSubprogram ?pu_or_sp .
-
-  ?pu_or_sp src:inFile/src:location ?loc .
-
-  ?pu a f:ProgramUnit ;
-      src:inFile/src:location ?pu_loc ;
+  ?tu a cpp:TranslationUnit ;
+      src:inFile/src:location ?loc ;
       ver:version ?ver .
 
   {
-    SELECT DISTINCT ?pn ?rank ?aname ?edecl ?tyc
+    SELECT DISTINCT ?aa (COUNT(DISTINCT ?aa0) AS ?rank)
+    WHERE {
+      ?aa0 a cpp:PostfixExpressionSubscr ;
+           src:parent* ?aa .
+    } GROUP BY ?aa
+  }
+
+  {
+    SELECT DISTINCT ?a ?dtor ?dcat ?tyc ?ty
     WHERE {
 
-      ?pn f:declarator ?edecl .
+      ?a cpp:declarator ?dtor .
 
-      ?edecl a f:EntityDecl ;
-             f:rank ?rank ;
-             f:name ?aname ;
-             f:declarationTypeSpec ?tspec .
+      ?dtor a ?dcat OPTION (INFERENCE NONE) ;
+            cpp:type ?ty ;
+            cpp:declarationTypeSpec ?tspec .
 
-      ?tspec a f:TypeSpec ;
-             a ?tyc OPTION (INFERENCE NONE) .
+      ?tspec a ?tyc OPTION (INFERENCE NONE) .
 
-    } GROUP BY ?pn ?rank ?aname ?edecl ?tyc
+    } GROUP BY ?a ?dtor ?dcat ?tyc ?ty
   }
 
   OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
+    ?loop cpp:inFunctionDefinition ?fd .
+    ?fd a cpp:FunctionDefinition ;
+        cpp:provides/(cpp:name|cpp:regexp) ?fn .
     FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
+      ?loop cpp:inFunctionDefinition ?fd0 .
+      ?fd0 cpp:inFunctionDefinition ?fd .
+      FILTER (?fd != ?fd0)
     }
   }
 
@@ -481,227 +473,199 @@ GRAPH <%%(proj)s> {
 }
 ''' % NS_TBL
 
-Q_FFR_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_FFR_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?fref ?fname ?nargs ?h ?loop_d
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?fref ?fname ?nargs ?h ?loop_d
 WHERE {
 GRAPH <%%(proj)s> {
+
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?loop_d
     WHERE {
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
+    } GROUP BY ?ver ?loc ?loop ?loop_d
   }
 
   OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
+    ?loop cpp:inFunctionDefinition ?fd .
+    ?fd a cpp:FunctionDefinition ;
+        cpp:provides/(cpp:name|cpp:regexp) ?fn .
     FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
+      ?loop cpp:inFunctionDefinition ?fd0 .
+      ?sp0 cpp:inFunctionDefinition ?fd .
+      FILTER (?fd != ?fd0)
     }
   }
 
   {
-    SELECT DISTINCT ?loop ?fref ?h ?fname (COUNT(DISTINCT ?arg) AS ?nargs)
+    SELECT DISTINCT ?loop ?fref ?h ?fname (COUNT(DISTINCT ?arg) AS ?nargs) ?p
     WHERE {
 
-      ?fref a f:FunctionReference OPTION (INFERENCE NONE) ;
-           src:treeDigest ?h ;
-           f:inDoConstruct ?loop ;
-           f:name ?fname .
+      ?call a ?call_cat OPTION (INFERENCE NONE) ;
+            src:treeDigest ?h ;
+            src:child0 ?fref ;
+            src:child1 ?arg ;
+            src:child1 ?farg ;
+            cpp:inIterationStatement ?loop .
 
-      ?arg src:parent ?fref .
-      
-      ?farg a f:Expr ;
-            src:parent+ ?fref .
-      
-      FILTER (?fname IN ("real", "dble") ||
-              EXISTS { ?farg a f:RealLiteralConstant } ||
+      FILTER (?call_cat IN (cpp:PostfixExpressionFunCall,
+                            cpp:PostfixExpressionFunCallGuarded))
+
+      ?fref cpp:requires/cpp:name ?fname .
+
+      ?farg a ?facat OPTION (INFERENCE NONE) .
+
+      FILTER (EXISTS { ?farg a cpp:FloatingLiteral } ||
               EXISTS {
-                ?farg f:declarator ?dtor .
-                ?dtor a f:Declarator ;
-                      f:declarationTypeSpec [ a f:FloatingPointType ] .
+                ?farg cpp:declarator ?dtor .
+                ?dtor a ?dcat OPTION (INFERENCE NONE) ;
+                      cpp:declarationTypeSpec ?tspec .
+                ?tspec a ?tcat OPTION (INFERENCE NONE) .
+                FILTER (?tcat IN (cpp:Double, cpp:Float))
               }
               )
 
-    } GROUP BY ?loop ?fref ?h ?fname
+    } GROUP BY ?loop ?fref ?h ?fname ?p
   }
+
 }
 }
 ''' % NS_TBL
 
-Q_DFR_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_DFR_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?fname ?h ?loop_d
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?fname ?h ?loop_d
 WHERE {
 GRAPH <%%(proj)s> {
+
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?loop_d
     WHERE {
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
+    } GROUP BY ?ver ?loc ?loop ?loop_d
   }
-
-  {
-    SELECT DISTINCT ?loop ?fref ?h ?fname
-    WHERE {
-
-      ?fref a f:FunctionReference OPTION (INFERENCE NONE) ;
-           src:treeDigest ?h ;
-           f:inDoConstruct ?loop ;
-           f:name ?fname .
-
-    } GROUP BY ?loop ?fref ?h ?fname
-  }
-
-  FILTER (
-          EXISTS {
-            ?farg a f:RealLiteralConstant ;
-                  f:value ?val ;
-                  src:parent+ ?fref .
-            FILTER (CONTAINS(STR(?val), "d") || CONTAINS(STR(?val), "D"))
-          } || 
-          EXISTS {
-            ?farg a f:Expr ;
-                  f:declarator ?dtor ;
-                  src:parent+ ?fref .
-
-            ?dtor a f:Declarator ;
-                  f:declarationTypeSpec ?tspec .
-
-            ?tspec a ?cat OPTION (INFERENCE NONE) .
-
-            FILTER (?cat = f:DoublePrecision || 
-                    (?cat = f:Real && 
-                     EXISTS {
-                       ?tspec src:children/rdf:first/src:children/rdf:first/f:value 8
-                     })
-                    )
-          }
-          )
 
   OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
+    ?loop cpp:inFunctionDefinition ?fd .
+    ?fd a cpp:FunctionDefinition ;
+        cpp:provides/(cpp:name|cpp:regexp) ?fn .
     FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
+      ?loop cpp:inFunctionDefinition ?fd0 .
+      ?sp0 cpp:inFunctionDefinition ?fd .
+      FILTER (?fd != ?fd0)
     }
   }
 
+  {
+    SELECT DISTINCT ?loop ?fref ?h ?fname (COUNT(DISTINCT ?arg) AS ?nargs) ?p
+    WHERE {
+
+      ?call a ?call_cat OPTION (INFERENCE NONE) ;
+            src:treeDigest ?h ;
+            src:child0 ?fref ;
+            src:child1 ?arg ;
+            src:child1 ?farg ;
+            cpp:inIterationStatement ?loop .
+
+      FILTER (?call_cat IN (cpp:PostfixExpressionFunCall,
+                            cpp:PostfixExpressionFunCallGuarded))
+
+      ?fref cpp:requires/cpp:name ?fname .
+
+      ?farg a ?facat OPTION (INFERENCE NONE) .
+
+      FILTER (EXISTS { ?farg a cpp:FloatingLiteral } ||
+              EXISTS {
+                ?farg cpp:declarator ?dtor .
+                ?dtor a ?dcat OPTION (INFERENCE NONE) ;
+                      cpp:declarationTypeSpec ?tspec .
+                ?tspec a ?tcat OPTION (INFERENCE NONE) .
+                FILTER (?tcat IN (cpp:Double))
+              }
+              )
+
+    } GROUP BY ?loop ?fref ?h ?fname ?p
+  }
+
 }
 }
 ''' % NS_TBL
 
-Q_FOP_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_FOP_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?nfop ?loop_d
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?nfop ?loop_d
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?loop_d
     WHERE {
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
+    } GROUP BY ?ver ?loc ?loop ?loop_d
   }
 
   OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
+    ?loop cpp:inFunctionDefinition ?fd .
+    ?fd a cpp:FunctionDefinition ;
+        cpp:provides/(cpp:name|cpp:regexp) ?fn .
     FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
+      ?loop cpp:inFunctionDefinition ?fd0 .
+      ?sp0 cpp:inFunctionDefinition ?fd .
+      FILTER (?fd != ?fd0)
     }
   }
 
   OPTIONAL {
     SELECT DISTINCT ?loop (COUNT(DISTINCT ?h) AS ?nfop)
     WHERE {
-      ?fop a f:IntrinsicOperator ;
+
+      ?fop a ?fop_cat OPTION (INFERENCE NONE) ;
            src:treeDigest ?h ;
-           a ?fop_cat OPTION (INFERENCE NONE);
-           f:inDoConstruct ?loop .
+           cpp:inIterationStatement ?loop .
 
-      FILTER (?fop_cat NOT IN (f:Not, f:And, f:Or, f:Concat))
-      FILTER NOT EXISTS {
-        ?fop a f:RelOp .
-      }
-      FILTER NOT EXISTS {
-        ?fop a f:EquivOp .
-      }
+      FILTER (?fop_cat IN (cpp:MultiplicativeExpressionMult,
+                           cpp:MultiplicativeExpressionDiv,
+                           cpp:MultiplicativeExpressionMod,
+                           cpp:AdditiveExpressionAdd,
+                           cpp:AdditiveExpressionSubt
+                           ))
 
-      ?opr a f:Expr ;
+      ?opr a cpp:Expression ;
            src:parent+ ?fop .
 
       FILTER (EXISTS {
-        ?opr a f:RealLiteralConstant
+        ?opr a cpp:FloatingLiteral .
       } || EXISTS {
-        ?opr a f:FunctionReference ;
-             f:name ?fname .
-        FILTER (?fname IN ("real", "dble"))
-      } || EXISTS {
-        ?opr f:declarator ?dtor .
-        ?dtor a f:Declarator ;
-              f:declarationTypeSpec [a f:FloatingPointType] .
-      } || EXISTS {
-        ?opr f:typeSpec ?tspec .
-        FILTER (?tspec IN ("Real", "DoublePrecision", "DoubleComplex", "Complex"))
+        ?opr cpp:declarator/cpp:declarationTypeSpec ?tspec .
+        ?tspec a ?tcat OPTION (INFERENCE NONE) .
+        FILTER (?tcat IN (cpp:Double,cpp:Float))
       })
 
     } GROUP BY ?loop
@@ -711,52 +675,45 @@ GRAPH <%%(proj)s> {
 }
 ''' % NS_TBL
 
-Q_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?loop_d ?nbr ?nop ?nc ?nes
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?vname ?loop_d ?nbr ?nes ?nop ?nc
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?sp ?sub ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?fd ?fn ?loop_d
     WHERE {
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
       OPTIONAL {
-        ?loop f:inSubprogram ?sp .
-        ?sp a f:Subprogram ;
-            f:name ?sub .
+        ?loop cpp:inFunctionDefinition ?fd .
+        ?fd a cpp:FunctionDefinition ;
+            cpp:provides/(cpp:name|cpp:regexp) ?fn .
         FILTER NOT EXISTS {
-          ?loop f:inSubprogram ?sp0 .
-          ?sp0 f:inSubprogram ?sp .
-          FILTER (?sp != ?sp0)
+          ?loop cpp:inFunctionDefinition ?fd0 .
+          ?sp0 cpp:inFunctionDefinition ?fd .
+          FILTER (?fd != ?fd0)
         }
       }
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?sp ?sub ?loop_d
+    } GROUP BY ?ver ?loc ?loop ?fd ?fn ?loop_d
   }
 
   OPTIONAL {
     SELECT DISTINCT ?loop (COUNT(DISTINCT ?h) AS ?nop)
     WHERE {
-      ?op a f:IntrinsicOperator ;
+      ?op a cpp:Expression ;
           src:treeDigest ?h ;
-          f:inDoConstruct ?loop .
+          cpp:inIterationStatement ?loop .
 
     } GROUP BY ?loop
   }
@@ -764,27 +721,18 @@ GRAPH <%%(proj)s> {
   OPTIONAL {
     SELECT DISTINCT ?loop (COUNT(DISTINCT ?br) AS ?nbr)
     WHERE {
-      ?br a f:Stmt ;
+      ?br a cpp:SelectionStatement ;
           a ?br_cat OPTION (INFERENCE NONE) ;
-          f:inDoConstruct ?loop .
-
-      FILTER (?br_cat IN (f:IfStmt,
-                          f:IfThenStmt,
-                          f:ElseStmt,
-                          f:ElseIfStmt,
-                          f:CaseStmt,
-                          f:WhereStmt,
-                          f:ElsewhereStmt,
-                          f:TypeGuardStmt))
+          cpp:inIterationStatement ?loop .
     } GROUP BY ?loop
   }
 
   OPTIONAL {
-    SELECT DISTINCT ?loop (COUNT(DISTINCT ?es) AS ?nes)
+    SELECT DISTINCT ?loop (COUNT(DISTINCT ?stmt) AS ?nes)
     WHERE {
-      ?es a f:ExecutableStmt ;
-          f:inDoConstruct ?loop .
-
+      ?stmt a cpp:Statement ;
+            a ?stmt_cat OPTION (INFERENCE NONE) ;
+            cpp:inIterationStatement ?loop .
     } GROUP BY ?loop
   }
 
@@ -792,14 +740,10 @@ GRAPH <%%(proj)s> {
     SELECT DISTINCT ?loop (COUNT(DISTINCT ?call) AS ?nc)
     WHERE {
       ?call a ?call_cat OPTION (INFERENCE NONE) ;
-            f:inDoConstruct ?loop ;
-            f:name ?callee_name .
+            cpp:inIterationStatement ?loop .
 
-      FILTER (?call_cat IN (f:CallStmt, f:FunctionReference))
-
-#      FILTER EXISTS {
-#        ?call f:refersTo ?callee .
-#      }
+      FILTER (?call_cat IN (cpp:PostfixExpressionFunCall,
+                            cpp:PostfixExpressionFunCallGuarded))
 
     } GROUP by ?loop
   }
@@ -809,71 +753,57 @@ GRAPH <%%(proj)s> {
 ''' % NS_TBL
 
 
-Q_AREF0_AA_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_AREF0_AA_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?loop_d ?sig
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?loop_d ?sig
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?fd ?fn ?loop_d
     WHERE {
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
-  }
+      OPTIONAL {
+        ?loop cpp:inFunctionDefinition ?fd .
+        ?fd a cpp:FunctionDefinition ;
+            cpp:provides/(cpp:name|cpp:regexp) ?fn .
+        FILTER NOT EXISTS {
+          ?loop cpp:inFunctionDefinition ?fd0 .
+          ?sp0 cpp:inFunctionDefinition ?fd .
+          FILTER (?fd != ?fd0)
+        }
+      }
 
-  OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
-    FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
-    }
+    } GROUP BY ?ver ?loc ?loop ?fd ?fn ?loop_d
   }
 
   {
     SELECT DISTINCT ?loop ?sig
     WHERE {
 
-      ?pn a f:PartName ;
-          src:parent ?aa .
-
-      ?aa a f:ArrayAccess ;
-          f:name ?an ;
-          f:arrayRefSig0 ?asig0 ;
-          f:inDoConstruct ?loop .
+      ?aa a cpp:PostfixExpressionSubscr ;
+          src:child0 ?a ;
+          cpp:arrayRefSig0 ?asig0 ;
+          cpp:inIterationStatement ?loop .
 
       OPTIONAL {
-        ?assign a f:AssignmentStmt ;
-                src:children/rdf:first ?aa .
+        ?assign a cpp:AssignmentOperatorExpression ;
+                src:child0 ?aa .
       }
       BIND(IF(BOUND(?assign), CONCAT(",", ?asig0), ?asig0) AS ?sig)
 
       FILTER EXISTS {
-        ?pn f:declarator ?dtor .
-
-        ?dtor a f:Declarator ;
-              f:declarationTypeSpec ?tspec .
-
-        ?tspec a f:NumericType .
+         ?a cpp:declarator/cpp:declarationTypeSpec ?tspec .
+         ?tspec a cpp:NumericType .
       }
 
     } GROUP BY ?loop ?sig
@@ -883,77 +813,135 @@ GRAPH <%%(proj)s> {
 }
 ''' % NS_TBL
 
-Q_AREF0_IAA_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_AREF0_IAA_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?loop_d ?sig
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?loop_d ?sig
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?fd ?fn ?loop_d
     WHERE {
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
-  }
+      OPTIONAL {
+        ?loop cpp:inFunctionDefinition ?fd .
+        ?fd a cpp:FunctionDefinition ;
+            cpp:provides/(cpp:name|cpp:regexp) ?fn .
+        FILTER NOT EXISTS {
+          ?loop cpp:inFunctionDefinition ?fd0 .
+          ?sp0 cpp:inFunctionDefinition ?fd .
+          FILTER (?fd != ?fd0)
+        }
+      }
 
-  OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
-    FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
-    }
+    } GROUP BY ?ver ?loc ?loop ?fd ?fn ?loop_d
   }
 
   {
     SELECT DISTINCT ?loop ?sig
     WHERE {
-      ?pn a f:PartName ;
-          src:parent ?iaa .
 
-      ?iaa a f:ArrayAccess ;
-           f:name ?an ;
-           f:arrayRefSig0 ?asig0 ;
-           f:inDoConstruct ?loop .
+      ?aa a cpp:PostfixExpressionSubscr ;
+          src:child0 ?a ;
+          src:child1 ?idx ;
+          cpp:arrayRefSig0 ?asig0 ;
+          cpp:inIterationStatement ?loop .
 
       OPTIONAL {
-        ?assign a f:AssignmentStmt ;
-                src:children/rdf:first ?iaa .
+        ?assign a cpp:AssignmentOperatorExpression ;
+                src:child0 ?aa .
       }
       BIND(IF(BOUND(?assign), CONCAT(",", ?asig0), ?asig0) AS ?sig)
 
       FILTER EXISTS {
-        ?pn f:declarator ?dtor .
-
-        ?dtor a f:Declarator ;
-              f:declarationTypeSpec ?tspec .
-
-        ?tspec a f:NumericType .
+         ?a cpp:declarator/cpp:declarationTypeSpec ?tspec .
+         ?tspec a cpp:NumericType .
       }
 
+      FILTER (EXISTS {
+        ?x a cpp:Expression ;
+           src:children [] ;
+           src:parent+ ?idx0 .
+
+        ?aa0 a cpp:PostfixExpressionSubscr ;
+             src:child1 ?idx0 ;
+             src:parent+ ?aa .
+
+        FILTER (?x != ?aa)
+      } || EXISTS {
+        ?x a cpp:Expression ;
+           src:children [] ;
+           src:parent+ ?idx .
+      })
+
+    } GROUP BY ?loop ?sig
+  }
+
+}
+}
+''' % NS_TBL
+
+Q_AREF0_DAA_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
+PREFIX ver: <%(ver_ns)s>
+PREFIX src: <%(src_ns)s>
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?loop_d ?sig
+WHERE {
+GRAPH <%%(proj)s> {
+
+  {
+    SELECT DISTINCT ?ver ?loc ?loop ?fd ?fn ?loop_d
+    WHERE {
+      ?loop a cpp:IterationStatement ;
+            src:treeDigest ?loop_d ;
+            cpp:inTranslationUnit ?tu .
+
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
+          ver:version ?ver .
+
+      OPTIONAL {
+        ?loop cpp:inFunctionDefinition ?fd .
+        ?fd a cpp:FunctionDefinition ;
+            cpp:provides/(cpp:name|cpp:regexp) ?fn .
+        FILTER NOT EXISTS {
+          ?loop cpp:inFunctionDefinition ?fd0 .
+          ?sp0 cpp:inFunctionDefinition ?fd .
+          FILTER (?fd != ?fd0)
+        }
+      }
+
+    } GROUP BY ?ver ?loc ?loop ?fd ?fn ?loop_d
+  }
+
+  {
+    SELECT DISTINCT ?loop ?sig
+    WHERE {
+
+      ?aa a cpp:PostfixExpressionSubscr ;
+          src:child0 ?a ;
+          src:child1 ?idx ;
+          cpp:arrayRefSig0 ?asig0 ;
+          cpp:inIterationStatement ?loop .
+
+      OPTIONAL {
+        ?assign a cpp:AssignmentOperatorExpression ;
+                src:child0 ?aa .
+      }
+      BIND(IF(BOUND(?assign), CONCAT(",", ?asig0), ?asig0) AS ?sig)
+
       FILTER EXISTS {
-        ?x a ?cat ; 
-           src:parent+ ?iaa .
-        FILTER (?x != ?iaa)
-        FILTER (?cat IN (f:ArrayElement, f:ArraySection, f:FunctionReference))
+         ?a cpp:declarator/cpp:declarationTypeSpec ?tspec .
+         ?tspec a cpp:Double .
       }
 
     } GROUP BY ?loop ?sig
@@ -963,165 +951,61 @@ GRAPH <%%(proj)s> {
 }
 ''' % NS_TBL
 
-Q_AREF0_DAA_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_AREF12_AA_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?loop_d ?sig
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?loop_d ?sig
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?fd ?fn ?loop_d
     WHERE {
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
-  }
+      OPTIONAL {
+        ?loop cpp:inFunctionDefinition ?fd .
+        ?fd a cpp:FunctionDefinition ;
+            cpp:provides/(cpp:name|cpp:regexp) ?fn .
+        FILTER NOT EXISTS {
+          ?loop cpp:inFunctionDefinition ?fd0 .
+          ?sp0 cpp:inFunctionDefinition ?fd .
+          FILTER (?fd != ?fd0)
+        }
+      }
 
-  OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
-    FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
-    }
+    } GROUP BY ?ver ?loc ?loop ?fd ?fn ?loop_d
   }
 
   {
     SELECT DISTINCT ?loop ?sig
     WHERE {
 
-      ?loop a f:DoConstruct .
-
-      {
-        SELECT DISTINCT ?pn ?aa ?an ?asig0 ?loop
-        WHERE {
-
-          ?pn a f:PartName ;
-              src:parent ?aa .
-
-          ?aa a f:ArrayAccess ;
-              f:name ?an ;
-              f:arrayRefSig0 ?asig0 ;
-              f:inDoConstruct ?loop .
-
-        } GROUP BY ?pn ?aa ?an ?asig0 ?loop
-      }
+      ?aa a cpp:PostfixExpressionSubscr ;
+          src:child0 ?a ;
+          src:child1 ?idx ;
+          cpp:inIterationStatement ?loop .
 
       OPTIONAL {
-        ?assign a f:AssignmentStmt ;
-                src:children/rdf:first ?aa .
-      }
-      BIND(IF(BOUND(?assign), CONCAT(",", ?asig0), ?asig0) AS ?sig)
-
-      FILTER EXISTS {
-        ?pn f:declarator ?dtor .
-
-        ?dtor a f:Declarator ;
-              f:declarationTypeSpec ?tspec .
-
-        ?tspec a f:TypeSpec ;
-               a ?tyc OPTION (INFERENCE NONE) .
-
-        FILTER (?tyc = f:DoublePrecision || ?tyc = f:Complex || ?tyc = f:DoubleComplex ||
-                  (?tyc = f:Real && 
-                     EXISTS {
-                       ?tspec src:children/rdf:first/src:children/rdf:first/f:value 8
-                     })
-          )
-      }
-
-    } GROUP BY ?loop ?sig
-  }
-
-}
-}
-''' % NS_TBL
-
-Q_AREF12_AA_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
-PREFIX ver: <%(ver_ns)s>
-PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?loop_d ?sig
-WHERE {
-GRAPH <%%(proj)s> {
-
-  {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
-    WHERE {
-      ?loop a f:DoConstruct ;
-            src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
-
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
-          ver:version ?ver .
-
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
-  }
-
-  OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
-    FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
-    }
-  }
-
-  {
-    SELECT DISTINCT ?loop ?sig
-    WHERE {
-
-      ?pn a f:PartName ;
-          src:parent ?aa .
-
-      ?aa a f:ArrayAccess ;
-          f:name ?an ;
-          f:inDoConstruct ?loop .
-
-      OPTIONAL {
-        ?aa f:arrayRefSig%%(level)d ?asig .
+        ?aa cpp:arrayRefSig%%(level)d ?asig .
       }
       OPTIONAL {
-        ?assign a f:AssignmentStmt ;
-                src:children/rdf:first ?aa .
+        ?assign a cpp:AssignmentOperatorExpression ;
+                src:child0 ?aa .
       }
       BIND(COALESCE(?asig, "") AS ?sig0)
       BIND(IF(BOUND(?assign) && ?sig0 != "", CONCAT(",", ?sig0), ?sig0) AS ?sig)
 
       FILTER EXISTS {
-        ?pn f:declarator ?dtor .
-
-        ?dtor a f:Declarator ;
-              f:declarationTypeSpec ?tspec .
-
-        ?tspec a f:NumericType .
+         ?a cpp:declarator/cpp:declarationTypeSpec ?tspec .
+         ?tspec a cpp:NumericType .
       }
 
     } GROUP BY ?loop ?sig
@@ -1131,180 +1015,143 @@ GRAPH <%%(proj)s> {
 }
 ''' % NS_TBL
 
-Q_AREF12_IAA_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
+Q_AREF12_IAA_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
 PREFIX ver: <%(ver_ns)s>
 PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?loop_d ?sig
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?loop_d ?sig
 WHERE {
 GRAPH <%%(proj)s> {
 
   {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
+    SELECT DISTINCT ?ver ?loc ?loop ?fd ?fn ?loop_d
     WHERE {
-      ?loop a f:DoConstruct ;
+      ?loop a cpp:IterationStatement ;
             src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
+            cpp:inTranslationUnit ?tu .
 
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
           ver:version ?ver .
 
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
-  }
-
-  OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
-    FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
-    }
-  }
-
-  {
-    SELECT DISTINCT ?loop ?sig
-    WHERE {
-      ?pn a f:PartName ;
-          src:parent ?iaa .
-
-      ?iaa a f:ArrayAccess ;
-           f:name ?an ;
-           f:inDoConstruct ?loop .
-
       OPTIONAL {
-        ?iaa f:arrayRefSig%%(level)d ?asig .
-      }
-      OPTIONAL {
-        ?assign a f:AssignmentStmt ;
-                src:children/rdf:first ?iaa .
-      }
-      BIND(COALESCE(?asig, "") AS ?sig0)
-      BIND(IF(BOUND(?assign) && ?sig0 != "", CONCAT(",", ?sig0), ?sig0) AS ?sig)
-
-      FILTER EXISTS {
-        ?pn f:declarator ?dtor .
-
-        ?dtor a f:Declarator ;
-              f:declarationTypeSpec ?tspec .
-
-        ?tspec a f:NumericType .
+        ?loop cpp:inFunctionDefinition ?fd .
+        ?fd a cpp:FunctionDefinition ;
+            cpp:provides/(cpp:name|cpp:regexp) ?fn .
+        FILTER NOT EXISTS {
+          ?loop cpp:inFunctionDefinition ?fd0 .
+          ?sp0 cpp:inFunctionDefinition ?fd .
+          FILTER (?fd != ?fd0)
+        }
       }
 
-      FILTER EXISTS {
-        ?x a ?cat ; 
-           src:parent+ ?iaa .
-        FILTER (?x != ?iaa)
-        FILTER (?cat IN (f:ArrayElement, f:ArraySection, f:FunctionReference))
-      }
-
-    } GROUP BY ?loop ?sig
-  }
-
-}
-}
-''' % NS_TBL
-
-Q_AREF12_DAA_IN_LOOP_F = '''DEFINE input:inference "ont.cpi"
-PREFIX f:   <%(f_ns)s>
-PREFIX ver: <%(ver_ns)s>
-PREFIX src: <%(src_ns)s>
-SELECT DISTINCT ?ver ?loc ?sp ?sub ?loop ?vname ?loop_d ?sig
-WHERE {
-GRAPH <%%(proj)s> {
-
-  {
-    SELECT DISTINCT ?ver ?loc ?loop ?vname ?loop_d
-    WHERE {
-      ?loop a f:DoConstruct ;
-            src:treeDigest ?loop_d ;
-            f:inProgramUnitOrSubprogram ?pu_or_sp ;
-            f:inProgramUnit ?pu .
-
-      ?pu_or_sp src:inFile/src:location ?loc .
-
-      OPTIONAL {
-        ?loop f:variableName ?vname .
-      }
-
-      ?pu a f:ProgramUnit ;
-          src:inFile/src:location ?pu_loc ;
-          ver:version ?ver .
-
-    } GROUP BY ?ver ?loc ?loop ?vname ?loop_d
-  }
-
-  OPTIONAL {
-    ?loop f:inSubprogram ?sp .
-    ?sp a f:Subprogram ;
-        f:name ?sub .
-    FILTER NOT EXISTS {
-      ?loop f:inSubprogram ?sp0 .
-      ?sp0 f:inSubprogram ?sp .
-      FILTER (?sp != ?sp0)
-    }
+    } GROUP BY ?ver ?loc ?loop ?fd ?fn ?loop_d
   }
 
   {
     SELECT DISTINCT ?loop ?sig
     WHERE {
 
-      ?loop a f:DoConstruct .
-
-      {
-        SELECT DISTINCT ?pn ?aa ?an ?loop
-        WHERE {
-
-          ?pn a f:PartName ;
-              src:parent ?aa .
-
-          ?aa a f:ArrayAccess ;
-              f:name ?an ;
-              f:inDoConstruct ?loop .
-
-        } GROUP BY ?pn ?aa ?an ?loop
-      }
+      ?aa a cpp:PostfixExpressionSubscr ;
+          src:child0 ?a ;
+          src:child1 ?idx ;
+          cpp:inIterationStatement ?loop .
 
       OPTIONAL {
-        ?aa f:arrayRefSig%%(level)d ?asig .
+        ?aa cpp:arrayRefSig%%(level)d ?asig .
       }
       OPTIONAL {
-        ?assign a f:AssignmentStmt ;
-                src:children/rdf:first ?aa .
+        ?assign a cpp:AssignmentOperatorExpression ;
+                src:child0 ?aa .
       }
       BIND(COALESCE(?asig, "") AS ?sig0)
       BIND(IF(BOUND(?assign) && ?sig0 != "", CONCAT(",", ?sig0), ?sig0) AS ?sig)
 
       FILTER EXISTS {
-        ?pn f:declarator ?dtor .
-
-        ?dtor a f:Declarator ;
-              f:declarationTypeSpec ?tspec .
-
-        ?tspec a f:TypeSpec ;
-               a ?tyc OPTION (INFERENCE NONE) .
-
-        FILTER (?tyc = f:DoublePrecision || ?tyc = f:Complex || ?tyc = f:DoubleComplex ||
-                  (?tyc = f:Real && 
-                     EXISTS {
-                       ?tspec src:children/rdf:first/src:children/rdf:first/f:value 8
-                     }) ||
-                  (?tyc = f:PpMacroTypeSpec &&
-                     EXISTS {
-                       ?tspec f:body ?body .
-                       FILTER (CONTAINS(?body, "double") || CONTAINS(?body, "complex"))
-                     })
-          )
+         ?a cpp:declarator/cpp:declarationTypeSpec ?tspec .
+         ?tspec a cpp:NumericType .
       }
+
+      FILTER (EXISTS {
+        ?x a cpp:Expression ;
+           src:children [] ;
+           src:parent+ ?idx0 .
+
+        ?aa0 a cpp:PostfixExpressionSubscr ;
+             src:child1 ?idx0 ;
+             src:parent+ ?aa .
+
+        FILTER (?x != ?aa)
+      } || EXISTS {
+        ?x a cpp:Expression ;
+           src:children [] ;
+           src:parent+ ?idx .
+      })
+
+    } GROUP BY ?loop ?sig
+  }
+
+}
+}
+''' % NS_TBL
+
+Q_AREF12_DAA_IN_LOOP_C = '''DEFINE input:inference "ont.cpi"
+PREFIX cpp: <%(cpp_ns)s>
+PREFIX ver: <%(ver_ns)s>
+PREFIX src: <%(src_ns)s>
+SELECT DISTINCT ?ver ?loc ?fd ?fn ?loop ?loop_d ?sig
+WHERE {
+GRAPH <%%(proj)s> {
+
+  {
+    SELECT DISTINCT ?ver ?loc ?loop ?fd ?fn ?loop_d
+    WHERE {
+      ?loop a cpp:IterationStatement ;
+            src:treeDigest ?loop_d ;
+            cpp:inTranslationUnit ?tu .
+
+      ?tu a cpp:TranslationUnit ;
+          src:inFile/src:location ?loc ;
+          ver:version ?ver .
+
+      OPTIONAL {
+        ?loop cpp:inFunctionDefinition ?fd .
+        ?fd a cpp:FunctionDefinition ;
+            cpp:provides/(cpp:name|cpp:regexp) ?fn .
+        FILTER NOT EXISTS {
+          ?loop cpp:inFunctionDefinition ?fd0 .
+          ?sp0 cpp:inFunctionDefinition ?fd .
+          FILTER (?fd != ?fd0)
+        }
+      }
+
+    } GROUP BY ?ver ?loc ?loop ?fd ?fn ?loop_d
+  }
+
+  {
+    SELECT DISTINCT ?loop ?sig
+    WHERE {
+
+      ?aa a cpp:PostfixExpressionSubscr ;
+          src:child0 ?a ;
+          src:child1 ?idx ;
+          cpp:inIterationStatement ?loop .
+
+      OPTIONAL {
+        ?aa cpp:arrayRefSig%%(level)d ?asig .
+      }
+      OPTIONAL {
+        ?assign a cpp:AssignmentOperatorExpression ;
+                src:child0 ?aa .
+      }
+      BIND(COALESCE(?asig, "") AS ?sig0)
+      BIND(IF(BOUND(?assign) && ?sig0 != "", CONCAT(",", ?sig0), ?sig0) AS ?sig)
+
+      FILTER EXISTS {
+         ?a cpp:declarator/cpp:declarationTypeSpec ?tspec .
+         ?tspec a cpp:Double .
+      }
+
     } GROUP BY ?loop ?sig
   }
 
@@ -1313,27 +1160,27 @@ GRAPH <%%(proj)s> {
 ''' % NS_TBL
 
 
-QUERY_TBL = { 'fortran':
+QUERY_TBL = { 'cpp':
               { 
-                  'loop_loop'      : Q_LOOP_LOOP_F,
-                  'arrays'         : Q_ARRAYS_F,
-                  'ffr_in_loop'    : Q_FFR_IN_LOOP_F,
-                  'dfr_in_loop'    : Q_DFR_IN_LOOP_F,
-                  'fop_in_loop'    : Q_FOP_IN_LOOP_F,
-                  'in_loop'        : Q_IN_LOOP_F,
+                  'loop_loop'      : Q_LOOP_LOOP_C,
+                  'arrays'         : Q_ARRAYS_C,
+                  'ffr_in_loop'    : Q_FFR_IN_LOOP_C,
+                  'dfr_in_loop'    : Q_DFR_IN_LOOP_C,
+                  'fop_in_loop'    : Q_FOP_IN_LOOP_C,
+                  'in_loop'        : Q_IN_LOOP_C,
 
-                  'aref0_in_loop'  : { 'aa' : Q_AREF0_AA_IN_LOOP_F,
-                                       'iaa': Q_AREF0_IAA_IN_LOOP_F,
-                                       'daa': Q_AREF0_DAA_IN_LOOP_F,
+                  'aref0_in_loop'  : { 'aa' : Q_AREF0_AA_IN_LOOP_C,
+                                       'iaa': Q_AREF0_IAA_IN_LOOP_C,
+                                       'daa': Q_AREF0_DAA_IN_LOOP_C,
                                    },
 
-                  'aref12_in_loop' : { 'aa' : Q_AREF12_AA_IN_LOOP_F,
-                                       'iaa': Q_AREF12_IAA_IN_LOOP_F,
-                                       'daa': Q_AREF12_DAA_IN_LOOP_F,
+                  'aref12_in_loop' : { 'aa' : Q_AREF12_AA_IN_LOOP_C,
+                                       'iaa': Q_AREF12_IAA_IN_LOOP_C,
+                                       'daa': Q_AREF12_DAA_IN_LOOP_C,
                                    },
 
-                  'loop_sp'        : Q_LOOP_SP_F,
-                  'sp_sp'          : Q_SP_SP_F,
+                  'loop_fd'        : Q_LOOP_FD_C,
+                  'fd_fd'          : Q_FD_FD_C,
               },
           }
 
@@ -1385,13 +1232,13 @@ class Metrics(dp.base):
 
         self._result_tbl = {} # lang -> item name -> (ver * loc * lnum) -> value
 
-        self._metadata_tbl = {} # (ver * loc * lnum) -> {'sub','digest'}
+        self._metadata_tbl = {} # (ver * loc * lnum) -> {'fn','digest'}
 
         self._ipp_tbl = {} # uri -> uri (inter-procedural parent tbl)
 
         self._ent_tbl = {} # uri -> is_loop
 
-        self._loop_digest_tbl = {} # (ver * loc * sub * loop) -> digest set
+        self._loop_digest_tbl = {} # (ver * loc * fn * loop) -> digest set
 
         self._max_loop_level_tbl = {} # uri -> lv
 
@@ -1421,7 +1268,12 @@ class Metrics(dp.base):
 
 
     def get_item_tbl(self, lang, name):
-        return self._result_tbl[lang][name]
+        tbl = {}
+        try:
+            tbl = self._result_tbl[lang][name]
+        except:
+            pass
+        return tbl
 
     def get_value(self, name, key):
         v = 0
@@ -1466,7 +1318,7 @@ class Metrics(dp.base):
 
     def find_ftbl(self, lang, key):
         md = self.get_metadata(key)
-        sub = md['sub']
+        fn = md['fn']
         digest = md['digest']
 
         (ver, path, lnum) = key
@@ -1477,7 +1329,7 @@ class Metrics(dp.base):
             'proj'   : self._proj_id,
             'ver'    : ver,
             'path'   : path,
-            'sub'    : sub,
+            'fn'     : fn,
             'lnum'   : str(lnum),
             'digest' : digest,
         }
@@ -1486,7 +1338,7 @@ class Metrics(dp.base):
 
         if fop > 0:
             for lv in range(3):
-                if ftbl.has_key(BF[lv]):
+                if BF[lv] in ftbl:
                     aa  = self._get_value(lang, N_A_REFS[lv], key)
                     daa = self._get_value(lang, N_DBL_A_REFS[lv], key)
                     saa = aa - daa
@@ -1504,20 +1356,20 @@ class Metrics(dp.base):
 
     def get_ftbl_list(self):
         keys_tbl = {} # lang -> keys
-        for (lang, item_tbl) in self._result_tbl.iteritems():
+        for (lang, item_tbl) in self._result_tbl.items():
             try:
                 keys = keys_tbl[lang]
             except KeyError:
                 keys = set()
                 keys_tbl[lang] = keys
 
-            for (item, tbl) in item_tbl.iteritems():
+            for (item, tbl) in item_tbl.items():
                 for k in tbl.keys():
                     keys.add(k)
 
         ftbl_list = []
 
-        for (lang, keys) in keys_tbl.iteritems():
+        for (lang, keys) in keys_tbl.items():
             for key in keys:
                 ftbl = self.find_ftbl(lang, key)
                 ftbl_list.append(ftbl)
@@ -1526,15 +1378,15 @@ class Metrics(dp.base):
 
 
     def key_to_string(self, key):
-        (ver, loc, sub, loop, vname) = key
+        (ver, loc, fn, loop, vname) = key
         e = SourceCodeEntity(uri=loop)
         lnum = e.get_range().get_start_line()
-        s = '%s:%s:%s:%s' % (ver, loc, sub, lnum)
+        s = '%s:%s:%s:%s' % (ver, loc, fn, lnum)
         return s
 
 
     def set_metrics(self, lang, name, _key, value, add=False):
-        (ver, loc, sub, loop, vname) = _key
+        (ver, loc, fn, loop, vname) = _key
 
         ent = SourceCodeEntity(uri=loop)
         lnum = ent.get_range().get_start_line()
@@ -1546,7 +1398,7 @@ class Metrics(dp.base):
 
         loop_d = self.get_loop_digest(_key)
 
-        self._metadata_tbl[key] = {'sub':sub,'digest':loop_d}
+        self._metadata_tbl[key] = {'fn':fn,'digest':loop_d}
 
         try:
             ntbl = self._result_tbl[lang]
@@ -1581,14 +1433,14 @@ class Metrics(dp.base):
     def finalize_ipp(self):
         self.message('finalizing call graph...')
         for lang in QUERY_TBL.keys():
-            query = QUERY_TBL[lang]['sp_sp'] % { 'proj' : self._graph_uri }
+            query = QUERY_TBL[lang]['fd_fd'] % { 'proj' : self._graph_uri }
 
             for qvs, row in self._sparql.query(query):
                 callee = row['callee']
-                sp     = row['sp']
-                self.ipp_add(callee, sp)
+                fd     = row['fd']
+                self.ipp_add(callee, fd)
 
-            query = QUERY_TBL[lang]['loop_sp'] % { 'proj' : self._graph_uri }
+            query = QUERY_TBL[lang]['loop_fd'] % { 'proj' : self._graph_uri }
 
             for qvs, row in self._sparql.query(query):
                 callee = row['callee']
@@ -1605,18 +1457,18 @@ class Metrics(dp.base):
         for qvs, row in self._sparql.query(query):
             ver   = row['ver']
             loc   = row['loc']
-            sub   = row.get('sub', '')
+            fn    = row.get('fn', '')
             loop  = row['loop']
             loop_d = row['loop_d']
-            vname  = row.get('vname', '')
+            vname = ''
 
             child_loop = row.get('child_loop', None)
             child_loop_d = row.get('child_loop_d', '')
-            child_vname = row.get('child_vname', '')
+            child_vname = ''
 
             lver = get_lver(ver)
 
-            key = (lver, loc, sub, loop, vname)
+            key = (lver, loc, fn, loop, vname)
             self.set_loop_digest(key, loop_d)
 
             if f:
@@ -1629,7 +1481,7 @@ class Metrics(dp.base):
                 children_tbl[key] = child_loops
 
             if child_loop:
-                child_key = (lver, loc, sub, child_loop, child_vname)
+                child_key = (lver, loc, fn, child_loop, child_vname)
                 self.set_loop_digest(child_key, child_loop_d)
 
                 if child_key not in child_loops:
@@ -1639,7 +1491,7 @@ class Metrics(dp.base):
 
         roots = []
         for k in children_tbl.keys():
-            if not parent_tbl.has_key(k):
+            if k not in parent_tbl:
                 roots.append(k)
                 r = SourceCodeEntity(uri=self.get_loop_of_key(k)).get_range()
                 lines = r.get_end_line() - r.get_start_line() + 1
@@ -1714,16 +1566,16 @@ class Metrics(dp.base):
     def get_key(self, row):
         ver    = row['ver']
         loc    = row['loc']
-        sub    = row.get('sub', '')
+        fn     = row.get('fn', '')
         loop   = row['loop']
-        vname  = row.get('vname', '')
+        vname  = ''
 
         lver = get_lver(ver)
-        key = (lver, loc, sub, loop, vname)
+        key = (lver, loc, fn, loop, vname)
         return key
 
     def get_loop_of_key(self, key):
-        (lver, loc, sub, loop, vname) = key
+        (lver, loc, fn, loop, vname) = key
         return loop
 
     def calc_array_metrics(self):
@@ -1738,7 +1590,7 @@ class Metrics(dp.base):
                 for qvs, row in self._sparql.query(query):
                     key = self.get_key(row)
 
-                    array = row['edecl']
+                    array = row['dtor']
                     tyc   = row['tyc']
                     rank  = int(row['rank'])
                     try:
@@ -1870,9 +1722,9 @@ class Metrics(dp.base):
 
                     tbl[key] = data
 
-                    sp = row['sp']
-                    if sp:
-                        self.ipp_add(row['loop'], sp)
+                    fd = row['fd']
+                    if fd:
+                        self.ipp_add(row['loop'], fd)
 
                 tree = self.get_tree(lang)
 
@@ -1994,9 +1846,9 @@ class Metrics(dp.base):
                     
                     tbl[key] = data
 
-                    sp = row['sp']
-                    if sp:
-                        self.ipp_add(row['loop'], sp)
+                    fd = row['fd']
+                    if fd:
+                        self.ipp_add(row['loop'], fd)
 
                 tree = self.get_tree(lang)
 
@@ -2045,9 +1897,9 @@ class Metrics(dp.base):
 
                     fref_tbl[h] = (fname, nargs, False)
 
-                    sp = row['sp']
-                    if sp:
-                        self.ipp_add(row['loop'], sp)
+                    fd = row['fd']
+                    if fd:
+                        self.ipp_add(row['loop'], fd)
 
                 #
 
@@ -2083,7 +1935,7 @@ class Metrics(dp.base):
                     def f(k):
                         fref_tbl = tbl.get(k, None)
                         if fref_tbl:
-                            for (h, (fn, na, dbl)) in fref_tbl.iteritems():
+                            for (h, (fn, na, dbl)) in fref_tbl.items():
                                 data['nfop'] += get_nfops(fn, na, double=dbl)
 
                     self.iter_tree(tree, key, f)
@@ -2103,14 +1955,14 @@ class Metrics(dp.base):
 
         to_be_removed = set()
 
-        for (lang, item_tbl) in self._result_tbl.iteritems():
+        for (lang, item_tbl) in self._result_tbl.items():
             for item in (MAX_ARRAY_RANK, N_FP_OPS, N_A_REFS[0]):
-                for (k, v) in item_tbl[item].iteritems():
+                for (k, v) in item_tbl[item].items():
                     if v == 0:
                         to_be_removed.add(k)
 
-        for (lang, item_tbl) in self._result_tbl.iteritems():
-            for (item, tbl) in item_tbl.iteritems():
+        for (lang, item_tbl) in self._result_tbl.items():
+            for (item, tbl) in item_tbl.items():
                 for k in to_be_removed:
                     del tbl[k]
         
@@ -2192,7 +2044,7 @@ if __name__ == '__main__':
         else:
             for ftbl in sorted(ftbl_list,
                                key=lambda x: (x['meta']['ver'],
-                                              x['meta']['sub'],
+                                              x['meta']['fn'],
                                               x['meta']['lnum'])):
                 print('%s' % ftbl_to_string(ftbl))
 

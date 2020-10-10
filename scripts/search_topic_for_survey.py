@@ -1,10 +1,11 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A script for topic analysis of documents
 
-  Copyright 2013-2017 RIKEN
+  Copyright 2013-2018 RIKEN
+  Copyright 2018-2020 Chiba Institute of Technology
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@ __author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
 
 import os.path
 from itertools import chain
-import cPickle
+import _pickle as cPickle
 import json
 import re
 
@@ -32,10 +33,10 @@ import dp
 from gensim import models, corpora, similarities
 from analyze_topic import get_texts, lsi, lda, rp
 
-FNAME_PAT_FORTRAN = r'(.*readme.*)|(.+\.(f|f90|f95|ftn|for|f03|f08))'
+FNAME_PAT_CPP = r'(.*readme.*)|(.+\.(c|h|cpp|hpp|cc|hh|C|H))'
 
 FNAME_PAT_TBL = {
-    'fortran' : FNAME_PAT_FORTRAN,
+    'cpp' : FNAME_PAT_CPP,
 }
 
 MODEL_LOADER_TBL = {
@@ -49,13 +50,13 @@ def ensure_dir(d):
     if not os.path.exists(d):
         try:
             os.makedirs(d)
-        except Exception, e:
+        except Exception as e:
             dp.warning(str(e))
             b = False
     return b
 
 
-def search(index_path, mname, dpath, ntopics=32, nsims=10, lang='fortran', outfile=None):
+def search(index_path, mname, dpath, ntopics=32, nsims=10, lang='cpp', outfile=None):
     try:
         ldmodel = MODEL_LOADER_TBL[mname]
     except KeyError:
