@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+   Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -261,6 +261,7 @@ module F (L : Spec.LABEL_T) = struct
   let mkpres = Triple.mkpres
   let mkvres = Triple.mkvres
   let mkfres = Triple.mkfres
+  let mkcppres = Triple.mkcppres
 
   let mkccxres = Triple.mkccxres
 
@@ -345,6 +346,8 @@ module F (L : Spec.LABEL_T) = struct
 
 
 
+
+
   class extractor_base options cache_path tree = 
     let enc = options#fact_enc in
   object (self)
@@ -371,6 +374,7 @@ module F (L : Spec.LABEL_T) = struct
 
     method mkentity (nd : Spec.node_t) =
       let loc = nd#data#src_loc in
+      DEBUG_MSG "%s" nd#to_string;
       if loc = Loc.dummy then begin
 	self#warning_msg "location not defined: %s@%s" nd#data#to_string tree#source_path;
 	Triple.ghost
@@ -382,6 +386,7 @@ module F (L : Spec.LABEL_T) = struct
 	let range_str = Triple.get_range_str enc loc in
         let fid_str =
           let fid = nd#data#source_fid in
+          DEBUG_MSG "fid=%s" fid;
           if fid = "" then
             fid_str
           else

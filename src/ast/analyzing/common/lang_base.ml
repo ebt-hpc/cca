@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+   Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -56,13 +56,12 @@ class tree_factory options (tree_builder : tree_builder) = object
   method from_xnode = tree_builder#from_xnode
 
   method from_file (file : S.file) =
-    let ext = file#get_extension in
-    if options#check_extension ext then begin
+    if options#check_extension file#path then begin
       let tree = tree_builder#build_tree file in
       (tree : tree_t)
     end
     else
-      failwith (Printf.sprintf "Lang.tree_factory: not supported: \"%s\"" ext)
+      failwith (Printf.sprintf "Lang.tree_factory: not supported: \"%s\"" file#get_extension)
 
 end (* of class Lang.tree_factory *)
 
@@ -112,7 +111,7 @@ class c
 let _register_spec pname_tbl pname extensions =
   List.iter
     (fun _ext ->
-      let ext = String.lowercase _ext in
+      let ext = String.lowercase_ascii _ext in
       Hashtbl.replace pname_tbl ext pname
     ) extensions
 
@@ -121,7 +120,7 @@ let _register_external_specs xpname_tbl pname xpname_extensions_list =
     (fun (xpname, extensions) ->
       List.iter
         (fun _ext ->
-          let ext = String.lowercase _ext in
+          let ext = String.lowercase_ascii _ext in
           Hashtbl.replace xpname_tbl ext (pname, xpname)
         ) extensions
     ) xpname_extensions_list
@@ -171,7 +170,7 @@ let _search get_module_name funcs_tbl xfuncs_tbl options _ext =
         raise (Error (Dynlink.error_message err))
   in
 
-  let ext = String.lowercase _ext in
+  let ext = String.lowercase_ascii _ext in
 
   let from_external ext =
     let pname, xpname = find_xpname ext in

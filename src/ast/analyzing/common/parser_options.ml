@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+   Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -134,15 +134,25 @@ class c = object (self)
   val mutable recursive_flag       = false
   val mutable incomplete_info_flag = false
 
-  val mutable no_collapse_flag             = false
+  val mutable no_collapse_flag     = false
   method no_collapse_flag = no_collapse_flag
   method set_no_collapse_flag = no_collapse_flag <- true
   method clear_no_collapse_flag = no_collapse_flag <- false
+
+  val mutable ast_reduction_flag = false
+  method ast_reduction_flag = ast_reduction_flag
+  method set_ast_reduction_flag = ast_reduction_flag <- true
+  method clear_ast_reduction_flag = ast_reduction_flag <- false
 
   (* *)
   val mutable latest_target = ""
   method latest_target = latest_target
   method set_latest_target x = latest_target <- x
+
+  val mutable weak_flag            = false (* weaken node equation and node permutation detection *)
+  method weak_flag = weak_flag
+  method set_weak_flag = weak_flag <- true
+  method clear_weak_flag = weak_flag <- false
 
   (* searchast *)
   val mutable sim_threshold = 0.8
@@ -208,7 +218,7 @@ class c = object (self)
   method set_ignore_huge_arrays_flag  = ignore_huge_arrays_flag <- true
   method clear_ignore_huge_arrays_flag  = ignore_huge_arrays_flag <- false
 
-  val mutable huge_array_threshold = 128
+  val mutable huge_array_threshold = 256
   method huge_array_threshold = huge_array_threshold
   method set_huge_array_threshold x = huge_array_threshold <- x
 
@@ -220,6 +230,11 @@ class c = object (self)
 
   (* Python *)
   val mutable python_with_stmt_disabled_flag = false
+
+  (* Fortran *)
+  val mutable fortran_max_line_length = -1
+  val mutable fortran_parse_d_lines_flag = false
+  val mutable fortran_ignore_include_flag = false
 
   (* Verilog *)
   val mutable verilog_ignore_include_flag = false
@@ -285,7 +300,20 @@ class c = object (self)
   method set_python_with_stmt_disabled_flag = python_with_stmt_disabled_flag <- true
   method clear_python_with_stmt_disabled_flag = python_with_stmt_disabled_flag <- false
 
+  (* Fortran *)
+  method fortran_max_line_length = fortran_max_line_length
+  method set_fortran_max_line_length n = fortran_max_line_length <- n
+
+  method fortran_parse_d_lines_flag = fortran_parse_d_lines_flag
+  method set_fortran_parse_d_lines_flag = fortran_parse_d_lines_flag <- true
+  method clear_fortran_parse_d_lines_flag = fortran_parse_d_lines_flag <- false
+
+  method fortran_ignore_include_flag = fortran_ignore_include_flag
+  method set_fortran_ignore_include_flag = fortran_ignore_include_flag <- true
+  method clear_fortran_ignore_include_flag = fortran_ignore_include_flag <- false
+
   (* Verilog *)
+
   method verilog_ignore_include_flag = verilog_ignore_include_flag
   method set_verilog_ignore_include_flag = verilog_ignore_include_flag <- true
   method clear_verilog_ignore_include_flag = verilog_ignore_include_flag <- false
@@ -314,6 +342,6 @@ class c = object (self)
 
   initializer
     clone_map_file_name <- "clone_map"^gmap_ext;
-    cache_dir_base <- Filename.concat (Filename.concat (Misc.get_home_dir()) ".cca") "cache"
+    cache_dir_base <- Filename.concat (Filename.concat (Misc.get_home_dir()) ".diffts") "cache"
 
 end (* of class Parser_options.c *)

@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+   Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -40,7 +40,8 @@ let mktok rawtok ulexbuf =
   let ed_pos = mklexpos ((Ulexing.lexeme_end ulexbuf) - 1) in
   rawtok, st_pos, ed_pos
 
-
+let dollar_pat = Str.regexp_string "$"
+let escape_dollar = Str.global_replace dollar_pat "&#36;"
 
 let find_keyword =
   let keyword_list =
@@ -105,7 +106,7 @@ let find_keyword =
     try 
       (Hashtbl.find keyword_table s) loc
     with 
-      Not_found -> IDENTIFIER(loc, s)
+      Not_found -> IDENTIFIER(loc, escape_dollar s)
   in
   find
 
@@ -118,10 +119,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
   open Stat
 
 
-  let offsets_to_loc st ed =
-    env#current_pos_mgr#offsets_to_loc st ed
+  let offsets_to_loc st ed = env#current_pos_mgr#offsets_to_loc st ed
 
-  let lexing_error lexbuf msg = 
+  let lexing_error lexbuf msg =
     let loc = offsets_to_loc (Ulexing.lexeme_start lexbuf) (Ulexing.lexeme_end lexbuf) in
     Common.fail_to_parse ~head:(Loc.to_string ~prefix:"[" ~suffix:"]" loc) msg
 
@@ -138,40 +138,55 @@ module F (Stat : Parser_aux.STATE_T) = struct
   let regexp not_star_not_slash = [^'*' '/'] | unicode_escape | "\013\010"
   let regexp not_star = [^'*'] | unicode_escape | "\013\010"
 
-
-  let regexp java_letter = ['A'-'Z' 'a'-'z' '_' '$']
+ (* 880-1023:Greek 4352-4607,43360-43391,44032-55215,55216-55295:Hangul *)
+  let regexp java_letter = ['A'-'Z' 'a'-'z' '_' '$' 880-1023 1024-1279 4352-4607 43360-43391 44032-55215 55216-55295]
   let regexp java_letter_or_digit = java_letter | ['0'-'9']
   let regexp identifier_chars = java_letter java_letter_or_digit*
   let regexp identifier_or_keyword = identifier_chars
 
-  let regexp integer_type_suffix = ['l' 'L']
-  let regexp octal_numeral = '0' | ['0'-'7']+
-  let regexp octal_integer_literal = octal_numeral integer_type_suffix?
-  let regexp hex_numeral = ("0x"|"0X") hex_digit+
-  let regexp hex_integer_literal = hex_numeral integer_type_suffix?
-  let regexp digits = ['0'-'9']+
-  let regexp decimal_numeral = '0' | ['1'-'9'] digits?
-  let regexp decimal_integer_literal = decimal_numeral integer_type_suffix?
-  let regexp integer_literal = 
-    decimal_integer_literal | hex_integer_literal | octal_integer_literal
+  let regexp underscores = '_'+
+  let regexp non_zero_digit = ['1'-'9']
+  let regexp digit = '0' | non_zero_digit
+  let regexp digits = digit | digit (digit|'_')* digit
+  let regexp decimal_numeral = '0' | non_zero_digit digits? | non_zero_digit underscores digits
 
-  let regexp float_type_suffix = ['F' 'f' 'D' 'd']
+  let regexp hex_digits = hex_digit | hex_digit (hex_digit|'_')* hex_digit
+  let regexp hex_numeral = ("0x"|"0X") hex_digits
+
+  let regexp octal_digit = ['0'-'7']
+  let regexp octal_digits = octal_digit | octal_digit (octal_digit|'_')* octal_digit
+  let regexp octal_numeral = '0' underscores? octal_digits
+
+  let regexp binary_digit = ['0' '1']
+  let regexp binary_digits = binary_digit | binary_digit (binary_digit|'_')* binary_digit
+  let regexp binary_numeral = ("0b"|"0B") binary_digits
+
+  let regexp integer_type_suffix = ['l' 'L']
+
+  let regexp decimal_integer_literal = decimal_numeral integer_type_suffix?
+  let regexp hex_integer_literal = hex_numeral integer_type_suffix?
+  let regexp octal_integer_literal = octal_numeral integer_type_suffix?
+  let regexp binary_integer_literal = binary_numeral integer_type_suffix?
+
+  let regexp integer_literal = 
+    decimal_integer_literal | hex_integer_literal | octal_integer_literal | binary_integer_literal
+
+  let regexp float_type_suffix = ['f' 'F' 'd' 'D']
   let regexp signed_integer = ['+' '-']? digits
   let regexp exponent_part = ['e' 'E'] signed_integer
 
   let regexp decimal_floating_point_literal =
-    (digits '.' digits? exponent_part? float_type_suffix?) 
-  | ('.' digits exponent_part? float_type_suffix?) 
-  | (digits exponent_part)
-  | (digits float_type_suffix)
-  | (digits exponent_part float_type_suffix)
+    digits '.' digits? exponent_part? float_type_suffix?
+  | '.' digits exponent_part? float_type_suffix?
+  | digits exponent_part
+  | digits float_type_suffix
+  | digits exponent_part float_type_suffix
 
   let regexp hex_significand =
-    hex_numeral
-  | hex_numeral '.'
-  | ("0x"|"0X") hex_digit* '.' hex_digit+
+    hex_numeral '.'?
+  | ("0x"|"0X") hex_digits? '.' hex_digits
 
-  let regexp binary_exponent = ['P' 'p'] signed_integer
+  let regexp binary_exponent = ['p' 'P'] signed_integer
 
   let regexp hexadecimal_floating_point_literal =
     hex_significand binary_exponent float_type_suffix?
@@ -205,20 +220,20 @@ module F (Stat : Parser_aux.STATE_T) = struct
   |   line_terminator -> token lexbuf
 
   |   "//" ->
-      line_comment (Ulexing.lexeme_start lexbuf) lexbuf; 
+      line_comment (Ulexing.lexeme_start lexbuf) lexbuf;
       token lexbuf
 
   |   "/*" not_star ->
-      traditional_comment (Ulexing.lexeme_start lexbuf) lexbuf; 
+      traditional_comment (Ulexing.lexeme_start lexbuf) lexbuf;
       token lexbuf
 
   |   "/**/" ->
       let st, ed = Ulexing.lexeme_start lexbuf, Ulexing.lexeme_end lexbuf in
       env#comment_regions#add (env#current_pos_mgr#offsets_to_loc st ed);
-      token lexbuf 
+      token lexbuf
 
   |   "/**" ->
-      document_comment (Ulexing.lexeme_start lexbuf) lexbuf; 
+      document_comment (Ulexing.lexeme_start lexbuf) lexbuf;
       token lexbuf
 
   |   "true"  -> mktok TRUE lexbuf
@@ -228,6 +243,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
   |   character_literal      -> mktok (CHARACTER_LITERAL (Ulexing.utf8_lexeme lexbuf)) lexbuf
   |   string_literal         -> mktok (STRING_LITERAL (Ulexing.utf8_lexeme lexbuf)) lexbuf
   |   null_literal           -> mktok NULL lexbuf
+
+  |   ">>>>>>>" -> mktok GT_7 lexbuf
+  |   "=======" -> marker (Ulexing.lexeme_start lexbuf) (Ulexing.utf8_lexeme lexbuf) lexbuf
+  |   "|||||||" -> marker (Ulexing.lexeme_start lexbuf) (Ulexing.utf8_lexeme lexbuf) lexbuf
+  |   "<<<<<<<" -> marker (Ulexing.lexeme_start lexbuf) (Ulexing.utf8_lexeme lexbuf) lexbuf
 
   |   "==" -> mktok EQ_EQ lexbuf
   |   "<=" -> mktok LT_EQ lexbuf
@@ -257,8 +277,8 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
   |   '(' -> mktok (LPAREN(Aux.get_loc_for_lex lexbuf)) lexbuf
   |   ')' -> mktok (RPAREN(Aux.get_loc_for_lex lexbuf)) lexbuf
-  |   '{' -> mktok LBRACE lexbuf
-  |   '}' -> mktok RBRACE lexbuf
+  |   '{' -> env#open_lex_brace; mktok LBRACE lexbuf
+  |   '}' -> env#close_lex_brace; mktok RBRACE lexbuf
   |   '[' -> mktok LBRACKET lexbuf
   |   ']' -> mktok RBRACKET lexbuf
   |   ';' -> mktok SEMICOLON lexbuf
@@ -311,6 +331,10 @@ module F (Stat : Parser_aux.STATE_T) = struct
   |   "*/" -> env#comment_regions#add (env#current_pos_mgr#offsets_to_loc st (Ulexing.lexeme_end lexbuf))
   |   _ -> document_comment st lexbuf
 
+  and marker st s = lexer
+  |   line_terminator -> (MARKER s), mklexpos st, mklexpos ((Ulexing.lexeme_end lexbuf) - 1)
+  |   _ -> marker st (s^(Ulexing.utf8_lexeme lexbuf)) lexbuf
+
 
   let set_to_JLS2 loc kw =
     match env#java_lang_spec with
@@ -318,7 +342,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 	Common.warning_loc loc "'%s' occurred as an identifier, assuming JLS2..." kw;
 	env#set_java_lang_spec_JLS2
     | Common.JLS3 -> 
-	Aux.parse_error_loc loc (Printf.sprintf "'%s' identifier is not available in JLS3" kw)
+        Aux.parse_error_loc loc "'%s' identifier is not available in JLS3" kw
     | Common.JLS2 -> ()
 
 
@@ -329,14 +353,15 @@ module F (Stat : Parser_aux.STATE_T) = struct
   let block_stmt_parser  = PB.mkparser P.partial_block_statement
 
   let mkscanner q =
-    if Queue.is_empty q then begin
+    if q#is_empty then begin
       fun () -> Token.create EOP Loc.dummy_lexpos Loc.dummy_lexpos
     end
     else begin
-      let last = ref (Queue.peek q) in
+      let last = ref q#peek in
       fun () ->
         try
-          let t = Queue.take q in
+          let t = q#take in
+          DEBUG_MSG ">>> %s" (Token.to_string env#current_pos_mgr t);
           last := t;
           t
         with
@@ -345,9 +370,10 @@ module F (Stat : Parser_aux.STATE_T) = struct
             Token.create EOP ed ed
     end
 
-  let string_of_token_queue q =
-    let l = Queue.fold (fun l x -> x::l) [] q in
-    Xlist.to_string Token.to_orig " " (List.rev l)
+  let string_of_token_queue = Common.token_queue_to_string Token.to_orig
+  (*let string_of_token_queue (q : 'a Xqueue.c) =
+    let l = q#fold (fun l x -> x::l) [] in
+    Xlist.to_string Token.to_orig " " (List.rev l)*)
 
   let kw_to_ident name t =
     let tok, st, ed = Token.decompose t in
@@ -360,44 +386,46 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
   exception Modified_token of Token.t
 
+  let peek_nth queue ulexbuf nth =
+    let t_opt = ref None in
+    let count = ref 0 in
+    begin
+      try
+        queue#iter
+          (fun t ->
+            if !count = nth then
+              raise Exit;
+
+            t_opt := Some t;
+            incr count
+          );
+
+        for i = 1 to  nth - !count do
+          let t = token ulexbuf in
+          queue#add t;
+          t_opt := Some t
+        done
+      with
+        Exit -> ()
+    end;
+    match !t_opt with
+    | Some t ->
+        let tok = Token.to_rawtoken t in
+        DEBUG_MSG "nth=%d tok=%s" nth (Token.rawtoken_to_string tok);
+        t, tok
+    | None -> assert false
+
+
   let get_token queue ulexbuf =
 
     let take() =
-      if Queue.is_empty queue then
+      if queue#is_empty then
         token ulexbuf
       else
-        Queue.take queue
+        queue#take
     in
 
-    let peek_nth nth =
-      let t_opt = ref None in
-      let count = ref 0 in
-      begin
-        try
-          Queue.iter 
-            (fun t ->
-              if !count = nth then
-                raise Exit;
-
-              t_opt := Some t;
-              incr count
-            ) queue;
-
-          for i = 1 to  nth - !count do
-            let t = token ulexbuf in
-            Queue.add t queue;
-            t_opt := Some t
-          done
-        with
-          Exit -> ()
-      end;
-      match !t_opt with
-      | Some t -> 
-          let tok = Token.to_rawtoken t in
-          DEBUG_MSG "nth=%d tok=%s" nth (Token.rawtoken_to_string tok);
-          t, tok
-      | None -> assert false
-    in
+    let peek_nth = peek_nth queue ulexbuf in
 
     let res =
       let t = take() in
@@ -433,7 +461,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
           end
           | _ -> t
       end
-      | LPAREN loc -> begin
+      | LPAREN loc when begin
+          match Obj.obj env#last_rawtoken with
+          | GT | IDENTIFIER _ -> false
+          | _ -> true
+      end -> begin
           DEBUG_MSG "LPAREN";
           let nth = ref 1 in
           let lv = ref 1 in
@@ -443,6 +475,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
               DEBUG_MSG "tok' = %s" (Token.rawtoken_to_string tok');
               begin
                 match tok' with
+                | EOF | SEMICOLON -> raise Exit
                 | LPAREN _ -> incr lv
                 | RPAREN _ -> begin
                     decr lv;
@@ -478,22 +511,25 @@ module F (Stat : Parser_aux.STATE_T) = struct
       | ASSERT loc -> begin
           match Obj.obj env#last_rawtoken with
           | COLON | RPAREN _ | ELSE _ | DO _ | SEMICOLON | LBRACE | RBRACE | STMT _ -> begin
-              let q0 = Queue.create() in
+              let q0 = new Xqueue.c in
               let last = ref res in
               let take() =
                 try
-                  Queue.take queue
+                  queue#take
                 with
                   Queue.Empty -> token ulexbuf
               in
               begin
+                let blv = ref 0 in
                 try
                   while true do
                     let t = take() in
                     last := t;
-                    Queue.add t q0; 
+                    q0#add t;
                     match Token.to_rawtoken t with
-                    | SEMICOLON -> raise Exit
+                    | SEMICOLON when !blv = 0 -> raise Exit
+                    | LBRACE -> incr blv
+                    | RBRACE -> decr blv
                     | _ -> ()
                   done
                 with
@@ -501,10 +537,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
               end;
               let _, _, ed' = Token.decompose !last in
               begin
-                let q = Queue.create() in
-                Queue.add res q;
-                Queue.iter (fun x -> Queue.add x q) q0;
-                DEBUG_MSG "token queue: [%s]" (string_of_token_queue q);
+                let q = new Xqueue.c in
+                q#add res;
+                q0#iter q#add;
+                let orig_line = string_of_token_queue q in
+                DEBUG_MSG "token queue: [%s]" orig_line;
                 let scanner = mkscanner q in
                 DEBUG_MSG "parsing with assert-stmt parser...";
                 try
@@ -515,17 +552,17 @@ module F (Stat : Parser_aux.STATE_T) = struct
                   exn -> begin
                     DEBUG_MSG "FAILED TO PARSE! (%s)" (Printexc.to_string exn);
                     DEBUG_MSG "assuming that 'assert' is an identifier";
-                    let q = Queue.create() in
-                    Queue.add (kw_to_ident "assert" res) q;
-                    Queue.iter 
+                    let q = new Xqueue.c in
+                    q#add (kw_to_ident "assert" res);
+                    q0#iter
                       (fun x -> 
                         let x' =
                           match Token.to_rawtoken x with
                           | ASSERT loc' -> kw_to_ident "assert" x
                           | _ -> x
                         in
-                        Queue.add x' q
-                      ) q0;
+                        q#add x'
+                      );
                     DEBUG_MSG "token queue: [%s]" (string_of_token_queue q);
                     let scanner = mkscanner q in
                     DEBUG_MSG "parsing with block-stmt parser...";
@@ -539,7 +576,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
                       in
                       Token.create tok' st ed'
                     with
-                      _ -> Token.create ERROR_STMT st ed'
+                      _ -> Token.create (ERROR_STMT orig_line) st ed'
                   end
               end
           end
@@ -556,4 +593,3 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
 
 end (* of functor Ulexer.F *)
-

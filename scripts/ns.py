@@ -1,4 +1,4 @@
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 '''
   Common namespaces
@@ -34,6 +34,7 @@ CLONE_NS = 'http://codinuum.com/ontologies/2013/01/clone#'
 CCFX_NS = 'http://codinuum.com/ontologies/2015/02/ccfx#'
 SOOT_NS = 'http://codinuum.com/ontologies/2016/05/soot#'
 
+CPP_NS = 'http://codinuum.com/ontologies/2019/02/cpp-entity#'
 C_NS = 'http://codinuum.com/ontologies/2012/10/c-entity#'
 JAVA_NS = 'http://codinuum.com/ontologies/2012/10/java-entity#'
 V_NS = 'http://codinuum.com/ontologies/2012/10/verilog-entity#'
@@ -71,6 +72,7 @@ PREFIX_TBL = { 'xsd'   : XSD_NS,
                'ccfx'  : CCFX_NS,
                'soot'  : SOOT_NS,
                'c'     : C_NS,
+               'cpp'   : CPP_NS,
                'java'  : JAVA_NS,
                'v'     : V_NS,
                'py'    : PY_NS,
@@ -99,5 +101,5 @@ PREFIX_TBL = { 'xsd'   : XSD_NS,
 
 
 NS_TBL = {}
-for (k, v) in PREFIX_TBL.iteritems():
+for (k, v) in PREFIX_TBL.items():
     NS_TBL[k+'_ns'] = v

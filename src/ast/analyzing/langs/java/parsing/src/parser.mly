@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+   Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -67,7 +67,8 @@ open Stat
 
 %token <Ast.statement> STMT
 %token <Ast.block_statement> BLOCK_STMT
-%token ERROR_STMT
+%token <string> MARKER ERROR ERROR_STMT
+%token GT_7
 %token EOP
 
 %start main
@@ -97,10 +98,10 @@ clist0(X):
 | l_opt=ioption(separated_nonempty_list(COMMA, X)) { Xoption.list_opt_to_list l_opt }
 ;
 
-
 reserved:
 | GOTO  { }
 | CONST { }
+| GT_7 { }
 ;
 
 partial_block_statement:
@@ -121,7 +122,7 @@ literal:
 | f=FLOATING_POINT_LITERAL { LfloatingPoint f }
 | TRUE                     { Ltrue }
 | FALSE                    { Lfalse }
-| c=CHARACTER_LITERAL      { Lcharacter c }
+| c=CHARACTER_LITERAL      { Lcharacter(String.sub c 1 ((String.length c) - 2)) }
 | s=STRING_LITERAL         { Lstring(String.sub s 1 ((String.length s) - 2)) }
 | NULL                     { Lnull }
 ;
@@ -252,33 +253,33 @@ interface_type:
 ;
 
 unann_array_type:
-| n=name d=dims 
+| n=name d=ann_dims 
     { 
-      set_attribute_PT_T (env#resolve n) n; 
+      set_attribute_PT_T (env#resolve n) n;
       register_qname_as_typename n;
-      mktype $startofs $endofs (Tarray(name_to_ty [] n, fst d)) 
+      mktype $startofs $endofs (Tarray(name_to_ty [] n, List.length d)) 
     }
 
-| p=unann_primitive_type d=dims { mktype $startofs $endofs (Tarray(p, fst d)) }
+| p=unann_primitive_type d=ann_dims { mktype $startofs $endofs (Tarray(p, List.length d)) }
 
-| c=unann_class_or_interface_type_spec ts=type_arguments DOT a=annotations0 n=name d=dims 
+| c=unann_class_or_interface_type_spec ts=type_arguments DOT a=annotations0 n=name d=ann_dims 
     { 
       let head, a0, n0 = c in
       let ty =
 	_mktype (Loc.merge (get_loc $startofs $endofs) n.n_loc) 
-	  (TclassOrInterface(head @ [TSapply(a0, n0, ts); TSname(a, n)])) 
+	  (TclassOrInterface(head @ [TSapply(a0, n0, ts); TSname(a, n)]))
       in
-      mktype $startofs $endofs (Tarray(ty, fst d))
+      mktype $startofs $endofs (Tarray(ty, List.length d))
     }
 
-| c=unann_class_or_interface_type_spec ts=type_arguments d=dims 
+| c=unann_class_or_interface_type_spec ts=type_arguments d=ann_dims 
     { 
       let head, a, n = c in
       let ty =
 	_mktype (Loc.merge (get_loc $startofs $endofs) ts.tas_loc) 
 	  (TclassOrInterface(head @ [TSapply(a, n, ts)])) 
       in
-      mktype $startofs $endofs (Tarray(ty, fst d))
+      mktype $startofs $endofs (Tarray(ty, List.length d))
     }
 ;
 
@@ -445,6 +446,12 @@ qualified_name:
       let _, id = i in
       mkname $startofs $endofs (Nqualified(ref NAunknown, n, id)) 
     }
+| s=ERROR DOT i=identifier
+    { 
+      let n = mkerrname $startofs $endofs(s) s in
+      let _, id = i in
+      mkname $startofs $endofs (Nqualified(ref NAunknown, n, id)) 
+    }
 ;
 
 
@@ -456,7 +463,8 @@ identifier:
 (***** *****)
 
 
-compilation_unit: 
+compilation_unit:
+|                                                                   { mkcu None [] [] }
 |                                              t=type_declarations  { mkcu None [] t }
 |                       i=import_declarations  t=type_declarations0 { mkcu None i t }
 | p=package_declaration i=import_declarations0 t=type_declarations0 { mkcu (Some p) i t }
@@ -623,14 +631,13 @@ modifiers_opt:
 ;
 
 modifiers:
-| m=mixed_modifiers { mkmods $startofs $endofs m }
-| a=annotations     { mkmods $startofs $endofs (annots_to_mods a) }
+| l=nonempty_list(annotation_or_modifier) { mkmods $startofs $endofs l }
 ;
 
-mixed_modifiers:
-|                   am=adhoc_modifier { [mkmod $startofs $endofs am] }
-| a=annotations     am=adhoc_modifier { (annots_to_mods a) @ [mkmod $startofs(am) $endofs(am) am] }
-| m=mixed_modifiers am=adhoc_modifier { m @ [mkmod $startofs(am) $endofs(am) am] }
+%inline
+annotation_or_modifier:
+| a=annotation     { annot_to_mod a }
+| m=adhoc_modifier { mkmod $startofs $endofs m }
 ;
 
 adhoc_modifier:
@@ -654,10 +661,10 @@ annotations0:
 | a=annotations { a }
 ;
 
-
 annotations:
-|               a=annotation { [a] }
-| l=annotations a=annotation { l @ [a] }
+| l=nonempty_list(annotation) { l }
+(*|               a=annotation { [a] }
+| l=annotations a=annotation { l @ [a] }*)
 ;
 
 annotation:
@@ -698,12 +705,24 @@ element_value:
 ;
 
 element_value_array_initializer:
-| LBRACE e=element_values0 RBRACE { e }
+| LBRACE COMMA                   RBRACE { [] }
+| LBRACE e=element_values0       RBRACE { e }
+| LBRACE e=element_values0_comma RBRACE { e }
 ;
 
 %inline
 element_values0:
 | l=clist0(element_value) { l }
+;
+
+%inline
+element_values0_comma:
+| l=nonempty_list(element_value_comma) { l }
+;
+
+%inline
+element_value_comma:
+| e=element_value COMMA { e }
 ;
 
 class_declaration_head0:
@@ -776,7 +795,8 @@ class_body_declaration:
 | s=static_initializer       { s }
 | i=instance_initializer     { i }
 | c=constructor_declaration  { mkcbd $startofs $endofs (CBDconstructor c) }
-(*| error                      { mkerrcbd $startofs $endofs }*)
+(*| error                      { mkerrcbd $startofs $endofs "" }*)
+(*| s=ERROR                    { mkerrcbd $startofs $endofs s }*)
 ;
 
 class_member_declaration:
@@ -786,6 +806,7 @@ class_member_declaration:
 | e=enum_declaration      { mkcbd $startofs $endofs (CBDclass e) }
 | i=interface_declaration { mkcbd $startofs $endofs (CBDinterface i) }
 | SEMICOLON               { mkcbd $startofs $endofs CBDempty }
+| s=MARKER                { mkerrcbd $startofs $endofs s }
 ;
 
 enum_declaration_head0:
@@ -871,7 +892,11 @@ enum_arguments_opt:
 
 enum_body_declarations0:
 | (* *)                                { [] }
-| SEMICOLON c=class_body_declarations0 { c }
+| s=SEMICOLON c=class_body_declarations0
+    { 
+      ignore s;
+      (mkcbd $startofs $endofs(s) CBDempty) :: c
+    }
 ;
 
 field_declaration:
@@ -887,6 +912,7 @@ field_declaration:
 	  register_identifier_as_field (fst vd.vd_variable_declarator_id) t;
 	  vd.vd_is_local := false;
 	) v;
+      Ast.proc_type (register_qname_as_typename ~skip:1) t;
       mkfd loc m_opt t v
     }
 ;
@@ -899,6 +925,11 @@ variable_declarators:
 variable_declarator: 
 | v=variable_declarator_id                            { mkvd $startofs $endofs v None }
 | v=variable_declarator_id EQ vi=variable_initializer { mkvd $startofs $endofs v (Some vi) }
+(*| v=variable_declarator_id EQ s=ERROR
+    { 
+      let vi = mkerrvi $startofs(s) $endofs s in
+      mkvd $startofs $endofs v (Some vi)
+    }*)
 ;
 
 variable_declarator_id: 
@@ -907,7 +938,8 @@ variable_declarator_id:
 ;
 
 variable_initializer: 
-| e=expression        { mkvi $startofs $endofs (VIexpression e) }
+(*| e=expression        { mkvi $startofs $endofs (VIexpression e) }*)
+| e=expr_or_err        { mkvi $startofs $endofs (VIexpression e) }
 | a=array_initializer { a }
 ;
 
@@ -936,6 +968,7 @@ method_header:
         end
 	| Some _ -> get_loc $symbolstartofs $endofs
       in
+      Ast.proc_type (register_qname_as_typename ~skip:1) tv;
       mkmh loc m_opt ts_opt tv id params_loc params dim t_opt
     }
 ;
@@ -981,6 +1014,7 @@ formal_parameter:
 	| Some _ -> get_loc $symbolstartofs $endofs
       in
       register_identifier_as_parameter (fst d) t;
+      Ast.proc_type (register_qname_as_typename ~skip:2) t;
       mkfp loc v t d false 
     }
 
@@ -992,6 +1026,7 @@ formal_parameter:
 	| Some _ -> get_loc $symbolstartofs $endofs
       in
       register_identifier_as_parameter (fst d) t;
+      Ast.proc_type (register_qname_as_typename ~skip:2) t;
       mkfp loc v t d true 
     }
 ;
@@ -1266,12 +1301,13 @@ interface_method_declaration:
 
 array_initializer:
 | LBRACE                         ioption(COMMA) RBRACE { mkvi $startofs $endofs (VIarray []) }
-| LBRACE v=variable_initializers ioption(COMMA) RBRACE { mkvi $startofs $endofs (VIarray v) }
+| LBRACE v=variable_initializers ioption(COMMA) RBRACE
+    { mkvi $startofs $endofs (VIarray (List.rev v)) }
 ;
 
 variable_initializers:
 |                                v=variable_initializer { [v] }
-| vs=variable_initializers COMMA v=variable_initializer { vs @ [v] }
+| vs=variable_initializers COMMA v=variable_initializer { v::vs }
 ;
 
 block: 
@@ -1294,7 +1330,9 @@ block_statement:
 | c=class_declaration                    { mkbs $startofs $endofs (BSclass c) }
 | s=statement                            { mkbs $startofs $endofs (BSstatement s) }
 | e=enum_declaration                     { mkbs $startofs $endofs (BSclass e) }
-(*| error                                  { mkerrbs $startofs $endofs }*)
+(*| error                                  { mkerrbs $symbolstartofs $endofs "" }*)
+| s=ERROR                                { mkerrbs $startofs $endofs s }
+| s=MARKER                               { mkerrbs $startofs $endofs s }
 | s=BLOCK_STMT                           { s }
 ;
 
@@ -1322,8 +1360,6 @@ statement:
 | w=while_statement                         { w }
 | f=for_statement                           { f }
 | e=enhanced_for_statement                  { e }
-| s=STMT                                    { s }
-| ERROR_STMT                                { mkerrstmt $startofs $endofs }
 ;
 
 statement_no_short_if:
@@ -1348,6 +1384,8 @@ statement_without_trailing_substatement:
 | t=throw_statement        { t }
 | t=try_statement          { t }
 | a=assert_statement       { a }
+| s=STMT                   { s }
+| s=ERROR_STMT             { mkerrstmt $startofs $endofs s }
 ;
 
 empty_statement:
@@ -1464,42 +1502,41 @@ for_statement_head:
 | FOR LPAREN { begin_scope() }
 ;
 
-javatype_identifier:
-| j=unann_type i=identifier 
+javatype_vdid:
+| j=unann_type d=variable_declarator_id
     { 
-      let _, id = i in
-      register_identifier_as_variable id j;
-      mkfp (get_loc $startofs $endofs) None j (id, 0) false
+      register_identifier_as_variable (fst d) j;
+      mkfp (get_loc $startofs $endofs) None j d false
     }
 ;
 
 enhanced_for_statement:
-| for_statement_head j=javatype_identifier COLON e=expr_or_err RPAREN s=statement 
+| for_statement_head j=javatype_vdid COLON e=expr_or_err RPAREN s=statement
     { end_scope(); mkstmt $startofs $endofs (SforEnhanced(j, e, s)) }
 
-| for_statement_head m=modifiers j=javatype_identifier COLON e=expr_or_err RPAREN s=statement 
-    { end_scope(); 
+| for_statement_head m=modifiers j=javatype_vdid COLON e=expr_or_err RPAREN s=statement
+    { end_scope();
       let fp0 = j in
-      let fp = 
-	mkfp (Loc.merge m.Ast.ms_loc fp0.Ast.fp_loc) (Some m) 
+      let fp =
+	mkfp (Loc.merge m.Ast.ms_loc fp0.Ast.fp_loc) (Some m)
 	  fp0.Ast.fp_type fp0.Ast.fp_variable_declarator_id false
       in
-      mkstmt $startofs $endofs (SforEnhanced(fp, e, s)) 
+      mkstmt $startofs $endofs (SforEnhanced(fp, e, s))
     }
 ;
 
 enhanced_for_statement_no_short_if:
-| for_statement_head j=javatype_identifier COLON e=expr_or_err RPAREN s=statement_no_short_if 
+| for_statement_head j=javatype_vdid COLON e=expr_or_err RPAREN s=statement_no_short_if
     { end_scope(); mkstmt $startofs $endofs (SforEnhanced(j, e, s)) }
 
-| for_statement_head m=modifiers j=javatype_identifier COLON e=expr_or_err RPAREN s=statement_no_short_if 
-    { end_scope(); 
+| for_statement_head m=modifiers j=javatype_vdid COLON e=expr_or_err RPAREN s=statement_no_short_if
+    { end_scope();
       let fp0 = j in
-      let fp = 
-	mkfp (Loc.merge m.Ast.ms_loc fp0.Ast.fp_loc) (Some m) 
+      let fp =
+	mkfp (Loc.merge m.Ast.ms_loc fp0.Ast.fp_loc) (Some m)
 	  fp0.Ast.fp_type fp0.Ast.fp_variable_declarator_id false
       in
-      mkstmt $startofs $endofs (SforEnhanced(fp, e, s)) 
+      mkstmt $startofs $endofs (SforEnhanced(fp, e, s))
     }
 ;
 
@@ -1639,6 +1676,7 @@ finally:
 expr_or_err:
 | e=expression { e }
 (*| error        { mkerrexpr $startofs $endofs }*)
+| s=ERROR { mkerrexpr $startofs $endofs s }
 ;
 
 %inline
@@ -1685,19 +1723,17 @@ primary_no_new_array:
 | a=array_access       { mkprim $startofs $endofs (ParrayAccess a) }
 | n=name DOT this      { register_qname_as_typename n; mkprim $startofs $endofs (PqualifiedThis n) }
 | n=name DOT CLASS     { register_qname_as_typename n; mkprim $startofs $endofs (PclassLiteral (name_to_ty [] n)) }
-| n=name d=dims DOT CLASS 
+| n=name d=ann_dims DOT CLASS 
     { 
       register_qname_as_typename n;
-      let i, loc = d in
-      let ty = _mkty (Loc.merge n.n_loc loc) (Tarray(name_to_ty [] n, i)) in
+      let ty = _mkty (Loc.merge n.n_loc (Xlist.last d).Ast.ad_loc) (Tarray(name_to_ty [] n, List.length d)) in
       mkprim $startofs $endofs (PclassLiteral ty) 
     }
 | p=unann_primitive_type        DOT CLASS { mkprim $startofs $endofs (PclassLiteral p) }
 
-| p=unann_primitive_type d=dims DOT CLASS 
+| p=unann_primitive_type d=ann_dims DOT CLASS 
     { 
-      let i, loc = d in
-      let ty = _mkty (Loc.merge p.ty_loc loc) (Tarray(p, i)) in
+      let ty = _mkty (Loc.merge p.ty_loc (Xlist.last d).Ast.ad_loc) (Tarray(p, List.length d)) in
       mkprim $startofs $endofs (PclassLiteral ty) 
     }
 
@@ -1729,10 +1765,29 @@ method_reference:
       let _, id = i in
       mkmr $startofs $endofs (MRtypeSuper(n, tas_opt, id))
     }
-| n=name           COLON_COLON tas_opt=type_arguments_opt NEW
+(*| n=name           COLON_COLON tas_opt=type_arguments_opt NEW
     { 
       register_qname_as_typename n;
       mkmr $startofs $endofs (MRtypeNew(n, tas_opt))
+    }*)
+| p=unann_primitive_type d=ann_dims0 COLON_COLON tas_opt=type_arguments_opt NEW
+    { 
+      let ty =
+	match d with
+	| [] -> p
+	| l -> _mkty (Loc.merge p.ty_loc (Xlist.last l).Ast.ad_loc) (Tarray(p, List.length d))
+      in
+      mkmr $startofs $endofs (MRtypeNew(ty, tas_opt))
+    }
+| n=name d=ann_dims0 COLON_COLON tas_opt=type_arguments_opt NEW
+    { 
+      let ty =
+        match d with
+        | [] -> name_to_ty [] n
+        | l -> _mkty (Loc.merge n.n_loc (Xlist.last l).Ast.ad_loc) (Tarray(name_to_ty [] n, List.length d))
+      in
+      register_qname_as_typename n;
+      mkmr $startofs $endofs (MRtypeNew(ty, tas_opt))
     }
 ;
 
@@ -1782,27 +1837,26 @@ class_instance_creation_expression:
 
 %inline
 argument_list0:
-| l=clist0(expression) { l }
+(*| l=clist0(expression) { l }*)
+| l=clist0(expr_or_err) { l }
 ;
 
 array_creation_noinit:
 | NEW p=primitive_type          d=dim_exprs      { ACEtype(p, List.rev d, 0) }
 | NEW c=class_or_interface_type d=dim_exprs      { ACEtype(c, List.rev d, 0) }
-| NEW p=primitive_type          d=dim_exprs dm=dims       
+| NEW p=primitive_type          d=dim_exprs dm=ann_dims
      { 
-       let i, loc = dm in
-       ACEtype(p, List.rev d, i)
+       ACEtype(p, List.rev d, List.length dm)
      }
-| NEW c=class_or_interface_type d=dim_exprs dm=dims
+| NEW c=class_or_interface_type d=dim_exprs dm=ann_dims
      { 
-       let i, loc = dm in
-       ACEtype(c, List.rev d, i)
+       ACEtype(c, List.rev d, List.length dm)
      }
 ;
 
 array_creation_init:
-| NEW p=primitive_type          d=dims a=array_initializer { ACEtypeInit(p, (fst d), [a]) }
-| NEW c=class_or_interface_type d=dims a=array_initializer { ACEtypeInit(c, (fst d), [a]) }
+| NEW p=primitive_type          d=ann_dims a=array_initializer { ACEtypeInit(p, (List.length d), [a]) }
+| NEW c=class_or_interface_type d=ann_dims a=array_initializer { ACEtypeInit(c, (List.length d), [a]) }
 ;
 
 dim_exprs:
@@ -1814,7 +1868,7 @@ dim_expr:
 | LBRACKET e=expression RBRACKET { mkde $startofs $endofs e }
 ;
 
-%inline
+(*%inline
 dims_opt:
 | o=ioption(dims) { o }
 ;
@@ -1822,7 +1876,7 @@ dims_opt:
 dims:
 |        LBRACKET RBRACKET { 1, get_loc $startofs $endofs }
 | d=dims LBRACKET RBRACKET { (fst d) + 1, get_loc $startofs $endofs }
-;
+;*)
 
 field_access:
 | p=primary DOT           i=identifier 
@@ -1852,7 +1906,7 @@ field_access:
 method_invocation:
 | n=name a=arguments
     { 
-      set_attribute_A_M n;
+      set_attribute_A_M (env#resolve n) n;
       register_qname_as_method n;
       if is_local_name n then begin
 	mkmi $startofs $endofs (MImethodName(n, a)) 
@@ -1974,7 +2028,7 @@ method_invocation:
 array_access:
 | n=name LBRACKET e=expression RBRACKET               
     { 
-      set_attribute_A_E n;
+      set_attribute_A_E (env#resolve n) n;
       register_qname_as_array n;
       if is_local_name n then
 	mkaa $startofs $endofs (AAname(n, e))
@@ -1991,7 +2045,7 @@ postfix_expression:
 | p=primary                 { mkexpr $startofs $endofs (Eprimary p) }
 | n=name                      
     { 
-      set_attribute_A_E n;
+      set_attribute_A_E (env#resolve n) n;
       register_qname_as_expression n;
       env#reclassify_identifier(leftmost_of_name n);
       name_to_expr $startofs $endofs n
@@ -2031,45 +2085,56 @@ unary_expression_not_plus_minus:
 | c=cast_expression { c }
 ;
 
+unary_expression_not_plus_minus_or_lambda_expression:
+| u=unary_expression_not_plus_minus { u }
+| l=lambda_e                        { l }
+;
+
+lambda_e:
+| p=lambda_parameters MINUS_GT b=lambda_b { mkexpr $startofs $endofs (Elambda(p, b)) }
+;
+lambda_b:
+| e=unary_expression_not_plus_minus { LBexpr e }
+| b=block                           { LBblock b }
+;
+
 cast_expression:
-| LPAREN p=primitive_type d=dims_opt RPAREN u=unary_expression 
+| LPAREN p=primitive_type d=ann_dims0 RPAREN u=unary_expression 
     { 
-      let ty = 
-	match d with 
-	| None -> p 
-	| Some(i, loc) -> _mkty (Loc.merge p.ty_loc loc) (Tarray(p, i))
+      let ty =
+	match d with
+	| [] -> p
+	| l -> _mkty (Loc.merge p.ty_loc (Xlist.last l).Ast.ad_loc) (Tarray(p, List.length d))
       in
       mkexpr $startofs $endofs (Ecast(ty, u)) 
     }
-| LPAREN a=annotations0 n=name RPAREN u=unary_expression_not_plus_minus 
+| LPAREN a=annotations0 n=name RPAREN u=unary_expression_not_plus_minus_or_lambda_expression
     { 
       set_attribute_PT_T (env#resolve n) n;
       register_qname_as_typename n;
       mkexpr $startofs $endofs (Ecast(name_to_ty a n, u))
     }
-
-| LPAREN a=annotations0 n=name d=dims RPAREN u=unary_expression_not_plus_minus 
+| LPAREN a=annotations0 n=name d=ann_dims RPAREN u=unary_expression_not_plus_minus_or_lambda_expression
     { 
-      let i, loc = d in
-      let ty = _mkty (Loc.merge n.n_loc loc) (Tarray(name_to_ty a n, i)) in
+      let ty = _mkty (Loc.merge n.n_loc (Xlist.last d).Ast.ad_loc) (Tarray(name_to_ty a n, List.length d)) in
       set_attribute_PT_T (env#resolve n) n;
       register_qname_as_typename n;
       mkexpr $startofs $endofs (Ecast(ty, u)) 
     }
-| LPAREN a=annotations0 n=name ts=type_arguments d_opt=dims_opt RPAREN u=unary_expression_not_plus_minus
+| LPAREN a=annotations0 n=name ts=type_arguments d=ann_dims0 RPAREN u=unary_expression_not_plus_minus_or_lambda_expression
     { 
       let ty = name_to_ty_args (Loc.merge n.n_loc ts.tas_loc) a n ts in
       let ty' = 
-	match d_opt with 
-	| None -> ty
-	| Some(i, loc) -> _mkty (Loc.merge ty.ty_loc loc) (Tarray(ty, i))
+	match d with
+	| [] -> ty
+	| l -> _mkty (Loc.merge ty.ty_loc (Xlist.last l).Ast.ad_loc) (Tarray(ty, List.length l))
       in
       set_attribute_PT_T (env#resolve n) n;
       register_qname_as_typename n;
       mkexpr $startofs $endofs (Ecast(ty', u)) 
     }
-| LPAREN a=annotations0 n=name ts0=type_arguments DOT c=class_or_interface_type d_opt=dims_opt RPAREN
-       u=unary_expression_not_plus_minus
+| LPAREN a=annotations0 n=name ts0=type_arguments DOT c=class_or_interface_type d=ann_dims0 RPAREN
+       u=unary_expression_not_plus_minus_or_lambda_expression
     { 
       let tspecs =
 	match c.ty_desc with
@@ -2081,9 +2146,9 @@ cast_expression:
 	  (TclassOrInterface((TSapply(a, n, ts0)) :: tspecs))
       in
       let ty' = 
-	match d_opt with 
-	| None -> ty
-	| Some(i, loc) -> _mkty (Loc.merge ty.ty_loc loc) (Tarray(ty, i))
+	match d with 
+	| [] -> ty
+	| l -> _mkty (Loc.merge ty.ty_loc (Xlist.last l).Ast.ad_loc) (Tarray(ty, List.length l))
       in
       set_attribute_PT_T (env#resolve n) n;
       register_qname_as_typename n;
@@ -2137,12 +2202,17 @@ rel_op:
 instanceof_expression:
 | r=relational_expression                             { r }
 | i=instanceof_expression INSTANCEOF r=reference_type { mkexpr $startofs $endofs (Einstanceof(i, r)) }
+| s=ERROR INSTANCEOF r=reference_type
+    { 
+      let e = mkerrexpr $startofs $endofs(s) s in
+      mkexpr $startofs $endofs (Einstanceof(e, r))
+    }
 ;
 
 equality_expression:
 |                                 i=instanceof_expression { i }
 | e=equality_expression EQ_EQ     i=instanceof_expression { mkexpr $startofs $endofs (Ebinary(BOeq, e, i)) }
-| e=equality_expression EXCLAM_EQ i=instanceof_expression { mkexpr $startofs $endofs (Ebinary(BOneq, e, i)) } 
+| e=equality_expression EXCLAM_EQ i=instanceof_expression { mkexpr $startofs $endofs (Ebinary(BOneq, e, i)) }
 ;
 
 and_expression:
@@ -2181,7 +2251,7 @@ assignment_expression:
 ;
 
 assignment: (* set_attribute_A_E name *)
-| p=postfix_expression op=assign_op e=expression { p, mkaop $startofs $endofs op, e }
+| p=postfix_expression op=assign_op e=expr_or_err { p, mkaop $startofs $endofs op, e }
 ;
 
 %inline
@@ -2207,10 +2277,11 @@ expression_opt:
 expression:
 | a=assignment_expression { a }
 | l=lambda_expression     { l }
+(*| s=ERROR { mkerrexpr $startofs $endofs s }*)
 ;
 
 lambda_expression:
-| p=lambda_parameters MINUS_GT b=lambda_body 
+| p=lambda_parameters MINUS_GT b=lambda_body
     { 
       mkexpr $startofs $endofs (Elambda(p, b))
     }

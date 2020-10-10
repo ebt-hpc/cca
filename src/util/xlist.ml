@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+   Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -81,22 +81,49 @@ let split3 (l : ('a * 'b * 'c) list) =
 
 let max l = 
   match l with
-  | [] -> raise (Invalid_argument "Xlist.max")
+  | [] -> invalid_arg "Xlist.max"
   | a::_ -> List.fold_left (fun m x -> if x > m then x else m) a l
 
 let min l = 
   match l with
-  | [] -> raise (Invalid_argument "Xlist.min")
+  | [] -> invalid_arg "Xlist.min"
   | a::_ -> List.fold_left (fun m x -> if x < m then x else m) a l
 
 let first = function
-  | [] -> raise (Failure "Xlist.first")
+  | [] -> failwith "Xlist.first"
   | h::t -> h
 
 let rec last = function
-  | [] -> raise (Failure "Xlist.last")
+  | [] -> failwith "Xlist.last"
   | [x] -> x
   | h::t -> last t
+
+let firstn n l =
+  let len = List.length l in
+  if n < 1 || n > len then
+    failwith "Xlist.firstn"
+  else
+    let cur = ref l in
+    let l' = ref [] in
+    for i = 1 to n do
+      match !cur with
+      | h::t ->
+          l' := h :: !l';
+          cur := t
+      | [] -> assert false
+    done;
+    List.rev !l'
+
+let lastn n l =
+  let len = List.length l in
+  if n < 1 || n > len then
+    failwith "Xlist.lastn"
+  else
+    let l' = ref l in
+    for i = 1 to len - n do
+      l' := List.tl !l'
+    done;
+    !l'
 
 let rec balance = function
   | [], l -> [], []
@@ -124,6 +151,6 @@ let filter_map (f : 'a -> 'b option) (lst : 'a list) =
   List.rev rvd
 
 let rec partition_at_last = function
-  | [] -> raise (Failure "Xlist.partition_at_last")
+  | [] -> failwith "Xlist.partition_at_last"
   | [x] -> [], x
   | h::t -> let t', last = partition_at_last t in h::(t'), last

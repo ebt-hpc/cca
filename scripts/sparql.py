@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
+
 
 '''
   A SPARQL driver
@@ -61,7 +61,7 @@ def get_localname(s):
         try:
             if s.startswith('http://'):
                 res = (s.split('/'))[-1].split('#')[-1]
-        except Exception, e:
+        except Exception as e:
             dp.warning(str(e))
 
     return res
@@ -71,7 +71,7 @@ def get_localname(s):
 class Driver(dp.base):
     def __init__(self):
         self._ns_tbl = {}
-        for (n, p) in NAMESPACES.iteritems():
+        for (n, p) in NAMESPACES.items():
             self._ns_tbl[p] = n
 
     def to_prefixed_form(self, v):
@@ -82,7 +82,7 @@ class Driver(dp.base):
                     if v.startswith(p):
                         r = '%s:%s' % (self._ns_tbl[p], v[len(p):])
                         break
-            except Exception, e:
+            except Exception as e:
                 dp.warning('"%s": %s' % (v, e))
 
         return r
@@ -106,7 +106,7 @@ class VirtuosoODBCDriver(ODBCDriver, Driver):
 
     def conv_row(self, row, abbrev=False):
         if row and abbrev:
-            for (k, v) in row.iteritems():
+            for (k, v) in row.items():
                 row[k] = self.to_prefixed_form(v)
 
         return row
@@ -252,7 +252,7 @@ def query():
             print('\n'.join(row))
             count += 1
 
-    except Exception, e:
+    except Exception as e:
         #dp.error(str(e))
         raise
 
@@ -266,7 +266,7 @@ def test():
     q = 'DEFINE input:inference "ont.cpi" SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10'
 
     for r in sparql.query(q):
-        print r
+        print(r)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 '''
   A pygit2 wrapper
@@ -394,7 +393,7 @@ class Repository(dp.base):
                         if filt(x.name):
                             l.append({'path':path_,'id':x.hex})
 
-                except Exception, e:
+                except Exception as e:
                     self.warning(str(e))
                     continue
 

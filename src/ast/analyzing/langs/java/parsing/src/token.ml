@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+   Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -24,7 +24,10 @@ type t = T.token PB.token
 let rawtoken_to_string = function
   | STMT _       -> "STMT"
   | BLOCK_STMT _ -> "BLOCK_STMT"
-  | ERROR_STMT   -> "ERROR_STMT"
+  | ERROR_STMT s -> "ERROR_STMT:" ^ s
+  | ERROR s      -> "ERROR:" ^ s
+  | MARKER s     -> "MARKER:" ^ s
+  | GT_7         -> "GT_7"
   | EOP          -> "EOP"
 
 
@@ -149,7 +152,10 @@ let rawtoken_to_string = function
 let rawtoken_to_orig = function
   | STMT _       -> "<stmt>"
   | BLOCK_STMT _ -> "<block-stmt>"
-  | ERROR_STMT   -> "<error>"
+  | ERROR_STMT s -> s
+  | ERROR s      -> s
+  | MARKER s     -> s
+  | GT_7         -> ">>>>>>>"
   | EOP          -> ""
 
 
@@ -217,62 +223,62 @@ let rawtoken_to_orig = function
   | GT_GT_GT_EQ -> ">>>="
 
   (* keywords *)	
-  | ABSTRACT _     -> "ABSTRACT"
-  | ASSERT _       -> "ASSERT"
-  | BOOLEAN _      -> "BOOLEAN"
-  | BREAK _        -> "BREAK"
-  | BYTE _         -> "BYTE"
-  | CASE _         -> "CASE"
-  | CATCH _        -> "CATCH"
-  | CHAR _         -> "CHAR"
-  | CLASS _        -> "CLASS"
-  | CONST _        -> "CONST"
-  | CONTINUE _     -> "CONTINUE"
-  | DEFAULT _      -> "DEFAULT"
-  | DEFAULT__COLON _ -> "DEFAULT__COLON"
-  | DO _           -> "DO"
-  | DOUBLE _       -> "DOUBLE"
-  | ELSE _         -> "ELSE"
-  | ENUM _         -> "ENUM"
-  | EXTENDS _      -> "EXTENDS"
-  | FINAL _        -> "FINAL"
-  | FINALLY _      -> "FINALLY"
-  | FLOAT _        -> "FLOAT"
-  | FOR _          -> "FOR"
-  | GOTO _         -> "GOTO"
-  | IF _           -> "IF"
-  | IMPLEMENTS _   -> "IMPLEMENTS"
-  | IMPORT _       -> "IMPORT"
-  | INSTANCEOF _   -> "INSTANCEOF"
-  | INT _          -> "INT"
-  | INTERFACE _    -> "INTERFACE" 
-  | LONG _         -> "LONG"
-  | NATIVE _       -> "NATIVE"
-  | NEW _          -> "NEW"
-  | PACKAGE _      -> "PACKAGE"
-  | PRIVATE _      -> "PRIVATE"
-  | PROTECTED _    -> "PROTECTED"
-  | PUBLIC _       -> "PUBLIC"
-  | RETURN _       -> "RETURN"
-  | SHORT _        -> "SHORT"
-  | STATIC _       -> "STATIC"
-  | STRICTFP _     -> "STRICTFP"
-  | SUPER _        -> "SUPER"
-  | SWITCH _       -> "SWITCH"
-  | SYNCHRONIZED _ -> "SYNCHRONIZED"
-  | THIS _         -> "THIS"
-  | THROW _        -> "THROW"
-  | THROWS _       -> "THROWS"
-  | TRANSIENT _    -> "TRANSIENT"
-  | TRY _          -> "TRY"
-  | VOLATILE _     -> "VOLATILE"
-  | VOID _         -> "VOID"
-  | WHILE _        -> "WHILE"
+  | ABSTRACT _       -> "abstract"
+  | ASSERT _         -> "assert"
+  | BOOLEAN _        -> "boolean"
+  | BREAK _          -> "break"
+  | BYTE _           -> "byte"
+  | CASE _           -> "case"
+  | CATCH _          -> "catch"
+  | CHAR _           -> "char"
+  | CLASS _          -> "class"
+  | CONST _          -> "const"
+  | CONTINUE _       -> "continue"
+  | DEFAULT _        -> "default"
+  | DEFAULT__COLON _ -> "default"
+  | DO _             -> "do"
+  | DOUBLE _         -> "double"
+  | ELSE _           -> "else"
+  | ENUM _           -> "enum"
+  | EXTENDS _        -> "extends"
+  | FINAL _          -> "final"
+  | FINALLY _        -> "finally"
+  | FLOAT _          -> "float"
+  | FOR _            -> "for"
+  | GOTO _           -> "goto"
+  | IF _             -> "if"
+  | IMPLEMENTS _     -> "implements"
+  | IMPORT _         -> "import"
+  | INSTANCEOF _     -> "instanceof"
+  | INT _            -> "int"
+  | INTERFACE _      -> "interface"
+  | LONG _           -> "long"
+  | NATIVE _         -> "native"
+  | NEW _            -> "new"
+  | PACKAGE _        -> "package"
+  | PRIVATE _        -> "private"
+  | PROTECTED _      -> "protected"
+  | PUBLIC _         -> "public"
+  | RETURN _         -> "return"
+  | SHORT _          -> "short"
+  | STATIC _         -> "static"
+  | STRICTFP _       -> "strictfp"
+  | SUPER _          -> "super"
+  | SWITCH _         -> "switch"
+  | SYNCHRONIZED _   -> "synchronized"
+  | THIS _           -> "this"
+  | THROW _          -> "throw"
+  | THROWS _         -> "throws"
+  | TRANSIENT _      -> "transient"
+  | TRY _            -> "try"
+  | VOLATILE _       -> "volatile"
+  | VOID _           -> "void"
+  | WHILE _          -> "while"
 
   | EOF -> ""
 
 
-let to_string pos_mgr (tok, st, ed) =
+let to_string (pos_mgr : Position.manager) (tok, st, ed) =
   let loc = pos_mgr#lexposs_to_loc st ed in
   Printf.sprintf "%s[%s]" (rawtoken_to_string tok) (Ast.Loc.to_string ~short:true loc)
 

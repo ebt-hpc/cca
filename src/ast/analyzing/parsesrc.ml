@@ -1,5 +1,5 @@
 (*
-   Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+   Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 *)
-(* command line driver *)
 
 (* Options for Fortran added by Masatomo Hashimoto <m.hashimoto@riken.jp> *)
 
@@ -107,6 +106,9 @@ let speclist =
    "\tkeep filtered temporary file";
 
    "-parser:external", Arg.Unit set_external_parser_flags, "\t\trely on external parsers";
+   "-parser:fortran", Arg.Unit (fun () -> options#designate_parser "fortran"), "\t\tforce to use Fortran parser";
+   "-parser:c", Arg.Unit (fun () -> options#designate_parser "c"), "\t\t\tforce to use C parser";
+   "-parser:cpp", Arg.Unit (fun () -> options#designate_parser "cpp"), "\t\t\tforce to use C++ parser";
    "-parser:disable", Arg.String options#disable_parser, "PARSER_ID\tdisable parser";
 
    "-parser:fortran", Arg.Unit (fun () -> options#designate_parser "fortran"),
@@ -123,11 +125,12 @@ let speclist =
    "-getcache", Arg.Set get_cache_dir_only, "\tonly get cache dir";
    "-clearcache", Arg.Unit (fun () -> options#set_clear_cache_flag), "\tclear cache dir";
    "-usecache", Arg.Unit (fun () -> options#clear_clear_cache_flag), "\tuse cache";
-   "-layeredcache", Arg.Unit (fun () -> options#set_layered_cache_flag), "\tcreate layered cache dir";
-   "-nolayeredcache", Arg.Unit (fun () -> options#clear_layered_cache_flag), "\tcreate flat cache dir";
+   "-layeredcache", Arg.Unit (fun () -> options#set_layered_cache_flag), "\tconstruct layered cache dir";
+   "-nolayeredcache", Arg.Unit (fun () -> options#clear_layered_cache_flag), "\tconstruct flat cache dir";
 
    (*"-localcachename", Arg.String options#set_local_cache_name, 
    sprintf "DIR\tlocal cache name (default: %s)" options#local_cache_name;*)
+
 
 
 (* mode *)
@@ -161,10 +164,6 @@ let speclist =
    "-fact:nocompress",         Arg.Unit (fun () -> options#clear_fact_compress_flag), "\tdisable fact compression";
    "-fact:size-thresh",        Arg.Int options#set_fact_size_threshold, sprintf "N\tfact buffer size threshold (default: %d)" options#fact_size_threshold;
 
-   "-incompleteinfo", Arg.Unit (fun () -> options#set_incomplete_info_flag), 
-   "\tsome parts of info are omitted in AST (for counting nodes only)";
-
-
 (* Python *)
    "-python:disable-with-stmt", Arg.Unit (fun () -> options#set_python_with_stmt_disabled_flag), "\tdisable with_statement feature";
 
@@ -173,6 +172,8 @@ let speclist =
    "-fortran:parse-d-lines",   Arg.Unit (fun () -> options#set_fortran_parse_d_lines_flag), "\tparse d-lines as code";
    "-fortran:ignore-include",  Arg.Unit (fun () -> options#set_fortran_ignore_include_flag), "\tignore include lines";
 
+   "-incompleteinfo", Arg.Unit (fun () -> options#set_incomplete_info_flag), 
+   "\tsome parts of info are omitted in AST (for counting nodes only)";
  ]
 
 let _ = 
