@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
+
 (* lib.ml *)
 
 
@@ -193,10 +194,10 @@ class parser_c = object (self)
                                    parser_partial_type_spec;
                                    parser_partial_stmts;
                                    parser_partial_pu_tail;
-                                   parser_partial_function_head;
-                                   parser_partial_subroutine_head;
                                    parser_partial_function_stmt_head;
                                    parser_partial_subroutine_stmt_head;
+                                   parser_partial_function_head;
+                                   parser_partial_subroutine_head;
                                    parser_partial_program]
 
     | C.Tspecification_part    -> [parser_partial_specification_part;
@@ -206,10 +207,10 @@ class parser_c = object (self)
                                    parser_partial_stmts]
 
     | C.Tsubprograms           -> [parser_partial_subprograms;
-                                   parser_partial_function_head;
-                                   parser_partial_subroutine_head;
                                    parser_partial_function_stmt_head;
-                                   parser_partial_subroutine_stmt_head]
+                                   parser_partial_subroutine_stmt_head;
+                                   parser_partial_function_head;
+                                   parser_partial_subroutine_head]
 
     | C.Tinterface_spec        -> [parser_partial_interface_spec]
     | C.Tcase_block            -> [parser_partial_case_block]

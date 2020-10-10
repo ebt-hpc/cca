@@ -239,11 +239,6 @@ class c = object (self)
   (* Verilog *)
   val mutable verilog_ignore_include_flag = false
 
-  (* Fortran *)
-  val mutable fortran_max_line_length = -1
-  val mutable fortran_parse_d_lines_flag = false
-  val mutable fortran_ignore_include_flag = false
-
   (* external parser *)
   val external_parser_cache = Hashtbl.create 0
 
@@ -317,18 +312,6 @@ class c = object (self)
   method verilog_ignore_include_flag = verilog_ignore_include_flag
   method set_verilog_ignore_include_flag = verilog_ignore_include_flag <- true
   method clear_verilog_ignore_include_flag = verilog_ignore_include_flag <- false
-
-  (* Fortran *)
-  method fortran_max_line_length = fortran_max_line_length
-  method set_fortran_max_line_length n = fortran_max_line_length <- n
-
-  method fortran_parse_d_lines_flag = fortran_parse_d_lines_flag
-  method set_fortran_parse_d_lines_flag = fortran_parse_d_lines_flag <- true
-  method clear_fortran_parse_d_lines_flag = fortran_parse_d_lines_flag <- false
-
-  method fortran_ignore_include_flag = fortran_ignore_include_flag
-  method set_fortran_ignore_include_flag = fortran_ignore_include_flag <- true
-  method clear_fortran_ignore_include_flag = fortran_ignore_include_flag <- false
 
   (* external parser *)
   method get_external_parser pname = 

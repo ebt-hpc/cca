@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -14,7 +15,8 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
+
 
 
 open Tokens_
@@ -34,7 +36,7 @@ let find_position_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> IDENTIFIER s
   in
@@ -56,7 +58,7 @@ let find_wait_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> find_position_spec_keyword s
   in
@@ -77,7 +79,7 @@ let find_close_connect_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> find_position_spec_keyword s
   in
@@ -95,7 +97,7 @@ let find_close_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> find_close_connect_spec_keyword s
   in
@@ -120,7 +122,7 @@ let find_connect_inquire_ioctl_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> find_position_spec_keyword s
   in
@@ -160,7 +162,7 @@ let find_connect_inquire_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> find_connect_inquire_ioctl_spec_keyword s
   in
@@ -189,7 +191,7 @@ let find_connect_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> find_connect_inquire_spec_keyword s
   in
@@ -218,7 +220,7 @@ let find_io_control_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> find_connect_inquire_ioctl_spec_keyword s
   in
@@ -257,7 +259,7 @@ let find_inquire_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> find_connect_inquire_spec_keyword s
   in
@@ -275,7 +277,7 @@ let find_language_binding_spec_keyword =
   in
   let find s = 
     try 
-      (Hashtbl.find keyword_table (String.lowercase s)) s
+      (Hashtbl.find keyword_table (String.lowercase_ascii s)) s
     with 
       Not_found -> IDENTIFIER s
   in
@@ -325,7 +327,7 @@ let find_separated_keyword =
     List.iter (fun (kwd_list, tok) -> Hashtbl.add keyword_table kwd_list tok)
       keyword_list 
   in
-  let lowercase l = List.map String.lowercase l in
+  let lowercase l = List.map String.lowercase_ascii l in
   let find sl = 
     (Hashtbl.find keyword_table (lowercase sl)) sl
   in

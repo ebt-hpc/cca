@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
+
 (* 
  * AST for Fortran
  *
@@ -62,13 +63,28 @@ let rec has_subprogram ast_nd =
 
 
 let of_ast options ast =
+(*
+  let mktid nd =
+    Lang.mktid
+      (if options#incomplete_info_flag then 
+        "" 
+      else 
+        Xhash.to_hex (new c options nd false)#digest)
+      (if options#incomplete_info_flag then 
+        "" 
+      else 
+        nd#data#anonymized_label)
+  in
+*)
   let utbl = Hashtbl.create 0 in
 
   let proj_root = try options#fact_proj_roots.(0) with _ -> "" in
   let version = try options#fact_versions.(0) with _ -> Entity.unknown_version in
 
   let rec conv ?(orig_loc_flag=false) ?(label=None) ast_nd =
-    let lab = 
+    DEBUG_MSG "orig_loc_flag=%B, ast_nd=%s" orig_loc_flag ast_nd#to_string;
+
+    let lab =
       match label with
       | Some lab' -> lab'
       | None -> ast_nd#label
@@ -79,6 +95,7 @@ let of_ast options ast =
     in
 
     let proc_included_node nd =
+      DEBUG_MSG "nd=%s" nd#to_string;
       let fn = nd#data#src_loc.Loc.filename in
       DEBUG_MSG "fn=%s" fn;
       try
@@ -118,11 +135,12 @@ let of_ast options ast =
           end
           | _ -> begin
               if is_incl nd1 then begin
+                DEBUG_MSG "nd1=%s" nd1#to_string;
                 match nd1#label with
                 | L.InternalSubprogram _
                 | L.ModuleSubprogram _
                 | (L.PpBranch|L.PpSectionIfdef _|L.PpSectionIfndef _|L.PpSectionIf _) when has_subprogram nd1
-                  -> begin  (* to avoid dangling call sites *)
+                  -> begin (* to avoid dangling call sites *)
                     match conv ~orig_loc_flag:true nd1 with
                     | Some x -> x :: (conv_children l)
                     | None -> conv_children l
@@ -130,6 +148,7 @@ let of_ast options ast =
                 | _ -> (make_include_node options nd1) :: (conv_children l)
               end
               else begin
+                DEBUG_MSG "nd1=%s" nd1#to_string;
                 match conv ~orig_loc_flag nd1 with
                 | Some x -> x :: (conv_children l)
                 | None -> conv_children l
@@ -138,19 +157,22 @@ let of_ast options ast =
       end
       | [nd] -> begin
           if is_incl nd then begin
+            DEBUG_MSG "nd=%s" nd#to_string;
             match nd#label with
             | L.InternalSubprogram _
             | L.ModuleSubprogram _
             | (L.PpBranch|L.PpSectionIfdef _|L.PpSectionIfndef _|L.PpSectionIf _) when has_subprogram nd
-              -> begin  (* to avoid dangling call sites *)
+              -> begin (* to avoid dangling call sites *)
                 match conv ~orig_loc_flag:true nd with
                 | Some x -> [x]
                 | None -> []
               end
             | _ -> [make_include_node options nd]
           end
-          else
+          else begin
+            DEBUG_MSG "nd=%s" nd#to_string;
             Xoption.to_list (conv ~orig_loc_flag nd)
+          end
       end
       | [] -> []
     in
@@ -160,6 +182,7 @@ let of_ast options ast =
     if ast_nd#lloc#get_level > 0 && children = [] && not orig_loc_flag then
       None
     else begin
+      DEBUG_MSG "ast_nd=%s" ast_nd#to_string;
 
       let binding = ast_nd#binding in
       let bindings = ast_nd#bindings in
@@ -216,6 +239,7 @@ let of_ast options ast =
         match binding with
         | B.NoBinding -> ()
         | B.Def(bid, use) -> begin
+            DEBUG_MSG "bid=%a" B.ID.ps bid;
             let b =
               match use with
               | B.Unknown -> begin
@@ -229,6 +253,7 @@ let of_ast options ast =
             nd#data#set_binding b
         end
         | B.Use(bid, _) -> begin
+            DEBUG_MSG "bid=%a" B.ID.ps bid;
             nd#data#set_binding binding;
             try
               let c = Hashtbl.find utbl bid in
@@ -244,6 +269,7 @@ let of_ast options ast =
             match binding with
             | B.NoBinding -> ()
             | B.Def(bid, use) -> begin
+                DEBUG_MSG "bid=%a" B.ID.ps bid;
                 let b =
                   match use with
                   | B.Unknown -> begin
@@ -257,6 +283,7 @@ let of_ast options ast =
                 nd#data#add_binding b
             end
             | B.Use(bid, _) -> begin
+                DEBUG_MSG "bid=%a" B.ID.ps bid;
                 nd#data#add_binding binding;
                 try
                   let c = Hashtbl.find utbl bid in

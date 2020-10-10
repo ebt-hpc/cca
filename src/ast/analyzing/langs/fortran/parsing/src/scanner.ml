@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -14,7 +15,7 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
 
 module Loc = Astloc
@@ -156,6 +157,20 @@ module F (Stat : Aux.STATE_T) = struct
       method set_ignored_regions =
         set_ignored_regions()
 
+(*
+      method exit_source =
+        DEBUG_MSG "called";
+        let poped = Stack.pop stack in
+        env#ignored_regions#add_regions (poped.b_ppbuf#ignored_regions);
+        let bufs_opt =
+          try
+            Some (Stack.top stack)
+          with
+            Stack.Empty -> None
+        in
+        current_bufs <- bufs_opt
+*)
+
       method guess_source_form src =
         let file = src#file in
         let form = U.guess_source_form file in
@@ -166,6 +181,8 @@ module F (Stat : Aux.STATE_T) = struct
 
       initializer
         env#set_enter_source_callback self#enter_source
+
+
 
           
     end (* of class Scanner.F.c *)

@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -14,7 +15,7 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
 open Label_common
 
@@ -650,7 +651,7 @@ module Attribute = struct
     | l -> l
 
   let of_keyword kw =
-    match String.lowercase kw with
+    match String.lowercase_ascii kw with
     | "allocatable"            -> Allocatable
     | "array_null"             -> Array_null
     | "c"                      -> C
@@ -675,18 +676,18 @@ module Attribute = struct
     | _ -> failwith "F_dec.Attribute.of_keyword"
 
   let of_keyword_int kw i =
-    match String.lowercase kw with
+    match String.lowercase_ascii kw with
 
     | _ -> failwith "F_dec.Attribute.of_keyword_int"
 
   let of_keyword_name kw n =
-    match String.lowercase kw with
+    match String.lowercase_ascii kw with
     | "offload"                -> Offload n
 
     | _ -> failwith "F_dec.Attribute.of_keyword_name"
 
   let of_keyword_string kw s =
-    match String.lowercase kw with
+    match String.lowercase_ascii kw with
     | "optimization_parameter" -> Optimization_parameter s
 
     | _ -> failwith "F_dec.Attribute.of_keyword_string"

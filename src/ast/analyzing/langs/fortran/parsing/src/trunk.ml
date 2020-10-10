@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,8 +15,9 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
+(* trunk.ml *)
 
 module Loc = Astloc
 module Aux = Parser_aux
@@ -178,6 +179,14 @@ module F (Stat : Aux.STATE_T) = struct
     Buffer.add_string sbuf "\npos: ";
     Buffer.add_string sbuf (string_of_int (Ulexing.get_pos ulexbuf));
     Buffer.add_string sbuf "\nbuf: [";
+(*
+    Array.iter 
+      (fun i -> 
+        if i > 0 then
+          Buffer.add_char sbuf (Char.chr i);
+      )
+      (Ulexing.get_buf ulexbuf);
+*)
     Buffer.add_bytes sbuf (Ulexing.get_buf ulexbuf);
     Buffer.add_string sbuf "]\n";
     Buffer.contents sbuf
@@ -422,6 +431,7 @@ module F (Stat : Aux.STATE_T) = struct
 
 
   let find_macro id =
+    DEBUG_MSG "id=%s" id;
     try
       env#find_macro id
     with
@@ -575,7 +585,7 @@ module F (Stat : Aux.STATE_T) = struct
         end
         | REAL_LITERAL s -> begin
             if try s.[0] = '.' with Invalid_argument _ -> false then begin
-              let sl = String.lowercase s in  
+              let sl = String.lowercase_ascii s in
               if (String.contains sl 'e') || (String.contains sl 'd') then
                 tbuf#prebuf_add qtoken
               else begin
@@ -721,6 +731,10 @@ module F (Stat : Aux.STATE_T) = struct
                   env#recover ~remove:true C.tempkey
 	      end
               else begin (* not is_head_of_stmt *)
+(*
+  let q = get_token_queue() in
+  tbuf#prebuf_add_queue q
+ *)
                 tbuf#prebuf_add orig_qtoken
               end
 
@@ -990,6 +1004,7 @@ module F (Stat : Aux.STATE_T) = struct
                   try
                     match find_macro id with
                     | Macro.Object line0 ->
+                        DEBUG_MSG "line0: %s" (Macro.line_to_string line0);
                         let buf0 =
                           self#expand_line ~gen_regexp line0.Macro.ln_loc st ed line0.Macro.ln_raw
                         in
@@ -1020,7 +1035,7 @@ module F (Stat : Aux.STATE_T) = struct
                         | _ -> ""
                       ) (find_all_macros id)
                   in
-                  let ss = List.sort_uniq Pervasives.compare ss in
+                  let ss = List.sort_uniq Stdlib.compare ss in
                   let pat = "\\("^(String.concat "\\|" ss)^"\\)" in
                   DEBUG_MSG "pat=%s" pat;
                   buf#add (PB.make_qtoken (IDENTIFIER pat) Loc.dummy_lexpos Loc.dummy_lexpos)
@@ -1048,7 +1063,8 @@ module F (Stat : Aux.STATE_T) = struct
 
                       end
                       | x ->
-                          Xprint.warning "not a function-like macro %s --> %s" id (Macro.body_to_string x);
+                          Xprint.warning
+                            "not a function-like macro %s --> %s" id (Macro.body_to_string x);
                           assert false
                     with
                       Not_found -> assert false
@@ -1136,6 +1152,11 @@ module F (Stat : Aux.STATE_T) = struct
             | xs ->
                 buf#add (PB.make_qtoken EOP Loc.dummy_lexpos Loc.dummy_lexpos);
                 
+                (*let rec is_concat = function
+                  | x :: (PP_CONCAT,_) :: rest -> is_concat rest
+                  | [x] -> true
+                  | _ -> false
+                in*)
                 let is_concat =
                   List.for_all
                     (function
@@ -1173,7 +1194,7 @@ module F (Stat : Aux.STATE_T) = struct
                          (fun x -> Token.rawtoken_to_rep (Token.qtoken_to_rawtoken x)) xs)
                   in
                   DEBUG_MSG "expanded=%s" expanded;
-                 tbuf#prebuf_add (PB.make_qtoken (PP_MACRO_NAME(ida, expanded)) st ed)
+                  tbuf#prebuf_add (PB.make_qtoken (PP_MACRO_NAME(ida, expanded)) st ed)
                 end
                 else begin
                   let contexts =
@@ -1551,9 +1572,9 @@ module F (Stat : Aux.STATE_T) = struct
           if self#in_included then begin
             self#exit_source;
             env#clear_token_feeded;
-
             match !pending_EOL_ref with
             | Some eol -> begin
+
                 if env#current_source#is_free_source_form then begin
                   tbuf#prebuf_add eol;
                   env#set_lex_mode_queue;
@@ -1573,7 +1594,6 @@ module F (Stat : Aux.STATE_T) = struct
                 | None -> ()
             end
             | None -> self#take_from_lexer ()
-
           end
           else if not finished then begin
             begin

@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,8 +15,9 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
+(* parser_aux.ml *)
 
 open Printf
 open Common
@@ -415,6 +416,7 @@ class env = object (self)
     macrotbl#undefine id
 
   method find_macro id =
+    DEBUG_MSG "id=%s" id;
     try
       macrotbl#find id
     with
@@ -454,6 +456,7 @@ class env = object (self)
     lex_macrotbl#undefine id
 
   method lex_find_macro id =
+    DEBUG_MSG "id=%s" id;
     try
       lex_macrotbl#find id
     with
@@ -570,6 +573,9 @@ class env = object (self)
   val toplevel_frame = N.make_toplevel_frame()
 
 
+(*  val latest_stmt_nodes_stack = (Stack.create() : Ast.node Xset.t Stack.t)*)
+
+
 
 (* other methods *)
 
@@ -600,6 +606,40 @@ class env = object (self)
     with
       Not_found ->
         bidgen#gen
+
+(*
+  method latest_stmt_node_set = 
+    try
+      Stack.top latest_stmt_nodes_stack
+    with
+      Stack.Empty -> 
+        DEBUG_MSG "stack empty";
+        Xset.create 0
+
+  method add_latest_stmt_node nd = 
+    try
+      let s = Stack.top latest_stmt_nodes_stack in
+      Xset.add s nd
+    with
+      Stack.Empty -> DEBUG_MSG "stack empty"
+
+  method push_latest_stmt_node_set = 
+    DEBUG_MSG "called";
+    Stack.push (Xset.create 0) latest_stmt_nodes_stack
+
+  method pop_latest_stmt_node_set = 
+    DEBUG_MSG "called";
+    try
+      let _ = Stack.pop latest_stmt_nodes_stack in
+      ()
+    with
+      Stack.Empty -> DEBUG_MSG "stack empty"
+
+  method init_latest_stmt_node_set_stack =
+    Stack.clear latest_stmt_nodes_stack;
+    self#push_latest_stmt_node_set;
+    self#push_latest_stmt_node_set
+*)
 
   method context_enter_flag = context_enter_flag
   method set_context_enter_flag = context_enter_flag <- true
@@ -644,6 +684,15 @@ class env = object (self)
     DEBUG_MSG "BOL set";
     bol_flag <- true;
     self#clear_token_feeded;
+(*
+    let lstat =
+      match line_stat with
+      | LineStat.AssumedBlank -> LineStat.PureComment
+      | _ -> line_stat
+    in
+    prev_line_stat <- lstat;
+    DEBUG_MSG "prev_line_stat: set to %s" (LineStat.to_string prev_line_stat);
+*)
     self#set_line_stat_assumed_blank
 
 
@@ -685,6 +734,10 @@ class env = object (self)
   method set_line_stat_pure_comment  = self#set_line_stat LineStat.PureComment
   method set_line_stat_mixed_comment = self#set_line_stat LineStat.MixedComment
   method set_line_stat_continued     = self#set_line_stat LineStat.Continued
+
+(*
+  method prev_line_stat = prev_line_stat
+*)
 
   method continued = continued_flag
   method set_continued = 
@@ -1012,7 +1065,7 @@ class env = object (self)
     let sorted =
       List.fast_sort 
         (fun (n0, _) (n1, _) -> 
-          Pervasives.compare n1#loc.Loc.start_offset n0#loc.Loc.start_offset) 
+          Stdlib.compare n1#loc.Loc.start_offset n0#loc.Loc.start_offset)
         l
     in
     List.iter
@@ -1045,6 +1098,10 @@ class env = object (self)
 
     DEBUG_MSG "status:\n%s" (stat_to_string stat);
     
+(*
+    if Hashtbl.mem checkpoint_tbl key then
+      DEBUG_MSG "already checkpointed: key=%s" (C.key_to_string key);
+*)
     Hashtbl.add checkpoint_tbl key stat;
 
     
@@ -1109,6 +1166,11 @@ class env = object (self)
   method reset_stat =
     DEBUG_MSG "resetting...";
     self#reset_stack;
+(*
+    bopu_flag          <- stat.s_at_bopu;
+    symbol_tbl         <- Hashtbl.copy stat.s_symbol_tbl;
+    stack              <- self#_copy_stack stat.s_stack;
+*)
     in_format_context     <- false;
     in_open_context       <- false;
     in_close_context      <- false;
@@ -1153,6 +1215,13 @@ class env = object (self)
   method set_ignore_include_flag = ignore_include_flag <- true
   method clear_ignore_include_flag = ignore_include_flag <- false
 
+(*
+  method find_symbol id =
+    try
+      Hashtbl.find symbol_tbl id
+    with 
+      Not_found -> Hashtbl.find base_symbol_tbl id
+*)
   method current_frame = 
     try
       Stack.top stack
@@ -1266,6 +1335,7 @@ class env = object (self)
 
   method lookup_name ?(allow_implicit=true) ?(afilt=(fun _ -> true)) (id : name) =
     DEBUG_MSG "[stack size:%d] \"%s\"" (Stack.length stack) id;
+(*    let id_ = String.lowercase_ascii id in *)
     let all = ref [] in
     let all_filtered = ref [] in
     let has_open_module_use = ref false in
@@ -1367,11 +1437,15 @@ class env = object (self)
     super#init;
     Queue.clear pending_RAWOMP_obj_queue;
     Queue.clear pending_token_obj_queue;
+    (*self#init_latest_stmt_node_set_stack;*)
     loc_stack#init;
     Hashtbl.clear symbol_tbl;
     Stack.clear stack;
     Hashtbl.clear checkpoint_tbl;
     Hashtbl.clear fname_ext_cache;
+(*
+    condtbl#reset;
+*)
     context_enter_flag    <- false;
     context_activate_flag <- false;
     last_active_ofss      <- (0, 0);
@@ -1544,7 +1618,7 @@ module F (Stat : STATE_T) = struct
     match nd#label, nd#children with
     | L.Rename, [ln; un] -> begin
         try
-          let n = String.lowercase ln#get_name in
+          let n = String.lowercase_ascii ln#get_name in
           if not (Xset.mem exclude n) then
             register_external_name n mod_name un#get_name
         with
@@ -1552,7 +1626,7 @@ module F (Stat : STATE_T) = struct
     end
     | L.Ambiguous (Ambiguous.GenericSpecOrUseName n), []
     | L.GenericSpec (GenericSpec.Name n), _ ->
-        if not (Xset.mem exclude (String.lowercase n)) then
+        if not (Xset.mem exclude (String.lowercase_ascii n)) then
           register_external_name n mod_name n
 
     | L.OnlyList, onlys ->
@@ -2029,11 +2103,13 @@ module F (Stat : STATE_T) = struct
                 in
                 if multi_bind then begin
                   if first_time then begin
+                    DEBUG_MSG "adding %a" BID.ps bid;
                     node#add_binding (B.make_unknown_def bid);
                     node#add_info (I.mknamespec spec)
                   end
                 end
                 else begin
+                  DEBUG_MSG "setting %a" BID.ps bid;
                   node#set_binding (B.make_unknown_def bid);
                   node#set_info (I.mknamespec spec)
                 end
@@ -2059,7 +2135,7 @@ module F (Stat : STATE_T) = struct
   let mkn n =
     let name =
       if env#ignore_case then
-        String.lowercase n
+        String.lowercase_ascii n
       else
         n
     in
@@ -2207,6 +2283,4 @@ module F (Stat : STATE_T) = struct
   let node_to_lexposs nd =
     Loc.to_lexposs (node_to_loc nd) 
 
-
 end (* of functor Parser_aux.F *)
-

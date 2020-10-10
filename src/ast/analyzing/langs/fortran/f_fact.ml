@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018-2019 Chiba Institude of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 *)
 
 (* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
+
 (* fact extractor *)
 
 
@@ -166,8 +167,8 @@ module F (L : Label.T) = struct
           let a = (Obj.obj nd#data#_annotation : Label.annotation) in
           Label.Annotation.iter
             (function
-              | Label.Annotation.Require ns ->
-                  List.iter
+              | Label.Annotation.Require ns -> 
+                  List.iter 
                     (fun n ->
                       let en = self#mkextname n in
                       self#add (en, p_is_a, Triple.c_external_name);
@@ -175,8 +176,8 @@ module F (L : Label.T) = struct
                       self#add (entity, p_requires, en)
                     ) ns
 
-              | Label.Annotation.Provide ns ->
-                  List.iter
+              | Label.Annotation.Provide ns -> 
+                  List.iter 
                     (fun _n ->
                       List.iter
                         (fun n ->
@@ -331,12 +332,15 @@ module F (L : Label.T) = struct
           else
             None
         in*)
+        DEBUG_MSG "nd=%s" nd#to_string;
         begin
           let b = nd#data#binding in
           match b with
           | B.Def(bid, use) ->
+              DEBUG_MSG "%a" B.ID.ps bid;
               self#add (entity, p_binding, self#mkbinding (*~loc_opt*) bid)
           | B.Use(bid, loc_opt) ->
+              DEBUG_MSG "%a" B.ID.ps bid;
               self#add (entity, p_binding, self#mkbinding (*~loc_opt*) bid)
           | _ -> ()
         end;
@@ -345,8 +349,10 @@ module F (L : Label.T) = struct
             (fun b ->
               match b with
               | B.Def(bid, use) ->
+                  DEBUG_MSG "%a" B.ID.ps bid;
                   self#add (entity, p_binding, self#mkbinding (*~loc_opt*) bid)
               | B.Use(bid, loc_opt) ->
+                  DEBUG_MSG "%a" B.ID.ps bid;
                   self#add (entity, p_binding, self#mkbinding (*~loc_opt*) bid)
               | _ -> ()
             ) nd#data#bindings

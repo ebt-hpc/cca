@@ -1,8 +1,6 @@
 (*
-   A lexer (utf-8) for Fortran language
-
    Copyright 2013-2018 RIKEN
-   Copyright 2017-2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -17,8 +15,14 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
+(* 
+ * A lexer (utf-8) for Fortran language
+ *
+ * ulexer.ml
+ *
+ *)
 
 module Loc = Astloc
 module PB = Parserlib_base
@@ -38,7 +42,7 @@ let ws_pat = Str.regexp "[ \009\012]+"
 
 let normalize_pp_keyword k =
   let s = Str.global_replace ws_pat "" k in
-  String.lowercase s
+  String.lowercase_ascii s
 
 let _find_pp_keyword =
   let keyword_list =
@@ -103,7 +107,7 @@ let _find_dotted_keyword, find_dotted_keyword =
     List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok) 
       keyword_list 
   in
-  let _find s = (Hashtbl.find keyword_table (String.lowercase s)) s in
+  let _find s = (Hashtbl.find keyword_table (String.lowercase_ascii s)) s in
   let find s = 
     try 
       _find s
@@ -297,7 +301,7 @@ let _find_keyword =
     List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok) 
       keyword_list 
   in
-  let _find s = (Hashtbl.find keyword_table (String.lowercase s)) s in
+  let _find s = (Hashtbl.find keyword_table (String.lowercase_ascii s)) s in
   _find
 
 let find_keyword s = 
@@ -371,6 +375,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
   let regexp alphanumeric_character = letter | digit | '_'
 
+(*
+  let regexp special_character = [' ' '=' '+' '-' '*' '/' '(' ')' ',' '.' '\'' ':' '!' '"' '%' '&' ';' '<' '>' '?' '$']
+  let regexp character = alphanumeric_character | special_character
+*)
+
   let regexp cont = '&' white_space* line_terminator white_space* '&'
 
   let regexp name = letter alphanumeric_character*
@@ -414,10 +423,12 @@ module F (Stat : Parser_aux.STATE_T) = struct
   let regexp boz_literal_constant = binary_constant | octal_constant | hex_constant
 
 
+(*  let regexp significand = digit_string '.' digit_string? | '.' digit_string *)
   let regexp significand = digit_string '.' digit_string | '.' digit_string
   let regexp exponent_letter = ['e' 'E' 'd' 'D' 'q' 'Q'] (* Q for REAL(16) constants (Compaq/Intel) *)
   let regexp exponent = signed_digit_string
 
+(*  let regexp real_literal_constant = significand (exponent_letter exponent)? ('_' kind_param)? | digit_string exponent_letter exponent ('_' kind_param)? *)
   let regexp real_literal_constant_no_kind = significand (exponent_letter exponent)? | digit_string ('.')? exponent_letter exponent
   let regexp real_literal_constant = real_literal_constant_no_kind ('_' kind_param)? | digit_string ('.') ('_' kind_param)
 
@@ -443,7 +454,24 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
   let regexp logical_literal_constant = true_constant | false_constant
 
+(*
+  let regexp literal_constant = 
+    int_literal_constant | 
+    real_literal_constant | 
+    complex_literal_constant | 
+    logical_literal_constant | 
+    char_literal_constant | 
+    boz_literal_constant
+*)
+
   let regexp named_constant = name
+
+(*
+  let regexp constant = literal_constant | named_constant
+
+  let regexp int_constant = constant
+  let regexp char_constant = constant
+*)
 
   let regexp filename_character_dq = [^'\"']
   let regexp filename_character_sq = [^'\'']
@@ -505,7 +533,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
   let regexp keyword_or_name = (letter | '_')+
 
   let regexp kw_include = ['I' 'i'] ['N' 'n'] ['C' 'c'] ['L' 'l'] ['U' 'u'] ['D' 'd'] ['E' 'e']
-
+(*
+  let regexp include_line = kw_include white_space* char_literal_constant_no_kind white_space* line_terminator
+*)
   let regexp ocl_head = ['O' 'o'] ['C' 'c'] ['L' 'l']
 
   let regexp omp_sentinel = ['O' 'o'] ['M' 'm'] ['P' 'p']
@@ -521,6 +551,17 @@ module F (Stat : Parser_aux.STATE_T) = struct
   let regexp pp_underscore = '_'+
 
   let regexp kw_options = ['O' 'o'] ['P' 'p'] ['T' 't'] ['I' 'i'] ['O' 'o'] ['N' 'n'] ['S' 's']
+
+(*
+  let get_prev_char ulexbuf =
+    let buf = Ulexing.get_buf ulexbuf in
+    let cur = Ulexing.get_pos ulexbuf in
+    let prev_char = buf.(cur-2) in
+    let cur_char = buf.(cur-1) in
+    DEBUG_MSG "prev char: %c (cur: %c)" (Char.chr prev_char) (Char.chr cur_char);
+    prev_char
+*)    
+
 
   let mkloc ulexbuf =
     let st = Ulexing.lexeme_start ulexbuf in
@@ -606,6 +647,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
   exception Sep_found of string
 
+
   class guess_env = object (self)
 
     val mutable lnum    = 1
@@ -617,6 +659,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
     val mutable second_last_nonblank_char_within_limit = '\000'
     val mutable last_nonblank_char_within_limit = '\000'
+
     val stmt_sep_count_tbl   = Hashtbl.create 0
     val margin_sep_count_tbl = Hashtbl.create 0
 
@@ -674,10 +717,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
     method marginal_complete_free_cont_count = marginal_complete_free_cont_count
     method incr_marginal_complete_free_cont_count =
       marginal_complete_free_cont_count <- marginal_complete_free_cont_count + 1
- 
+
     method free_cont_count = free_cont_count
     method incr_free_cont_count =
       free_cont_count <- free_cont_count + 1
+
 
     method letter_cont_field_count = letter_cont_field_count
     method incr_letter_cont_field_count = 
@@ -765,18 +809,19 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
     method margin_stat = margin_stat
 
-    method in_margin = 
+    method in_margin =
       margin_stat.ms_in_margin
 
-    method enter_margin = 
+    method enter_margin =
       DEBUG_MSG "open_paren=%B" self#in_paren;
       DEBUG_MSG "char_context=%s" (PA.char_context_to_string char_context);
       margin_stat.ms_in_margin <- true;
       margin_stat.ms_open_paren <- self#in_paren;
       margin_stat.ms_open_char <- char_context
 
-    method exit_margin = 
+    method exit_margin =
       if margin_stat.ms_in_margin then begin
+        DEBUG_MSG "exiting";
         if margin_stat.ms_open_paren && (paren_level + margin_paren_level) = 0 then begin
           DEBUG_MSG "paren closed in the margin"
         end;
@@ -892,6 +937,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     method check_at_initial_line =
       DEBUG_MSG "paren_level=%d last_in_margin=%B margin_paren_level=%d sep_in_margin=%B"
         paren_level last_in_margin margin_paren_level self#sep_in_margin;
+
       let may_be_incomplete_line = ref self#check_cont in
       let may_be_comment_margin = ref false in
 
@@ -919,7 +965,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
           self#incr_noncomment_margin_count;
           may_be_incomplete_line := false
         end
-      in
+      in (* check_sep *)
 
       if paren_level = 0 then begin
 
@@ -949,23 +995,32 @@ module F (Stat : Parser_aux.STATE_T) = struct
         else begin (* margin_paren_level <> 0 *)
           DEBUG_MSG "comment margin?";
           may_be_comment_margin := true;
-        end
-
+          (*self#reset_margin_paren_level*)
+        end;
+        (*self#reset_paren_level*)
       end
       else begin (* paren_level <> 0 *)
+
         if paren_level + margin_paren_level = 0 then begin
           DEBUG_MSG "non-comment margin found (paren)";
           self#incr_noncomment_margin_count;
           may_be_incomplete_line := false
         end
-        else if self#sep_in_margin then begin
-          check_sep()
+        else begin
+          if self#sep_in_margin then begin
+            check_sep()
+          end
         end;
+
         if last_in_margin && not !may_be_comment_margin && not self#check_paren_level then begin
           DEBUG_MSG "margin contains non-comment characters and they never close parentheses";
           self#incr_marginal_complete_free_cont_count
         end;
+
+        (*self#reset_paren_level;
+        self#reset_margin_paren_level;*)
         margin_char_context <- PA.CH_NONE;
+
       end;
 
       self#reset_sep_count;
@@ -1060,20 +1115,20 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
 
 
-    method last_nonblank_char_within_limit = 
+    method last_nonblank_char_within_limit =
       last_nonblank_char_within_limit
 
-    method second_last_nonblank_char_within_limit = 
+    method second_last_nonblank_char_within_limit =
       second_last_nonblank_char_within_limit
 
-    method reset_last_nonblank_char_within_limit = 
+    method reset_last_nonblank_char_within_limit =
       last_nonblank_char_within_limit <- '\000';
       second_last_nonblank_char_within_limit <- '\000'
 
-    method set_last_nonblank_char_within_limit s = 
+    method set_last_nonblank_char_within_limit s =
       last_nonblank_char_within_limit <- s
 
-    method set_second_last_nonblank_char_within_limit s = 
+    method set_second_last_nonblank_char_within_limit s =
       second_last_nonblank_char_within_limit <- s
 
     method private sep_in_xxx tbl sep =
@@ -1256,7 +1311,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
       if head_symbol <> "" then begin
         let rest = scan_name genv lexbuf in
         if rest <> "" then begin
-          let s = String.lowercase (head_symbol^rest) in
+          let s = String.lowercase_ascii (head_symbol^rest) in
           DEBUG_MSG "head_name: %s" s;
           if Xset.mem head_keywords s then
             SF.Free
@@ -1603,14 +1658,14 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#add_to_stmt " ";
     scan_stmt genv form lexbuf
 
-|   white_space -> 
+|   white_space ->
     genv#clear_letter_cont_field;
     check_pos ~is_blank:true genv;
     genv#add_to_pos 1;
     genv#add_to_stmt (Ulexing.utf8_lexeme lexbuf);
     scan_stmt genv form lexbuf
 
-|   ';' -> 
+|   ';' ->
     if is_head then begin
       genv#reset_paren_level;
       genv#reset_margin_paren_level;
@@ -1634,7 +1689,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#incr_exclam_comment_count;
     scan_comment C_free genv form lexbuf
 
-|   '&' -> 
+|   '&' ->
     genv#clear_letter_cont_field;
     let max_line_length = env#current_source#max_line_length in
     if genv#pos <= max_line_length then begin
@@ -1706,7 +1761,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
         else
 	  scan_hollerith genv form n 1 lexbuf
       with
-      | Failure "int_of_string" | Invalid_argument "cH_desc" ->
+      | Failure _ | Invalid_argument _ ->
           genv#add_to_pos len;
           scan_stmt genv form lexbuf
     end
@@ -1900,11 +1955,11 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
   and scan_char_single genv form = lexer
 |   "''" -> 
-    genv#add_to_pos 2; 
+    genv#add_to_pos 2;
     scan_char_single genv form lexbuf
 
 |   "\"\"" -> 
-    genv#add_to_pos 2; 
+    genv#add_to_pos 2;
     scan_char_single genv form lexbuf
 
 |   '&' white_space* line_terminator ->
@@ -1935,16 +1990,16 @@ module F (Stat : Parser_aux.STATE_T) = struct
     genv#exit_char PA.CH_SINGLE;
     scan_stmt genv form lexbuf
 
-|   [^'\''] -> 
-(*    DEBUG_MSG "[%s] pos=%d" (Ulexing.utf8_lexeme lexbuf) genv#pos;*)
+|   [^'\''] ->
+    (*DEBUG_MSG "[%s] pos=%d" (Ulexing.utf8_lexeme lexbuf) genv#pos;*)
     check_pos genv;
-    genv#add_to_pos 1; 
+    genv#add_to_pos 1;
     scan_char_single genv form lexbuf
 
 
   and scan_char_double genv form = lexer
 |   "''" -> 
-    genv#add_to_pos 2; 
+    genv#add_to_pos 2;
     scan_char_double genv form lexbuf
 
 |   "\"\"" -> 
@@ -1979,9 +2034,9 @@ module F (Stat : Parser_aux.STATE_T) = struct
     scan_stmt genv form lexbuf
 
 |   [^'"'] ->
-(*    DEBUG_MSG "[%s] pos=%d" (Ulexing.utf8_lexeme lexbuf) genv#pos;*)
+    (*DEBUG_MSG "[%s] pos=%d" (Ulexing.utf8_lexeme lexbuf) genv#pos;*)
     check_pos genv;
-    genv#add_to_pos 1; 
+    genv#add_to_pos 1;
     scan_char_double genv form lexbuf
 
 
@@ -2072,7 +2127,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 	  src#close;
 	  env#verbose_msg "guessing from file extension";
           try
-            let ext = String.lowercase file#get_extension in
+            let ext = String.lowercase_ascii file#get_extension in
 	    if List.mem ext [".f";".for"] then
 	      SF.Fixed
 	    else
@@ -2233,7 +2288,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
   let tokenize_name _str =
     DEBUG_MSG "tokenizing \"%s\"..." _str;
     let size = String.length _str in
-    let str = String.lowercase _str in
+    let str = String.lowercase_ascii _str in
 
     let _str =
       if env#ignore_case then
@@ -2386,7 +2441,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     in
     let find s = 
       try
-        Hashtbl.find keyword_table (String.lowercase s)
+        Hashtbl.find keyword_table (String.lowercase_ascii s)
       with
         Not_found -> IDENTIFIER s
     in
@@ -2591,7 +2646,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok) keyword_list;
     let find ?(no_ident=false) s = 
       try
-        Hashtbl.find keyword_table (String.lowercase s)
+        Hashtbl.find keyword_table (String.lowercase_ascii s)
       with
         Not_found -> 
           if no_ident then
@@ -2609,7 +2664,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
   let get_omp_continuable_keyword = function
     | IDENTIFIER _ident -> begin
-        let ident = String.lowercase _ident in
+        let ident = String.lowercase_ascii _ident in
         match ident with
         | "cancellation"
         | "declare"
@@ -2656,7 +2711,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
   let get_omp_following_keyword = function
     | IDENTIFIER _ident -> begin
-        let ident = String.lowercase _ident in
+        let ident = String.lowercase_ascii _ident in
         match ident with
         | "data"
         | "distributeparallel"
@@ -2706,7 +2761,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 (*    | COMPLEX s*)
       -> s
 
-    | KINDED_TYPE_SPEC s when (String.lowercase s) = "complex" -> "complex"
+    | KINDED_TYPE_SPEC s when (String.lowercase_ascii s) = "complex" -> "complex"
 
     | _ -> raise Not_found
 
@@ -2824,7 +2879,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok) keyword_list;
     let find ?(no_ident=false) s = 
       try
-        Hashtbl.find keyword_table (String.lowercase s)
+        Hashtbl.find keyword_table (String.lowercase_ascii s)
       with
         Not_found -> 
           if no_ident then
@@ -2942,7 +2997,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     in
     let find s = 
       try
-        Hashtbl.find keyword_table (String.lowercase s)
+        Hashtbl.find keyword_table (String.lowercase_ascii s)
       with
         Not_found -> IDENTIFIER s
     in
@@ -3095,7 +3150,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
     in
     let find s =
       try
-        Hashtbl.find keyword_table (String.lowercase s)
+        Hashtbl.find keyword_table (String.lowercase_ascii s)
       with
         Not_found -> IDENTIFIER s
     in
@@ -3358,6 +3413,16 @@ module F (Stat : Parser_aux.STATE_T) = struct
         end
     end
 
+(*
+  and _token lexbuf = 
+    DEBUG_MSG "line_stat=%s so=%d" 
+      (LineStat.to_string env#line_stat) ((mkloc lexbuf).Loc.start_offset);
+    inst0#start;
+    let res = __token lexbuf in
+    inst0#stop;
+    res
+*)
+
   and _token
       ?(pp_pending_EOL=None)
       ?(identifier_may_continue=false)
@@ -3480,7 +3545,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
           let chlen = String.length cH in
 	  hollerith (Ulexing.lexeme_start lexbuf) chlen n 1 "" lexbuf
       with
-      | Failure "int_of_string" | Invalid_argument "cH_desc" ->
+      | Failure _ | Invalid_argument _ ->
           mktok (CONTINUED_IDENTIFIER cH) lexbuf
     end
 
@@ -3824,7 +3889,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
 
                       let is_typeof =
                         match last_tok with
-                        | QUESTION -> (String.lowercase s) = "typeof"
+                        | QUESTION -> (String.lowercase_ascii s) = "typeof"
                         | _ -> false
                       in
 
@@ -4129,9 +4194,16 @@ module F (Stat : Parser_aux.STATE_T) = struct
         env#current_source#omp_cc_lines#add_QCC loc.Loc.start_line;
 
       match tok with
-      | PP_INCLUDE -> begin
+      | PP_INCLUDE ->
+          (*if env#continuable then begin
+            DEBUG_MSG "continuable";
+            env#set_lex_mode_queue;
+            feed_pending_EOL pending_EOL lexbuf
+          end
+          else*) begin
             _token ~pp_pending_EOL:pending_EOL lexbuf
-      end
+          end
+
       | _ -> begin
           begin
             match pending_EOL with
@@ -5574,6 +5646,15 @@ module F (Stat : Parser_aux.STATE_T) = struct
     let s = Ulexing.utf8_lexeme lexbuf in
     pp_line mktok st_pos (mesg^s) lexbuf
 
+(*
+  and pp_other pp_qtoken = lexer
+|   line_terminator ->
+    env#set_BOL;
+    output_pp_qtoken pp_qtoken lexbuf
+
+|   _ -> pp_other pp_qtoken lexbuf
+*)
+
   and pp_skip ?(pending_EOL=None) = lexer
 |   line_terminator ->
     env#set_BOL;
@@ -5779,7 +5860,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
             DEBUG_MSG "checking %s" file#path;
             let is_extra_source_file =
               try
-                let ext = String.lowercase file#get_extension in
+                let ext = String.lowercase_ascii file#get_extension in
                 not (List.mem ext extensions)
               with
                 Xfile.No_extension _ -> true

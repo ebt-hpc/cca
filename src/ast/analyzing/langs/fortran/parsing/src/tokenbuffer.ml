@@ -1,8 +1,6 @@
 (*
-   Buffer for tokens
-
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -17,8 +15,14 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
+(* 
+ * tokenbuffer.ml
+ *
+ * Buffer for tokens
+ *
+ *)
 
 open Common
 module Loc = Astloc
@@ -34,7 +38,17 @@ open Keyword
 
 let sprintf = Printf.sprintf
 
+
+(*
+let lexposs_to_offsets (st_pos, ed_pos) =
+  st_pos.Lexing.pos_cnum, ed_pos.Lexing.pos_cnum
+*)
+
+
+
 let exponent_pat = Str.regexp "[de][0-9]+$"
+
+
 
 type partial_parser = (Token.t, Partial.t) MenhirLib.Convert.revised
 
@@ -45,6 +59,9 @@ type parse_result =
 
 exception Empty
 exception Incomplete
+
+
+
 
 
 module F (Stat : Aux.STATE_T) = struct
@@ -371,7 +388,7 @@ module F (Stat : Aux.STATE_T) = struct
  let position_edit_desc_pat = Str.regexp "t[lr]?[0-9]+"
 
  let find_edit_desc str =
-   let s = String.lowercase str in
+   let s = String.lowercase_ascii str in
    if Str.string_match data_edit_desc_pat s 0 then begin
      DEBUG_MSG "%s -> DATA_EDIT_DESC" str;
      DATA_EDIT_DESC str
@@ -913,7 +930,7 @@ module F (Stat : Aux.STATE_T) = struct
                 | EOL | SEMICOLON | NOTHING | EOF _ ->
                     raise Not_found
 
-                | FUNCTION _ | SUBROUTINE _ | EOP -> 
+                | FUNCTION _ | SUBROUTINE _ | EOP ->
                     raise Exit
 
                 | _ -> incr n
@@ -1237,7 +1254,7 @@ module F (Stat : Aux.STATE_T) = struct
 
       match next_tok with
       | IDENTIFIER s -> begin
-          let sl = String.lowercase s in
+          let sl = String.lowercase_ascii s in
           if sl = "d" || sl = "e" then begin
             let nth = ref nth_ini in
             let prev_s = ref (significand^s) in
@@ -1476,7 +1493,7 @@ module F (Stat : Aux.STATE_T) = struct
           | IDENTIFIER s -> begin
               match tokensrc#peek_nth_rawtok 2 with
               | PLUS | MINUS | STAR | SLASH | RPAREN -> begin
-                  let sl = String.lowercase s in
+                  let sl = String.lowercase_ascii s in
                   if sl = "b" then begin (* old style octal constant *)
                     DEBUG_MSG "<int-literal>B --> <int-literal>";
                     tok := INT_LITERAL (i^s);
@@ -1830,7 +1847,7 @@ module F (Stat : Aux.STATE_T) = struct
                     tok := CONSTRUCT_NAME s
 
                 | IDENTIFIER s' -> begin
-                    if (String.lowercase s') = "select" then begin
+                    if (String.lowercase_ascii s') = "select" then begin
                       let third_tok = tokensrc#peek_nth_rawtok 3 in
                       match third_tok with
                       | CASE _ | TYPE _ -> tok := CONSTRUCT_NAME s
@@ -1862,7 +1879,7 @@ module F (Stat : Aux.STATE_T) = struct
                 end
             end
             | IDENTIFIER i -> begin
-                let il = String.lowercase i in
+                let il = String.lowercase_ascii i in
                 if Str.string_match exponent_pat il 0 then begin
                   DEBUG_MSG "'.' <identifier> --> <real-literal>";
                   tok := REAL_LITERAL (str^i);
@@ -1992,7 +2009,7 @@ module F (Stat : Aux.STATE_T) = struct
       | SYNC s -> begin
           match peek_next() with
           | IDENTIFIER s' -> begin
-              match String.lowercase s' with
+              match String.lowercase_ascii s' with
               | "all" | "images" | "memory" -> ()
               | _ -> 
                   DEBUG_MSG "SYNC --> <identifier>";
@@ -2054,7 +2071,7 @@ module F (Stat : Aux.STATE_T) = struct
                             incr nth;
                             match tokensrc#peek_nth_rawtok !nth with
                             | SEMICOLON | EOL | NOTHING -> begin
-                                match String.lowercase s with
+                                match String.lowercase_ascii s with
                                 | "out" | "eval" | "in" | "rd" -> () (* Linda operations *)
                                 | _ -> begin
                                     DEBUG_MSG "<identifier>|<pp-identifier> --> <pp-macro-id>";
@@ -2196,7 +2213,7 @@ module F (Stat : Aux.STATE_T) = struct
       | TYPE _ | CLASS _ -> begin
           match peek_next() with
           | IDENTIFIER s' -> begin
-              let ls' = String.lowercase s' in
+              let ls' = String.lowercase_ascii s' in
               match ls' with
               | "is" -> begin
                   DEBUG_MSG "TYPE|CLASS <identifier> --> TYPE_IS|CLASS_IS";

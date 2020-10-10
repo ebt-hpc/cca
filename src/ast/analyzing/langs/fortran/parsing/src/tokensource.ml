@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -14,7 +15,7 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
 
 module Loc = Astloc
@@ -50,7 +51,10 @@ class virtual c = object (self)
 
   method virtual get_prev_loc    : Loc.t
   method virtual set_prev_loc    : Loc.t -> unit
-
+(*
+  method enter_branch = ()
+  method exit_branch  = ()
+*)
 end (* of class Tokensource.c *)
 
 

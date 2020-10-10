@@ -1,6 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2013-2018 RIKEN
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
+
 (* info.ml *)
 
 open Common
@@ -662,7 +663,8 @@ module Name = struct
         loc_of_decl <- loc_of_decl_explicit loc
 
       method to_string =
-        "@"^(loc_of_decl_to_string loc_of_decl)
+        "@"^(loc_of_decl_to_string loc_of_decl)^
+        (match bid_opt with Some bid -> BID.to_string bid | None -> "")
 
     end (* of class Pinfo.Name.Spec.spec_base *)
 
@@ -1027,7 +1029,7 @@ module Name = struct
       DataObject spec
 
     let mkext mname uname =
-      External(String.lowercase mname, String.lowercase uname)
+      External(String.lowercase_ascii mname, String.lowercase_ascii uname)
 
     let mkiname n = InterfaceName n
 
@@ -1163,10 +1165,10 @@ module Name = struct
 
     let letter_spec_of_label = function
       | L.LetterSpec(f, t_opt) -> begin
-          let fh = Char.lowercase f.[0] in
+          let fh = Char.lowercase_ascii f.[0] in
           let th =
             match t_opt with
-            | Some t -> Char.lowercase t.[0]
+            | Some t -> Char.lowercase_ascii t.[0]
             | None -> fh
           in
           DEBUG_MSG "%c-%c" fh th;
@@ -1208,7 +1210,7 @@ module Name = struct
     method iter f = Hashtbl.iter f tbl
 
     method add_used_module (m : name) = 
-      let m_ = String.lowercase m in
+      let m_ = String.lowercase_ascii m in
       if not (List.mem m_ used_module_list) then
         used_module_list <- m_ :: used_module_list
 
@@ -1230,7 +1232,7 @@ module Name = struct
 
     method post_find n = 
       DEBUG_MSG "name=\"%s\"" n;
-      let c = Char.code (Char.lowercase n.[0]) in
+      let c = Char.code (Char.lowercase_ascii n.[0]) in
       let rec find = function
         | [] -> raise Not_found
         | ispec::rest ->
@@ -1271,7 +1273,7 @@ module Name = struct
       with 
         Not_found -> (* [] *)
           let l = ref [] in
-          self#iter_used_modules (fun m -> l := (Spec.External(m, String.lowercase n)) :: !l);
+          self#iter_used_modules (fun m -> l := (Spec.External(m, String.lowercase_ascii n)) :: !l);
           !l
 *)
     method get_ext_names n =
@@ -1293,8 +1295,9 @@ module Name = struct
       List.filter (fun s -> Spec.has_object_spec s) (self#find_all n)
 
     method add n spec =
-      let n_ = String.lowercase n in
-
+      DEBUG_MSG "n=%s" n;
+      let n_ = String.lowercase_ascii n in
+      DEBUG_MSG "n_=%s" n_;
       let is_regexp = String.contains n_ '|' in
       DEBUG_MSG "is_regexp=%B" is_regexp;
 
@@ -1429,8 +1432,7 @@ module Name = struct
               with
                 Spec_found spec -> spec
 
-    method find n = self#_find (String.lowercase n)
-
+    method find n = self#_find (String.lowercase_ascii n)
 
     method _find_all n =
       (*DEBUG_MSG "\"%s\"" n;*)
@@ -1452,7 +1454,7 @@ module Name = struct
       else
         l
 
-    method find_all n = self#_find_all (String.lowercase n)
+    method find_all n = self#_find_all (String.lowercase_ascii n)
 
     method _mem n =
       if Hashtbl.mem tbl n then
@@ -1471,7 +1473,7 @@ module Name = struct
         with
           Exit -> true
 
-    method mem n = self#_mem (String.lowercase n)
+    method mem n = self#_mem (String.lowercase_ascii n)
 
     method _copy =
       {<scope = ScopingUnit.copy scope;
@@ -1483,6 +1485,9 @@ module Name = struct
       {<scope = ScopingUnit.copy scope;
         tbl = Hashtbl.copy tbl;
         regexp_tbl = Hashtbl.copy regexp_tbl;
+        (*implicit_spec_list = implicit_spec_list;
+        default_accessibility = default_accessibility;
+        used_module_list = used_module_list;*)
         >}
 
     method to_string =
@@ -1512,6 +1517,14 @@ module Name = struct
 
 
   end (* of class Pinfo.Name.frame *)
+
+(*
+  let copy_frame frm =
+  let f = new frame frm#scope in
+  f#_set_tbl frm#_tbl;
+  f
+ *)
+
 
 
   exception Frame_found of frame

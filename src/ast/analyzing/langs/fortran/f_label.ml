@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
+
 (* fortran/label.ml *)
 
 open Printf
@@ -2144,6 +2145,11 @@ let is_expr = function
   | lab -> is_primary lab
 
 
+let is_compatible _ _ = false
+
+let is_order_insensitive = function
+  | _ -> false
+
 let relabel_allowed = function
   | Stmt _, Stmt _
   | IfConstruct, CaseConstruct | CaseConstruct, IfConstruct
@@ -2156,6 +2162,9 @@ let relabel_allowed = function
       (is_expr l1 && is_expr l2) ||
       (anonymize2 l1 = anonymize2 l2)
 
+let move_disallowed _ = false
+
+let is_common _ = false
 
 let get_ident_use = function
   | Name n -> n
@@ -2229,7 +2238,7 @@ let is_string_literal = function
   | Constant (Constant.CharLiteralConstant _) -> true
   | _ -> false
 
-let is_phantom = function (* not yet *)
+let is_phantom = function
   | Block
   | DoBlock
   | WhereBlock
@@ -2244,8 +2253,7 @@ let is_phantom = function (* not yet *)
     -> true
   | _ -> false
 
-let is_special = function (* not yet *)
-  | _ -> false
+let is_special _ = false
 
 let is_pp_directive = function
   | PpDirective _ -> true

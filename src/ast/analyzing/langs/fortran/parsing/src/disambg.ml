@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
+
 (* Disambiguate AST *)
 
 module F (Stat : Parser_aux.STATE_T) = struct
@@ -127,7 +128,6 @@ module F (Stat : Parser_aux.STATE_T) = struct
           end
     with
       Not_found -> ()
-
 
   let conv_loc
       { Ast.Loc.filename     = fn;
@@ -465,8 +465,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
                 | Ambiguous.First -> nd#relab L.StartingPoint
                 | Ambiguous.Second -> nd#relab L.EndingPoint
                 | _ -> begin
-                    WARN_MSG "invalid label: %s (%s)"
-                      (L.to_string nd#label) (loc_to_str nd#loc);
+                    WARN_MSG "invalid label: %s (%s)" (L.to_string nd#label) (loc_to_str nd#loc);
                     assert false
                 end
             end
@@ -1352,7 +1351,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
         keyword_list 
     in
     let find s = 
-      Hashtbl.find keyword_table (String.lowercase s)
+      Hashtbl.find keyword_table (String.lowercase_ascii s)
     in
     find
 
@@ -2343,8 +2342,8 @@ module F (Stat : Parser_aux.STATE_T) = struct
     DEBUG_MSG "%s" mod_name;
     let name_tbl = Hashtbl.create 0 in
     let add_name x y =
-      let x = String.lowercase x in
-      let y = String.lowercase y in
+      let x = String.lowercase_ascii x in
+      let y = String.lowercase_ascii y in
       DEBUG_MSG "%s -> %s" x y;
       let s =
         try
@@ -2387,7 +2386,7 @@ module F (Stat : Parser_aux.STATE_T) = struct
         if only_nds = [] then
           true
         else
-          Hashtbl.mem name_tbl (String.lowercase x)
+          Hashtbl.mem name_tbl (String.lowercase_ascii x)
       in
       DEBUG_MSG "%s --> %B" x b;
       b

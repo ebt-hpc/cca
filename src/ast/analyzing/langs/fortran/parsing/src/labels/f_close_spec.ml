@@ -1,5 +1,6 @@
 (*
-   Copyright 2013-2017 RIKEN
+   Copyright 2013-2018 RIKEN
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -14,7 +15,7 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
 open Label_common
 
@@ -75,7 +76,7 @@ let to_connect_spec = function
   | Type    -> F_connect_spec.Type
 
 let of_keyword kw =
-  match String.lowercase kw with
+  match String.lowercase_ascii kw with
   | "dispose" 
   | "disp" -> Dispose
   | "type" -> Type

@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,8 +15,9 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
+(* tokenpp.ml *)
 
 module Loc = Astloc
 module LLoc = Layeredloc
@@ -307,6 +308,13 @@ module F (Stat : Aux.STATE_T) = struct
     method reg_branch_with_else btag =
       Xset.add branches_with_else btag
 
+(*
+    method current_context_buf = context_buf#current
+
+    method set_context c = 
+      DEBUG_MSG "[%d] %s" lv (Context.to_string c);
+      context_buf#set_context c
+*)
     method clear_context = 
       DEBUG_MSG "[%d] called" lv;
       context_buf#clear_context
@@ -425,6 +433,10 @@ module F (Stat : Aux.STATE_T) = struct
         List.iter (fun r -> DEBUG_MSG "%s" (Loc.to_string ~show_ext:true r)) rs
       END_DEBUG;
       ignored_regions <- rs @ ignored_regions
+
+(*
+    method ignored_offsets = List.map Loc.to_offsets ignored_regions
+*)
 
     method begin_branch ~open_if btag = 
 
@@ -939,7 +951,34 @@ module F (Stat : Aux.STATE_T) = struct
                         end
                         else if !paren_level > 0 then begin
                           DEBUG_MSG "in paren";
+(*
+                          let next_cond =
+                            try
+                              let next_t = queue3#peek in
+                              match Token.to_rawtoken next_t with
+                              | COMMA -> begin
+                                  DEBUG_MSG "<keyword> --> <identifier> (<keyword> ',')";
+                                  true
+                              end
+                              | _ -> false
+                            with
+                              Xqueue.Empty -> false
+                          in
+                          let prev_cond =
+                            match !tok_hist with
+                              | COMMA::_ -> begin
+                                  DEBUG_MSG "<keyword> --> <identifier> (',' <keyword>)";
+                                  true
+                              end
+                              | _ -> false
+                          in
+                          if next_cond || prev_cond then
+*)
                             mk_ident_token()
+(*
+                          else
+                            t
+*)
                         end
                         else
                           t
@@ -1901,6 +1940,7 @@ module F (Stat : Aux.STATE_T) = struct
 
                           | FUNCTION_STMT_HEAD(spec, nd) | SUBROUTINE_STMT_HEAD(spec, nd) ->
                               nd :: lst, (Partial.length_of_spec spec) + len, (get_tag spec) :: tags
+
                           | _ -> 
                               BEGIN_DEBUG
                                 DEBUG_MSG "br#get_list:";
