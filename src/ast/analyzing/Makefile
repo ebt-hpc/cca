@@ -74,7 +74,7 @@ include $(SRC_DIR)/rules.mk
 
 .PHONY: subs-production subs-opt debug subs-debug
 
-all: opt
+all: production #opt
 
 production: SYNTAX := $(SYNTAX) -ppopt -level -ppopt WARN
 production: subs-production $(PARSESRC_CMD_OPT)
