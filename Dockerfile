@@ -57,6 +57,7 @@ RUN set -x && \
     a2ensite cca cca-ssl && \
     a2enconf serve-cgi-bin && \
     a2enmod cgid && \
+    mkdir /var/run/apache2 && \
     cd /var/www/outline/treeview && \
     mkdir metrics outline target topic && \
     wget https://code.jquery.com/jquery-3.5.1.min.js && \
