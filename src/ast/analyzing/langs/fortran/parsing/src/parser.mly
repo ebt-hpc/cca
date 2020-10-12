@@ -1,6 +1,6 @@
 (*
    Copyright 2013-2018 RIKEN
-   Copyright 2018 Chiba Institute of Technology
+   Copyright 2018-2020 Chiba Institude of Technology
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
    limitations under the License.
 *)
 
-(* Author: Masatomo Hashimoto <m.hashimoto@riken.jp> *)
+(* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
 (* 
- * A parser for Fortran
+ * A parser for Fortran (based on Fortran95)
  * 
  *
  * parser.mly
@@ -706,7 +706,7 @@ partial_function_stmt:
 ;
 
 partial_function_head:
-   | fr_opt=ioption(fragment) f=function_stmt se=specification_part__execution_part EOP 
+   | fr_opt=ioption(fragment) f=function_stmt se=specification_part__execution_part EOP
        {
         let fr =
           match fr_opt with
@@ -732,7 +732,7 @@ partial_function_stmt_head:
 ;
 
 partial_subroutine_head:
-   | fr_opt=ioption(fragment) s=subroutine_stmt se=specification_part__execution_part EOP 
+   | fr_opt=ioption(fragment) s=subroutine_stmt se=specification_part__execution_part EOP
        { 
         let fr =
           match fr_opt with
@@ -3031,7 +3031,7 @@ sign_edit_desc_OR_blank_interp_edit_desc:
    | n=name (* S SP SS or BN BZ *) 
      { 
        let s = n#get_name in
-       let l = String.lowercase s in
+       let l = String.lowercase_ascii s in
        match l with
        | "bn" | "bz" -> ControlEditDesc.BlankInterpEditDesc s
        | "s" | "sp" | "ss" -> ControlEditDesc.SignEditDesc s
@@ -4829,7 +4829,7 @@ _sync_xxx_stmt:
    | SYNC kw=IDENTIFIER a_opt=ioption(sync_stmt_part) 
        { 
          let slab =
-           match (String.lowercase kw) with
+           match (String.lowercase_ascii kw) with
            | "all" -> Stmt.SyncAllStmt
            | "images" -> Stmt.SyncImagesStmt
            | "memory" -> Stmt.SyncMemoryStmt
@@ -4949,7 +4949,7 @@ deallocate_stmt_part:
        { 
          disambiguate_variable v;
          let lab =
-           match (String.lowercase kw) with
+           match (String.lowercase_ascii kw) with
            | "errmsg" -> L.ErrmsgVariable
            | "stat" -> L.StatVariable
            | _ -> L.WEIRD kw
@@ -5087,7 +5087,7 @@ allocate_stmt_part:
    | kw=ALLOC_OPT_EXPR EQ e=expr
        {
         let lab =
-          match (String.lowercase kw) with
+          match (String.lowercase_ascii kw) with
           | "mold" -> L.MoldExpr
           | "source" -> L.SourceExpr
           | _ -> L.WEIRD kw
@@ -5099,7 +5099,7 @@ allocate_stmt_part:
        { 
          disambiguate_variable v;
          let lab =
-           match (String.lowercase kw) with
+           match (String.lowercase_ascii kw) with
            | "errmsg" -> L.ErrmsgVariable
            | "stat" -> L.StatVariable
            | _ -> L.WEIRD kw
@@ -5838,7 +5838,7 @@ sync_stat:
        { 
          disambiguate_variable v;
          let lab =
-           match (String.lowercase kw) with
+           match (String.lowercase_ascii kw) with
            | "acquired_lock" -> L.AcquiredLock
            | "errmsg" -> L.ErrmsgVariable
            | "stat" -> L.StatVariable
@@ -6172,7 +6172,7 @@ _simple_attr_stmt:
        { 
          env#exit_name_context;
          let handler =
-           match String.lowercase kw with
+           match String.lowercase_ascii kw with
            | "external" -> begin
                fun nd ->
                  let n = nd#get_name in
@@ -6860,7 +6860,7 @@ prefix_spec_no_type_spec:
    | kw=PREFIX_SPEC 
        { 
          begin
-           match String.lowercase kw with
+           match String.lowercase_ascii kw with
            | "impure" -> f2008()
            | _ -> ()
          end;
@@ -6871,7 +6871,7 @@ prefix_spec_no_type_spec:
    | kw=PREFIX_SPEC LPAREN n=name RPAREN
        { 
          begin
-           match String.lowercase kw with
+           match String.lowercase_ascii kw with
            | "attributes" -> pgi_cuda()
            | _ -> ()
          end;

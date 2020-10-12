@@ -5,18 +5,15 @@ MAINTAINER ebtxhpc
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN set -x && \
-    mkdir -p /opt/cca && \
+    useradd -r -s /bin/nologin cca && \
+    mkdir -p /opt/cca/modules && \
     mkdir -p /var/lib/cca/projects && \
-    mkdir -p /var/lib/cca/mongo/db
+    mkdir -p /var/lib/cca/mongo/db && \
+    chown -R cca:cca /var/lib/cca && \
+    mkdir /root/src
 
 COPY LICENSE /opt/cca/
-COPY ebtutil/ /opt/cca/
-COPY factutils/ /opt/cca/
-COPY lsi/ /opt/cca/
-COPY models/ /opt/cca/
-COPY ontologies/ /opt/cca/
-COPY queries/ /opt/cca/
-COPY scripts/ /opt/cca/
+COPY cca /opt/cca/
 
 RUN set -x && \
     cd /root && \
@@ -28,9 +25,11 @@ RUN set -x && \
             net-tools \
             m4 flex bison automake autoconf \
             libtool pkg-config swig \
-            libgmp-dev libssl-dev libz-dev libreadline-dev librdf-dev \
+            libgmp-dev libssl-dev libz-dev libreadline-dev librdf0-dev libpcre3-dev \
             gawk gperf \
+            sloccount \
             unixodbc \
+            openjdk-8-jdk \
             python3 python3-dev \
             python3-distutils \
             python3-psutil \
@@ -46,18 +45,24 @@ RUN set -x && \
             git rsync && \
     wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py && \
-    pip install pypyodbc msgpack gensim supervisor && \
+    pip3 install msgpack gensim supervisor && \
     rm get-pip.py
 
 COPY supervisord.conf /etc/
-COPY --chown=www-data:www-data www/outline/ /var/www/
+COPY --chown=www-data:www-data www /var/www/
+COPY apache2/sites-available/*.conf /etc/apache2/sites-available/
+COPY apache2/conf-available/*.conf /etc/apache2/conf-available/
 
 RUN set -x && \
+    a2ensite cca cca-ssl && \
+    a2enconf serve-cgi-bin && \
+    a2enmod cgid && \
     cd /var/www/outline/treeview && \
     mkdir metrics outline target topic && \
     wget https://code.jquery.com/jquery-3.5.1.min.js && \
     wget https://jqueryui.com/resources/download/jquery-ui-1.12.1.zip && \
     git clone https://github.com/vakata/jstree && \
+    unzip jquery-ui-1.12.1.zip && \
     chown www-data:www-data jquery-3.5.1.min.js && \
     chown -R www-data:www-data jquery-ui-1.12.1 && \
     chown -R www-data:www-data jstree metrics outline target topic && \
@@ -84,27 +89,26 @@ RUN set -x && \
     cd /root && \
     rm -r virtuoso-opensource
 
-COPY src/ /root/
+COPY src /root/src/
 
 RUN set -x && \
     cd /root && \
-    opam init -y && \
+    opam init -y --disable-sandboxing && \
     eval $(opam config env) && \
     opam install -y camlzip cryptokit csv git-unix menhir ocamlnet pxp ulex uuidm && \
+    git clone https://github.com/codinuum/volt && \
+    cd volt && sh configure && make all && make install && \
+    cd /root && \
+    rm -r volt && \
     cd src && \
     make && \
     cd ast/analyzing && \
-    cp -r bin modules etc /opt/cca/ && \
+    cp -r bin etc /opt/cca/ && \
+    cp modules/Mfortran_p.cmxs /opt/cca/modules/ && \
     cd /root && \
     rm -r src
 
 RUN set -x && \
-    apt-get remove --purge \
-            m4 flex bison automake autoconf \
-            libtool pkg-config swig \
-            libgmp-dev libssl-dev libz-dev libreadline-dev librdf-dev \
-            python3-dev \
-            build-essential gcc g++ && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

@@ -32,8 +32,34 @@ from virtuoso import VIRTUOSO_PW, VIRTUOSO_PORT
 QUERY_DIR = os.path.join(pathsetup.CCA_HOME, 'queries', 'tuning')
 
 QUERIES = {
-    'cpp' :
-    [
+    'fortran' : [ 
+        'materialize_expr_sig_in_loop.rq',
+        'materialize_program_unit_in_srctree.rq',
+        'materialize_module_ref.rq',
+        'materialize_transitive_provide.rq',
+        'materialize_reference.rq',
+        'materialize_symbol_resolution.rq',
+        'materialize_copied.rq',
+        'materialize_glued.rq',
+        'materialize_logical_unit_fj.rq',
+        'materialize_logical_unit_tc.rq',
+        'materialize_deleted_loop.rq',
+        'materialize_inserted_loop.rq',
+        'materialize_loop_ctl.rq',
+        'materialize_stride.rq',
+        'materialize_stmt_in_loop.rq',
+        'materialize_loop_in_loop.rq',
+        'materialize_callee.rq',
+        'materialize_array_ref_sig0.rq',
+        'materialize_array_ref_sig1.rq',
+        'materialize_array_ref_sig2_0.rq',
+        'materialize_array_ref_sig2_1.rq',
+        'materialize_type_spec.rq',
+        'materialize_compo_type_spec.rq',
+        'materialize_included_module_subprogram.rq',
+        'materialize_macro_type_spec.rq',
+    ],
+    'cpp' : [
         'materialize_expr_sig_in_loop.rq',
         'materialize_translation_unit_in_srctree.rq',
         'materialize_reference.rq',
