@@ -45,7 +45,7 @@ RUN set -x && \
             git rsync && \
     wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py && \
-    pip3 install pyodbc msgpack gensim supervisor && \
+    pip3 install pyodbc msgpack simplejson gensim supervisor && \
     rm get-pip.py
 
 COPY supervisord.conf /etc/
