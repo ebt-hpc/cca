@@ -3,7 +3,7 @@
 '''
   A Virtuoso driver
 
-  Copyright 2012-2017 Codinuum Software Lab <http://codinuum.com>
+  Copyright 2012-2020 Codinuum Software Lab <https://codinuum.com>
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -79,20 +79,10 @@ ODBC_CONNECT_STRING = get_odbc_connect_string(pwd=VIRTUOSO_PW)
 
 class ODBCDriver(dp.base):
     def __init__(self, connect_string=ODBC_CONNECT_STRING):
-        try:
-            import pyodbc
-        except Exception as e:
-            self.debug(str(e))
-            self.message('using pypyodbc')
-            import pypyodbc as pyodbc
-            pyodbc.lowercase = False
-
-        self._db = pyodbc.connect(connect_string, ansi=True, autocommit=True)
-        self._db.setdecoding(pyodbc.SQL_CHAR, encoding='utf-8')
-        self._db.setdecoding(pyodbc.SQL_WCHAR, encoding='utf-8')
-        self._db.setdecoding(pyodbc.SQL_WMETADATA, encoding='utf-32le')
-        self._db.setencoding(encoding='utf-8')
-
+        self.message('using pypyodbc')
+        import pypyodbc as pyodbc
+        pyodbc.lowercase = False
+        self._db = pyodbc.connect(connect_string.encode('utf-8'), ansi=True, autocommit=True)
 
     def conv_row(self, row):
         d = {}
@@ -106,7 +96,7 @@ class ODBCDriver(dp.base):
 
     def query(self, query):
         cur = self._db.cursor()
-        for row in cur.execute(query):
+        for row in cur.execute(query.encode('utf-8')):
             vs = [d[0] for d in row.cursor_description]
             converted = ODBCDriver.conv_row(self, row)
             yield vs, converted
@@ -114,12 +104,12 @@ class ODBCDriver(dp.base):
 
     def execute(self, query):
         cur = self._db.cursor()
-        cur.execute(query)
+        cur.execute(query.encode('utf-8'))
         cur.close()
 
     def fetchone(self, query):
         cur = self._db.cursor()
-        row = cur.execute(query).fetchone()
+        row = cur.execute(query.encode('utf-8')).fetchone()
         if row:
             row = ODBCDriver.conv_row(self, row)
         cur.close()
@@ -316,9 +306,7 @@ class Loader(base):
 
         driver = self.get_driver()
         row = driver.fetchone('SELECT COUNT(*) FROM DB.DBA.load_list WHERE ll_state=0')
-
         nfiles = row['count']
-
         return nfiles
 
 

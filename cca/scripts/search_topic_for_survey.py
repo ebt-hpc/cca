@@ -20,7 +20,7 @@
   limitations under the License.
 '''
 
-__author__ = 'Masatomo Hashimoto <m.hashimoto@riken.jp>'
+__author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 
 import os.path
 from itertools import chain
@@ -33,10 +33,12 @@ import dp
 from gensim import models, corpora, similarities
 from analyze_topic import get_texts, lsi, lda, rp
 
+FNAME_PAT_FORTRAN = r'(.*readme.*)|(.+\.(f|f90|h90|f95|ftn|for|f03|f08))'
 FNAME_PAT_CPP = r'(.*readme.*)|(.+\.(c|h|cpp|hpp|cc|hh|C|H))'
 
 FNAME_PAT_TBL = {
-    'cpp' : FNAME_PAT_CPP,
+    'fortran' : FNAME_PAT_FORTRAN,
+    'cpp'     : FNAME_PAT_CPP,
 }
 
 MODEL_LOADER_TBL = {
@@ -56,7 +58,7 @@ def ensure_dir(d):
     return b
 
 
-def search(index_path, mname, dpath, ntopics=32, nsims=10, lang='cpp', outfile=None):
+def search(index_path, mname, dpath, ntopics=32, nsims=10, lang='fortran', outfile=None):
     try:
         ldmodel = MODEL_LOADER_TBL[mname]
     except KeyError:

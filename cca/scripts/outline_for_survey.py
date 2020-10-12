@@ -1029,13 +1029,14 @@ class Node(dp.base):
             if self.cats & SUBPROGS or 'main-program' in self.cats:
                 self._container = self
             else:
-                if len(self._parents) == 1:
+                nparents = len(self._parents)
+                if nparents == 1:
                     p = list(self._parents)[0]
                     self._container = p.get_container()
                     self._parents_in_container.add(p)
                     self._parents_in_container.update(p.get_parents_in_container())
 
-                else:
+                elif nparents > 1:
                     if 'pp' not in [TYPE_TBL.get(c, None) for c in self.cats]:
                         pstr = ', '.join([str(p) for p in self._parents])
                         self.warning('multiple parents:\n%s:\nparents=[%s]' % (self, pstr))
@@ -1195,7 +1196,10 @@ class Node(dp.base):
 
     def get_fid(self):
         if not self._fid:
-            self._fid = self.get_ent().get_file_id().get_value()
+            try:
+                self._fid = self.get_ent().get_file_id().get_value()
+            except:
+                print('!!! uri={}'.format(self.uri))
         return self._fid
 
     def get_start_line(self):
@@ -1362,7 +1366,7 @@ class Node(dp.base):
         if is_caller:
             ancl_ = [self] + ancl
 
-            cand = filter(lambda c: c.loc == self.loc, children_l)
+            cand = list(filter(lambda c: c.loc == self.loc, children_l))
             if cand:
                 children_l = cand
 
@@ -1412,7 +1416,7 @@ class Node(dp.base):
             #     print('!!! 0 children_l=%s' % (node_list_to_string(children_l)))
 
             before = len(children_l)
-            children_l = filter(filt, children_l)
+            children_l = list(filter(filt, children_l))
             if before > len(children_l):
                 is_filtered_out = True
 
@@ -1426,7 +1430,7 @@ class Node(dp.base):
                 return b
 
             if is_marked:
-                children_l = filter(check_mark, children_l)
+                children_l = list(filter(check_mark, children_l))
 
             # if self._callee_name in TARGET_NAMES:
             #     print('!!! 2 children_l=%s' % (node_list_to_string(children_l)))
@@ -1905,6 +1909,10 @@ class Outline(dp.base):
 
         p = self.get_node(parent)
         c = self.get_node(child)
+
+        if p is c:
+            return
+
         p.add_child(c)
         c.add_parent(p)
 

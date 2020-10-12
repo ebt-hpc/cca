@@ -25,7 +25,7 @@ RUN set -x && \
             net-tools \
             m4 flex bison automake autoconf \
             libtool pkg-config swig \
-            libgmp-dev libssl-dev libz-dev libreadline-dev librdf0-dev libpcre3-dev \
+            libgmp-dev libssl-dev libz-dev libreadline-dev librdf0-dev libpcre3-dev unixodbc-dev \
             gawk gperf \
             sloccount \
             unixodbc \
@@ -45,7 +45,7 @@ RUN set -x && \
             git rsync && \
     wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py && \
-    pip3 install msgpack gensim supervisor && \
+    pip3 install pyodbc msgpack gensim supervisor && \
     rm get-pip.py
 
 COPY supervisord.conf /etc/
