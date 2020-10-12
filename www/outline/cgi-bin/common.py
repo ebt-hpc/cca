@@ -29,10 +29,8 @@ import simplejson
 
 #
 
-#BASE_DIR = '/var/www/outline/treeview'
-#BASE_URL = '/outline/treeview'
-BASE_DIR = '/Users/mstm/CCAX/treeview'
-BASE_URL = '/treeview'
+BASE_DIR = '/var/www/outline/treeview'
+BASE_URL = '/outline/treeview'
 
 MONGO_PORT = 27017
 

@@ -55,6 +55,7 @@ COPY apache2/conf-available/*.conf /etc/apache2/conf-available/
 
 RUN set -x && \
     a2ensite cca cca-ssl && \
+    a2dissite 000-default && \
     a2enconf serve-cgi-bin && \
     a2enmod cgid && \
     mkdir /var/run/apache2 && \
