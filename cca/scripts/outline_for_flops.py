@@ -33,9 +33,9 @@ import pathsetup
 import dp
 from factutils.entity import SourceCodeEntity
 from ns import NS_TBL
-import outline_for_survey
-from outline_for_survey import tbl_get_dict, tbl_get_list, get_lver, ensure_dir, get_proj_list
-from outline_for_survey import SourceFiles
+from outline_for_survey_fortran import OutlineBase as OutlineFortran
+from outline_for_survey_base import tbl_get_dict, tbl_get_list, get_lver, ensure_dir, get_proj_list
+from outline_for_survey_base import SourceFiles
 from siteconf import GIT_REPO_BASE, PROJECTS_DIR
 from virtuoso import VIRTUOSO_PW, VIRTUOSO_PORT
 
@@ -635,7 +635,7 @@ def simplify_expr(expr):
 class Exit(Exception):
     pass
 
-class Outline(outline_for_survey.Outline):
+class Outline(OutlineFortran):
 
     def __init__(self,
                  proj_id,
@@ -648,16 +648,16 @@ class Outline(outline_for_survey.Outline):
                  ver='unknown',
                  simple_layout=False):
 
-        outline_for_survey.Outline.__init__(self,
-                                            proj_id,
-                                            commits=commits,
-                                            method=method,
-                                            pw=pw,
-                                            port=port,
-                                            gitrepo=gitrepo,
-                                            proj_dir=proj_dir,
-                                            ver=ver,
-                                            simple_layout=simple_layout)
+        OutlineFortran.__init__(self,
+                                proj_id,
+                                commits=commits,
+                                method=method,
+                                pw=pw,
+                                port=port,
+                                gitrepo=gitrepo,
+                                proj_dir=proj_dir,
+                                ver=ver,
+                                simple_layout=simple_layout)
 
         self._fop_tbl = None # key -> nfop_tbl
         self._zop_tbl = None # key -> nzop_tbl
@@ -841,9 +841,9 @@ class Outline(outline_for_survey.Outline):
                         if fn == fname:
                             fref_tbl[fref] = (fn, na, True)
                         else:
-                            self.warning('function name mismatch (%s != %s)' % (fname, fn))
+                            self.warning('function name mismatch ({} != {})'.format(fname, fn))
                     except KeyError:
-                        self.warning('reference of %s not found (hash=%s)' % (fname, h))
+                        self.warning('reference of {} not found'.format(fname))
 
         self.message('done.')
 
@@ -932,7 +932,7 @@ class Outline(outline_for_survey.Outline):
             line = line_text_tbl[loc][sl]
             text = line[sc:ec+1]
         except Exception as e:
-            self.warning('%s: %s %s' % (loc, type(e), e.message))
+            self.warning('%s: %s %s' % (loc, type(e), str(e)))
             raise
         return text
 
@@ -991,8 +991,7 @@ class Outline(outline_for_survey.Outline):
 
     def gen_data(self, lang, outdir='.', keep_rev=False):
         
-        tree = self.get_tree(lang,
-                             callgraph=False,
+        tree = self.get_tree(callgraph=False,
                              other_calls=False,
                              directives=False,
                              mark=False)

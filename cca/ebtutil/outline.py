@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-
 '''
-  Outlining Fortran programs
+  Outlining C/C++/Fortran programs
 
   Copyright 2013-2018 RIKEN
   Copyright 2018-2020 Chiba Institute of Technology
@@ -25,15 +24,24 @@ __author__ = 'Masatomo Hashimoto <m.hashimoto@stair.center>'
 import os
 
 from common import log, cca_path, create_argparser, predict_kernels, collect_readme
-from common import AnalyzerBase, OutlineForSurvey
+from common import AnalyzerBase, OutlineForSurveyCpp, OutlineForSurveyFortran
 from common import METRICS_DIR, TARGET_DIR_NAME, DEFAULT_PORT
 
-OMITTED = set(['execution-part','do-block'])
 MODEL = 'minami'
 
 BF0L, BF0U = 0.0, float('inf')
 BF1L, BF1U = -0.1, float('inf')
 BF2L, BF2U = -0.1, float('inf')
+
+OUTLINE_TBL = {
+    'cpp'     : OutlineForSurveyCpp,
+    'fortran' : OutlineForSurveyFortran,
+}
+
+OMIT_TBL = {
+    'cpp'     : set(['compound-statement',]),
+    'fortran' : set(['execution-part','do-block']),
+}
 
 class Analyzer(AnalyzerBase):
 
@@ -42,33 +50,34 @@ class Analyzer(AnalyzerBase):
         self._all_roots = all_roots
         self._all_sps = all_sps
 
-    def analyze_facts(self, proj_dir, proj_id, ver, dest_root, lang='fortran',
+    def analyze_facts(self, proj_dir, proj_id, ver, dest_root,
                       bf0l=BF0L, bf0u=BF0U,
                       bf1l=BF1L, bf1u=BF1U,
                       bf2l=BF2L, bf2u=BF2U):
 
         proj_parent_dir = os.path.dirname(os.path.abspath(proj_dir))
-
-        ol = OutlineForSurvey(proj_id,
-                              method='odbc',
-                              pw=self._pw,
-                              port=self._port,
-                              proj_dir=proj_parent_dir,
-                              ver=ver,
-                              simple_layout=True,
-                              all_sps=self._all_sps)
-
-        ol.gen_data(lang, dest_root, omitted=OMITTED, all_roots=self._all_roots)
-
         index = cca_path(os.path.join('lsi', 'survey-lsi-160.index'))
 
-        log('generating topic data...')
-        ol.gen_topic(lang,
-                     outdir=dest_root,
-                     docsrc=proj_parent_dir,
-                     index=index,
-                     model='lsi',
-                     ntopics=160)
+        for lang in ('cpp', 'fortran'):
+            log('outlining {} source code...'.format(lang))
+            ol = OUTLINE_TBL[lang](proj_id,
+                                   method='odbc',
+                                   pw=self._pw,
+                                   port=self._port,
+                                   proj_dir=proj_parent_dir,
+                                   ver=ver,
+                                   simple_layout=True,
+                                   all_sps=self._all_sps)
+
+            ol.gen_data(lang, dest_root, omitted=OMIT_TBL[lang], all_roots=self._all_roots)
+
+            log('generating topic data for "{}"...'.format(lang))
+            ol.gen_topic(lang,
+                         outdir=dest_root,
+                         docsrc=proj_parent_dir,
+                         index=index,
+                         model='lsi',
+                         ntopics=160)
 
         log('predicting kernels...')
         filt = {
@@ -85,7 +94,7 @@ class Analyzer(AnalyzerBase):
         collect_readme(proj_id, dest_root)
 
 def main():
-    parser = create_argparser('Analyze Fortran programs for outlining')
+    parser = create_argparser('Analyze C/C++/Fortran programs for outlining')
 
     parser.add_argument('-a', '--all-roots', dest='all_roots', action='store_true',
                         help='allow subprograms to be shown as root nodes')
@@ -98,7 +107,8 @@ def main():
     a = Analyzer(mem=args.mem, pw=args.pw, port=args.port, all_roots=args.all_roots,
                  all_sps=args.all_sps)
 
-    a.analyze_dir(args.proj_dir, proj_id=args.proj, keep_fb=args.keep_fb)
+    #a.analyze_dir(args.proj_dir, proj_id=args.proj, keep_fb=args.keep_fb, skip_build=False, skip_outline=False)
+    a.analyze_dir(args.proj_dir, proj_id=args.proj, keep_fb=args.keep_fb, skip_build=True, skip_outline=False)
 
 
 if __name__ == '__main__':
