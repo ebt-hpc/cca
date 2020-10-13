@@ -841,9 +841,9 @@ class Outline(outline_for_survey.Outline):
                         if fn == fname:
                             fref_tbl[fref] = (fn, na, True)
                         else:
-                            self.warning('function name mismatch (%s != %s)' % (fname, fn))
+                            self.warning('function name mismatch ({} != {})'.format(fname, fn))
                     except KeyError:
-                        self.warning('reference of %s not found (hash=%s)' % (fname, h))
+                        self.warning('reference of {} not found'.format(fname))
 
         self.message('done.')
 
@@ -932,7 +932,7 @@ class Outline(outline_for_survey.Outline):
             line = line_text_tbl[loc][sl]
             text = line[sc:ec+1]
         except Exception as e:
-            self.warning('%s: %s %s' % (loc, type(e), e.message))
+            self.warning('%s: %s %s' % (loc, type(e), str(e)))
             raise
         return text
 
