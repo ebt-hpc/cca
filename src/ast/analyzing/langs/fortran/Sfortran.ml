@@ -18,6 +18,6 @@
 (* Author: Masatomo Hashimoto <m.hashimoto@stair.center> *)
 
 let parser_name = "fortran"
-let extensions = [".f";".for";".f90";".f95";".f03";".f08"]
+let extensions = [".f";".for";".f90";".h90";".f95";".f03";".f08"]
 
 let _ = Lang_base.register_spec parser_name extensions
