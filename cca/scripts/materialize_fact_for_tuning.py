@@ -53,6 +53,7 @@ QUERIES = {
         'materialize_compo_type_spec.rq',
         'materialize_included_module_subprogram.rq',
         'materialize_macro_type_spec.rq',
+        'materialize_c_func_req.rq',
         'materialize_callee.rq',
     ],
     'cpp' : [
