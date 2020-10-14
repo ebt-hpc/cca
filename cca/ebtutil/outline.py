@@ -107,8 +107,7 @@ def main():
     a = Analyzer(mem=args.mem, pw=args.pw, port=args.port, all_roots=args.all_roots,
                  all_sps=args.all_sps)
 
-    #a.analyze_dir(args.proj_dir, proj_id=args.proj, keep_fb=args.keep_fb, skip_build=False, skip_outline=False)
-    a.analyze_dir(args.proj_dir, proj_id=args.proj, keep_fb=args.keep_fb, skip_build=True, skip_outline=False)
+    a.analyze_dir(args.proj_dir, proj_id=args.proj, keep_fb=args.keep_fb)
 
 
 if __name__ == '__main__':
