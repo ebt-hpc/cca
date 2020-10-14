@@ -85,7 +85,7 @@ class Analyzer(AnalyzerBase):
             'bf1' : lambda x: bf1l < x < bf1u,
             'bf2' : lambda x: bf2l < x < bf2u,
         }
-        metrics_file = os.path.join(dest_root, METRICS_DIR, proj_id, ver+'.csv')
+        metrics_file = os.path.join(dest_root, METRICS_DIR, proj_id, ol.gen_metrics_file_name(ver, lang))
         target_dir = os.path.join(dest_root, TARGET_DIR_NAME)
         clf = cca_path(os.path.join('models', MODEL, 'm.pkl'))
         predict_kernels(metrics_file, clf, model=MODEL,filt=filt,

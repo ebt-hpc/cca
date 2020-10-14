@@ -193,7 +193,7 @@ def import_training_set(path, selected=SELECTED, derived=DERIVED):
     _ys = [[] for _ in JUDGMENTS]
     metas = [[] for _ in JUDGMENTS]
     try:
-        with open(path, 'rb') as f:
+        with open(path, newline='') as f:
             reader = csv.DictReader(f)
 
             count = 0
