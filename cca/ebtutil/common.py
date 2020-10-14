@@ -288,7 +288,8 @@ def parse(proj_dir, proj_id, ver):
     args += ' -fact:project-root %s' % proj_dir
     args += ' -fact:version VARIANT:%s -fact:add-versions' % ver
     args += ' -fact:encoding:FDLCO -fact:size-thresh 100000'
-    args += ' -parser:fortran'
+    #args += ' -parser:cpp'
+    #args += ' -parser:fortran'
     args += ' %s' % proj_dir
 
     cmd = '%s%s' % (PARSESRC_CMD, args)
