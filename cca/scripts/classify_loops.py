@@ -41,7 +41,7 @@ def import_test_set(path, selected=SELECTED_MINAMI, derived=DERIVED_MINAMI, filt
     _X = []
     meta = []
     try:
-        with open(path, 'rb') as f:
+        with open(path, newline='') as f:
             reader = csv.DictReader(f)
 
             count = 0

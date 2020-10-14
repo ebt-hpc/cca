@@ -193,7 +193,7 @@ def import_training_set(path, selected=SELECTED, derived=DERIVED):
     _ys = [[] for _ in JUDGMENTS]
     metas = [[] for _ in JUDGMENTS]
     try:
-        with open(path, 'rb') as f:
+        with open(path, newline='') as f:
             reader = csv.DictReader(f)
 
             count = 0
@@ -341,7 +341,7 @@ def test():
     # clf = model_selection.RandomizedSearchCV(clf, params, n_iter=20)
 
     #clf = KNeighborsClassifier(9, weights='distance', metric='hamming')
-    #clf = SVC(C=32., kernel='rbf', gamma=8.)
+    clf = SVC(C=32., kernel='rbf', gamma=8.)
     #clf = SVC(C=2., kernel='rbf', gamma=8.)
     #clf = AdaBoostClassifier(n_estimators=15)
     #clf = SVC(C=512., kernel='rbf', gamma=0.125)
