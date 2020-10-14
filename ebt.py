@@ -142,15 +142,15 @@ def get_mongo_volume_name(subcmd_name, proj_id):
     name = 'vol_mongo_%s_%s' % (subcmd_name, proj_id)
     return name
 
-def get_image_name(devel=False):
+def get_image_name(image_name, devel=False):
     suffix = ''
     if devel:
         suffix = ':devel'
-    image = IMAGE_NAME+suffix
+    image = image_name+suffix
     return image
 
 def run_cmd(subcmd_name, dpath, mem, dry_run=False, devel=False, keep_fb=False,
-            all_roots=False, all_sps=False):
+            all_roots=False, all_sps=False, image=IMAGE_NAME):
 
     dpath = check_path(dpath)
 
@@ -208,7 +208,7 @@ def run_cmd(subcmd_name, dpath, mem, dry_run=False, devel=False, keep_fb=False,
         run_cmd += ' -e "TZ=%s"' % TZ
 
     run_cmd += ' %s' % vol_opt
-    run_cmd += ' %s %s' % (get_image_name(devel=devel), subcmd)
+    run_cmd += ' %s %s' % (get_image_name(image, devel=devel), subcmd)
 
     stat_path = os.path.join(dest_root, STAT_NAME)
 
@@ -239,7 +239,7 @@ def mongo_db_exists(mongo_path):
     b = os.path.exists(p)
     return b
 
-def restore_mongo_db(vol_name, mongo_path, dry_run=False, force=False):
+def restore_mongo_db(vol_name, mongo_path, dry_run=False, force=False, image=IMAGE_NAME):
     if not mongo_db_exists(mongo_path):
         return
 
@@ -247,7 +247,7 @@ def restore_mongo_db(vol_name, mongo_path, dry_run=False, force=False):
         print('restoring state from "%s"...' % mongo_path)
     else:
         while True:
-            a = raw_input('Do you want to restore state from "%s" (y/n)? ' % mongo_path)
+            a = input('Do you want to restore state from "%s" (y/n)? ' % mongo_path)
             if a == 'y':
                 break
             elif a == 'n':
@@ -259,7 +259,7 @@ def restore_mongo_db(vol_name, mongo_path, dry_run=False, force=False):
     run_cmd += ' -v "%s:%s/mongo"' % (vol_name, CCA_VAR)
     run_cmd += ' -v "%s:/tmp/mongo"' % mongo_path
     guest_cmd = '/bin/bash -c "rm -rf %s/mongo/db; cp -a /tmp/mongo/db %s/mongo/"' % (CCA_VAR, CCA_VAR)
-    run_cmd += ' %s %s' % (get_image_name(), guest_cmd)
+    run_cmd += ' %s %s' % (get_image_name(image), guest_cmd)
     print(run_cmd)
     if not dry_run:
         try:
@@ -267,12 +267,12 @@ def restore_mongo_db(vol_name, mongo_path, dry_run=False, force=False):
         except OSError as e:
             print('execution failed: %s' % e)
 
-def save_mongo_db(vol_name, mongo_path, dry_run=False, force=False):
+def save_mongo_db(vol_name, mongo_path, dry_run=False, force=False, image=IMAGE_NAME):
     if force:
         print('saving state to "%s"...' % mongo_path)
     else:
         while True:
-            a = raw_input('Do you want to save state to "%s" (y/n)? ' % mongo_path)
+            a = input('Do you want to save state to "%s" (y/n)? ' % mongo_path)
             if a == 'y':
                 break
             elif a == 'n':
@@ -284,7 +284,7 @@ def save_mongo_db(vol_name, mongo_path, dry_run=False, force=False):
     run_cmd += ' -v "%s:%s/mongo"' % (vol_name, CCA_VAR)
     run_cmd += ' -v "%s:/tmp/mongo"' % mongo_path
     guest_cmd = '/bin/bash -c "rm -rf /tmp/mongo/db; cp -a %s/mongo/db /tmp/mongo/"' % CCA_VAR
-    run_cmd += ' %s %s' % (get_image_name(), guest_cmd)
+    run_cmd += ' %s %s' % (get_image_name(image), guest_cmd)
     print(run_cmd)
     if not dry_run:
         try:
@@ -293,7 +293,7 @@ def save_mongo_db(vol_name, mongo_path, dry_run=False, force=False):
             print('execution failed: %s' % e)
 
 
-def run_tv_srv(dpath, port=DEFAULT_SRV_PORT, dry_run=False, devel=False, restore=False):
+def run_tv_srv(dpath, port=DEFAULT_SRV_PORT, dry_run=False, devel=False, restore=False, image=IMAGE_NAME):
     subcmd_name = 'treeview'
     dpath = check_path(dpath)
 
@@ -357,7 +357,7 @@ def run_tv_srv(dpath, port=DEFAULT_SRV_PORT, dry_run=False, devel=False, restore
         run_cmd += ' -e "TZ=%s"' % TZ
 
     run_cmd += ' %s' % vol_opt
-    run_cmd += ' %s %s' % (get_image_name(devel=devel), SRV_CMD)
+    run_cmd += ' %s %s' % (get_image_name(image, devel=devel), SRV_CMD)
 
     print(run_cmd)
     print('\nport=%d' % port)
@@ -407,7 +407,7 @@ def stop_tv_srv(dpath, dry_run=False, devel=False, save=False):
 
 
 def update(args):
-    cmd = '%s pull %s' % (CONTAINER_CMD, get_image_name(devel=args.devel))
+    cmd = '%s pull %s' % (CONTAINER_CMD, get_image_name(args.image, devel=args.devel))
     print(cmd)
     if not args.dry_run:
         try:
@@ -417,18 +417,18 @@ def update(args):
 
 def opcount(args):
     run_cmd('opcount', args.proj_dir, args.mem, dry_run=args.dry_run, keep_fb=args.keep_fb,
-            devel=args.devel)
+            devel=args.devel, image=args.image)
 
 def outline(args):
     run_cmd('outline', args.proj_dir, args.mem, dry_run=args.dry_run, keep_fb=args.keep_fb,
-            devel=args.devel, all_roots=args.all_roots, all_sps=args.all_sps)
+            devel=args.devel, all_roots=args.all_roots, all_sps=args.all_sps, image=args.image)
 
 def treeview_start(args):
     run_tv_srv(args.proj_dir, port=args.port, dry_run=args.dry_run, devel=args.devel,
-               restore=args.restore)
+               restore=args.restore, image=args.image)
 
 def treeview_stop(args):
-    stop_tv_srv(args.proj_dir, dry_run=args.dry_run, devel=args.devel, save=args.save)
+    stop_tv_srv(args.proj_dir, dry_run=args.dry_run, devel=args.devel, save=args.save, image=args.image)
 
 
 def main():
