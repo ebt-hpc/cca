@@ -428,7 +428,7 @@ def treeview_start(args):
                restore=args.restore, image=args.image)
 
 def treeview_stop(args):
-    stop_tv_srv(args.proj_dir, dry_run=args.dry_run, devel=args.devel, save=args.save, image=args.image)
+    stop_tv_srv(args.proj_dir, dry_run=args.dry_run, devel=args.devel, save=args.save)
 
 
 def main():

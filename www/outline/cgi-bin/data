@@ -490,7 +490,7 @@ if proj and ver and fid:
 
             with open(tree_data_path, 'rb') as treef:
                 st = time()
-                tree_data = msgpack.unpack(treef, object_hook=hook, raw=False)
+                tree_data = msgpack.unpack(treef, object_hook=hook, raw=False, strict_map_key=False)
 
         except Exception as e:
             tree_data['failure'] = str(e)
