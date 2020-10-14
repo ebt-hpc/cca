@@ -215,7 +215,7 @@ class Outline(OutlineBase):
 
         OutlineBase.__init__(self, proj_id, commits, method, pw, port, gitrepo, proj_dir, ver, simple_layout, all_sps,
                              SUBPROGS=SUBPROGS, CALLS=CALLS, get_root_entities=get_root_entities,
-                             METRICS_ROW_HEADER=METRICS_ROW_HEADER)
+                             METRICS_ROW_HEADER=METRICS_ROW_HEADER, add_root=True)
 
         self._qspn_tbl = {} # (ver * loc * start_line) -> name list
 
@@ -722,12 +722,12 @@ class Outline(OutlineBase):
         if post:
             post(node)
 
-    def mkrow(self, lver, loc, sub, lnum, mtbl, nid):
+    def mkrow(self, lver, loc, nd, lnum, mtbl, nid):
         tbl = mtbl.copy()
         tbl['proj']   = self._proj_id
         tbl['ver']    = lver
         tbl['path']   = loc
-        tbl['sub']    = sub
+        tbl['sub']    = nd.sub
         tbl['lnum']   = lnum
         tbl['digest'] = mtbl['meta']['digest']
         tbl['nid']    = nid
@@ -889,7 +889,7 @@ def main():
                      simple_layout=args.simple_layout,
         )
 
-        ol.gen_data('fortran', args.outdir, omitted=set(OMITTED), all_roots=args.all_roots, add_root=True)
+        ol.gen_data('fortran', args.outdir, omitted=set(OMITTED), all_roots=args.all_roots)
 
         if args.index:
             dp.message('generating topic data...')

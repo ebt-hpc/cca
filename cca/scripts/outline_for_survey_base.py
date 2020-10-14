@@ -779,13 +779,15 @@ class OutlineBase(dp.base):
                  SUBPROGS=set(),
                  CALLS=set(),
                  get_root_entities=None,
-                 METRICS_ROW_HEADER=[]
+                 METRICS_ROW_HEADER=[],
+                 add_root=False
                  ):
 
         self.SUBPROGS = SUBPROGS
         self.CALLS = CALLS
         self.get_root_entities = get_root_entities
         self.METRICS_ROW_HEADER=METRICS_ROW_HEADER
+        self.add_root = add_root
 
         self._proj_id = proj_id
         self._graph_uri = FB_NS + proj_id
@@ -1001,20 +1003,8 @@ class OutlineBase(dp.base):
             opath = os.path.join(topic_dir, self.gen_topic_file_name())
             search(index, model, dpath, ntopics=ntopics, lang=lang, outfile=opath)
 
-    def mkrow(self, lver, loc, fn, lnum, mtbl, nid):
-        tbl = mtbl.copy()
-        tbl['proj']   = self._proj_id
-        tbl['ver']    = lver
-        tbl['path']   = loc
-        tbl['fn']     = fn
-        tbl['lnum']   = lnum
-        tbl['digest'] = mtbl['meta']['digest']
-        tbl['nid']    = nid
-        row = []
-        for k in self.METRICS_ROW_HEADER:
-            if k != 'root_file':
-                row.append(tbl[k])
-        return row
+    def mkrow(self, lver, loc, nd, lnum, mtbl, nid):
+        return []
 
     def gen_index_tables(self):
         path_list_tbl = {} # ver -> path list
@@ -1073,7 +1063,7 @@ class OutlineBase(dp.base):
     def set_extra2(self, d, mkey):
         return
 
-    def gen_data(self, lang, outdir='.', extract_metrics=True, omitted=set(), all_roots=False, add_root=False):
+    def gen_data(self, lang, outdir='.', extract_metrics=True, omitted=set(), all_roots=False):
 
         outline_dir = os.path.join(outdir, self._outline_dir)
         outline_v_dir = os.path.join(outline_dir, 'v')
@@ -1120,8 +1110,8 @@ class OutlineBase(dp.base):
 
         for ver in root_tbl.keys():
 
-            # if ver not in self._conf.versionURIs:
-            #     continue
+            if ver not in self._conf.versionURIs:
+                continue
 
             path_idx_tbl = self._path_idx_tbl_tbl.get(ver, {})
             fid_idx_tbl = self._fid_idx_tbl_tbl.get(ver, {})
@@ -1229,7 +1219,7 @@ class OutlineBase(dp.base):
                         reg_nid(d['loc'], d['sl'], nid)
 
                         if node not in nodes:
-                            row = self.mkrow(lver, loc, node.fn, start_line, mtbl, nid)
+                            row = self.mkrow(lver, loc, node, start_line, mtbl, nid)
                             csv_rows.append(row)
                         
                         nodes.add(node)
@@ -1266,7 +1256,7 @@ class OutlineBase(dp.base):
                     expanded_callee_tbl = {}
                     root_expanded_callee_tbl[root] = expanded_callee_tbl
 
-                    ancls = [root] if add_root else []
+                    ancls = [root] if self.add_root else []
 
                     d = root.to_dict(ancls, {},
                                      elaborate=elaborate,

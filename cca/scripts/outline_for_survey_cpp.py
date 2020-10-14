@@ -542,12 +542,12 @@ class Outline(OutlineBase):
         if post:
             post(node)
 
-    def mkrow(self, lver, loc, fn, lnum, mtbl, nid):
+    def mkrow(self, lver, loc, nd, lnum, mtbl, nid):
         tbl = mtbl.copy()
         tbl['proj']   = self._proj_id
         tbl['ver']    = lver
         tbl['path']   = loc
-        tbl['fn']     = fn
+        tbl['fn']     = nd.fn
         tbl['lnum']   = lnum
         tbl['digest'] = mtbl['meta']['digest']
         tbl['nid']    = nid

@@ -33,7 +33,7 @@ import pathsetup
 import dp
 from factutils.entity import SourceCodeEntity
 from ns import NS_TBL
-from outline_for_survey_fortran import OutlineBase as OutlineFortran
+from outline_for_survey_fortran import Outline as OutlineFortran
 from outline_for_survey_base import tbl_get_dict, tbl_get_list, get_lver, ensure_dir, get_proj_list
 from outline_for_survey_base import SourceFiles
 from siteconf import GIT_REPO_BASE, PROJECTS_DIR
