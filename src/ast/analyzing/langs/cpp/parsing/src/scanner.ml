@@ -1042,7 +1042,7 @@ class type c_t = object
   method peek_nth : int -> token
   method peek_rawtoken : unit -> T.token
   method peek_nth_rawtoken : int -> T.token
-  method peek_rawtoken_up_to : ?from:int -> ?skip_pp_control_line:bool -> T.token list -> int * T.token list
+  method peek_rawtoken_up_to : ?from:int -> ?skip_pp_control_line:bool -> ?is_target:(T.token -> bool) -> T.token list -> int * T.token list
   method peek_rawtoken_up_to_rparen :
       ?from:int -> ?level:int -> ?filt:(T.token -> bool) -> T.token option -> bool * int * T.token list
   method peek_rawtoken_up_to_rparen_none : unit -> int * T.token list
@@ -2229,7 +2229,7 @@ let conv_token (env : Aux.env) scanner (token : token) =
             end
 
             | EQ | RETURN when env#templ_param_arg_level = 0 && not (is_val s) && begin
-                let _, _l = self#peek_rawtoken_up_to [T.SEMICOLON true;SEMICOLON false;RBRACE] in
+                let _, _l = self#peek_rawtoken_up_to ~is_target:is_semicolon [T.RBRACE] in
                 let l = List.rev _l in
                 DEBUG_MSG "l=%s"
                   (String.concat ";" (List.map Token.rawtoken_to_string l));
@@ -2664,8 +2664,7 @@ let conv_token (env : Aux.env) scanner (token : token) =
                             | TY_TEMPL_GT | TEMPL_GT -> begin
                                 DEBUG_MSG "@";
                                 let _, l =
-                                  self#peek_rawtoken_up_to ~from:6
-                                    [T.SEMICOLON true;SEMICOLON false;T.RBRACE]
+                                  self#peek_rawtoken_up_to ~from:6 ~is_target:is_semicolon [T.RBRACE]
                                 in
                                 if
                                   filt_at_level0 l
@@ -3266,7 +3265,7 @@ let conv_token (env : Aux.env) scanner (token : token) =
 
                 | _ when begin
                   let nth, _l =
-                    self#peek_rawtoken_up_to [T.SEMICOLON true;SEMICOLON false;LBRACE;RBRACE;NEWLINE]
+                    self#peek_rawtoken_up_to ~is_target:is_semicolon [T.LBRACE;RBRACE;NEWLINE]
                   in
                   match (_l : T.token list) with
                   | RPAREN::TY_LPAREN::TY_TEMPL_GT::_ -> begin
@@ -4060,9 +4059,7 @@ let conv_token (env : Aux.env) scanner (token : token) =
                         | l when begin
                             List.memq (Xlist.last l) [T.STRUCT;CLASS;UNION;ENUM;RETURN;DEFAULT;GOTO;CASE;THROW]
                         end -> true
-                        | l ->
-                            self#peek_nth_rawtoken 2 == LBRACE &&
-                            (List.memq (T.SEMICOLON true) l || List.memq (T.SEMICOLON false) l)
+                        | l -> self#peek_nth_rawtoken 2 == LBRACE && List.exists is_semicolon l
                       ) ll
                 end
                 | _ -> false                
@@ -7230,7 +7227,7 @@ let conv_token (env : Aux.env) scanner (token : token) =
            match self#peek_rawtoken() with
            | COLON_COLON -> false
            | TEMPL_LT when env#paren_level > 0 && begin
-               let nth, _l = self#peek_rawtoken_up_to [T.SEMICOLON true;SEMICOLON false;LBRACE;RBRACE;NEWLINE] in
+               let nth, _l = self#peek_rawtoken_up_to ~is_target:is_semicolon [T.LBRACE;RBRACE;NEWLINE] in
                let l = List.rev _l in
                DEBUG_MSG "%s" (String.concat ";" (List.map Token.rawtoken_to_string l));
                let paren_level = env#paren_level in
@@ -9192,7 +9189,7 @@ let conv_token (env : Aux.env) scanner (token : token) =
                     | _ -> false
                 end && env#templ_param_arg_level > 0 && begin
                   let nth, _l =
-                    self#peek_rawtoken_up_to [T.SEMICOLON true;SEMICOLON false;LBRACE;RBRACE(*;NEWLINE*)]
+                    self#peek_rawtoken_up_to ~is_target:is_semicolon [T.LBRACE;RBRACE(*;NEWLINE*)]
                   in
                   let l = List.rev _l in
                   DEBUG_MSG "%s" (String.concat ";" (List.map Token.rawtoken_to_string l));
@@ -9955,6 +9952,14 @@ let conv_token (env : Aux.env) scanner (token : token) =
             | _ ->
             match self#peek_rawtoken() with
             | VOLATILE | CONST -> true
+            | x when begin
+                match self#peek_nth_rawtoken 2 with
+                | TY_LPAREN | LPAREN -> false
+                | _ ->
+                    match prev_rawtoken with
+                    | EQ | PLUS_EQ | MINUS_EQ | STAR_EQ | SLASH_EQ | PERC_EQ | HAT_EQ _ | AMP_EQ _ | BAR_EQ _ -> true
+                    | _ -> false
+            end && is_basic_ty x -> true
             | IDENT _ -> begin
                 match self#peek_nth_rawtoken 2 with
                 | RPAREN -> begin
@@ -13008,6 +13013,35 @@ let conv_token (env : Aux.env) scanner (token : token) =
   in
   let conv_ty_templ_gt () =
     DEBUG_MSG "@";
+
+    match self#peek_rawtoken() with
+    | TY_TEMPL_GT -> begin
+      if
+        not env#init_flag &&
+        ((env#templ_head_flag && not env#templ_arg_flag) ||
+        (env#templ_arg_flag && env#ty_templ_id_flag))
+      then begin
+        DEBUG_MSG "@";
+        token
+      end
+      else if env#expr_flag then begin
+        DEBUG_MSG "@";
+        mk T.TEMPL_GT
+      end
+      else if
+        context == TY(* || env#const_flag*) ||
+        (env#templ_param_arg_level = 2 && env#cast_key_flag)
+      then begin
+        DEBUG_MSG "@";
+        token
+      end
+      else begin
+        DEBUG_MSG "@";
+        mk T.TEMPL_GT
+      end
+    end
+    | _ ->
+
     match context, sub_context with
     | EXPR, sc -> begin
         DEBUG_MSG "@";
@@ -14295,7 +14329,7 @@ let conv_token (env : Aux.env) scanner (token : token) =
               ) (List.rev l)
           end
           | [l] -> begin
-              let b = contained_in_list [T.SEMICOLON true;SEMICOLON false] l || f l in
+              let b = List.exists is_semicolon l || f l in
               if b then begin
                 let rt, _, e = self#peek_nth (nth-1) in
                 DEBUG_MSG "rt=%s" (Token.rawtoken_to_string rt);
@@ -15709,7 +15743,8 @@ let conv_token (env : Aux.env) scanner (token : token) =
             match self#peek_nth_rawtoken (nth+1) with
             | CLASS | UNION | STRUCT -> begin
                 let _, l = self#peek_rawtoken_up_to_group_end ~limit:(-1) () in
-                not (list_memqn [(*T.LBRACE;*)T.SEMICOLON true;SEMICOLON false] l)
+                (*not (list_memqn [(*T.LBRACE;*)T.SEMICOLON _] l)*)
+                not (List.exists is_semicolon l)
             end
             | _ -> false
         end -> DEBUG_MSG "@"; getc()
@@ -15860,8 +15895,8 @@ let conv_token (env : Aux.env) scanner (token : token) =
             end -> true
 
             | STATIC | VOID | INT | INLINE when context == TOP -> begin
-                let nth', l' = self#peek_rawtoken_up_to ~from:(nth+2)
-                    [T.SEMICOLON true;SEMICOLON false;TY_LPAREN;LBRACE;PP_ELIF;PP_ELSE;PP_ENDIF]
+                let nth', l' = self#peek_rawtoken_up_to ~from:(nth+2) ~is_target:is_semicolon
+                    [T.TY_LPAREN;LBRACE;PP_ELIF;PP_ELSE;PP_ENDIF]
                 in
                 not (list_memqn [T.PP_IF;PP_IFDEF;PP_IFNDEF] l') &&
                 match self#peek_nth_rawtoken nth' with
@@ -18733,7 +18768,7 @@ module F (Stat : Aux.STATE_T) = struct
       let rt, _, _ = self#peek_nth n in
       rt
 
-    method peek_rawtoken_up_to ?(from=1) ?(skip_pp_control_line=false) target_list =
+    method peek_rawtoken_up_to ?(from=1) ?(skip_pp_control_line=false) ?(is_target=fun _ -> false) target_list =
       let peek_rawtoken_up_to () =
       let l = ref [] in
       let nth = ref from in
@@ -18741,7 +18776,7 @@ module F (Stat : Aux.STATE_T) = struct
         while true do
           let rt = self#peek_nth_rawtoken !nth in
           if
-            List.exists (fun x -> x == rt) target_list &&
+            (is_target rt || List.exists ((==) rt) target_list) &&
             (not skip_pp_control_line ||
             try not (is_pp_control_line (self#peek_nth_rawtoken (!nth + 1))) with _ -> true)
           then
@@ -19308,7 +19343,7 @@ module F (Stat : Aux.STATE_T) = struct
               -> true
             | (TYPENAME|STRUCT|CLASS|UNION|ENUM|RETURN|DEFAULT|GOTO|CASE|THROW|IF)::_ -> true
                   (*| TY_LPAREN::_ -> true*)
-            | LBRACE::r when list_memqn [T.SEMICOLON true;SEMICOLON false] r -> true
+            | LBRACE::r when List.exists is_semicolon r -> true
             | _ -> false
         end
       in

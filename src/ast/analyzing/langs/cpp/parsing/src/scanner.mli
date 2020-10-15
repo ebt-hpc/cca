@@ -55,7 +55,7 @@ class type c_t = object
   method peek_nth : int -> token
   method peek_rawtoken : unit -> T.token
   method peek_nth_rawtoken : int -> T.token
-  method peek_rawtoken_up_to : ?from:int -> ?skip_pp_control_line:bool -> T.token list -> int * T.token list
+  method peek_rawtoken_up_to : ?from:int -> ?skip_pp_control_line:bool -> ?is_target:(T.token -> bool) -> T.token list -> int * T.token list
   method peek_rawtoken_up_to_rparen :
       ?from:int -> ?level:int -> ?filt:(T.token -> bool) -> T.token option -> bool * int * T.token list
   method peek_rawtoken_up_to_rparen_none : unit -> int * T.token list
