@@ -358,6 +358,7 @@ type t =
   | MsStdcall of ident (* MS calling convention *)
   | MsPragma of ident
   | MsWarningSpecifier of ident
+  | MsProperty of ident
 
   | CallingConvention of ident
 
@@ -470,6 +471,7 @@ type t =
   | ClassHeadUnion
   | ClassHeadMacro of ident
   | ClassHeadMacroInvocation of ident
+  | ClassHeadMsRefClass
 
 (* EnumHead *)
   | EnumHead
@@ -589,6 +591,7 @@ type t =
   | BaseSpecMacro of ident
   | SuffixMacro of ident
   | ClassVirtSpecifierFinal
+  | ClassVirtSpecifierMsSealed
   | ClassName of ident
   | ClassHeadName of name
   | MacroArgument
@@ -725,6 +728,8 @@ type t =
   | Lparen
   | Rparen
   | Asm
+  | TemplateArguments
+  | SuffixMacroInvocation of ident
 
   | ObjcThrow
   | ObjcSynchronized
@@ -771,6 +776,10 @@ type t =
   | ObjcTry
   | ObjcCatchClause
   | ObjcFinally
+  | ObjcMethodMacroInvocation of ident
+
+  | SwiftArg of ident
+  | SwiftFunCall
 
   | HugeArray of int * string
 
@@ -1085,6 +1094,7 @@ let to_string = function
   | MsStdcall i                     -> "MsStdcall:"^i
   | MsPragma i                      -> "MsPragma:"^i
   | MsWarningSpecifier i            -> "MsWarningSpecifier:"^i
+  | MsProperty i                    -> "MsProperty:"^i
   | CallingConvention i             -> "CallingConvention:"^i
   | GnuAsmBlock(a, s)               -> sprintf "GnuAsmBlock:%s%s" a s
   | GnuAttribute i                  -> "GnuAttribute:"^i
@@ -1189,6 +1199,7 @@ let to_string = function
   | ClassHeadUnion  -> "ClassHeadUnion"
   | ClassHeadMacro i -> "ClassHeadMacro:"^i
   | ClassHeadMacroInvocation i -> "ClassHeadMacroInvocation:"^i
+  | ClassHeadMsRefClass -> "ClassHeadMsRefClass"
 
 (* EnumHead *)
   | EnumHead           -> "EnumHead"
@@ -1299,6 +1310,7 @@ let to_string = function
   | BaseSpecMacro i                -> "BaseSpecMacro:"^i
   | SuffixMacro i                  -> "SuffixMacro:"^i
   | ClassVirtSpecifierFinal        -> "ClassVirtSpecifierFinal"
+  | ClassVirtSpecifierMsSealed     -> "ClassVirtSpecifierMsSealed"
   | ClassName i                    -> "ClassName:"^i
   | ClassHeadName n                -> "ClassHeadName:"^n
   | MacroArgument                  -> "MacroArgument"
@@ -1442,6 +1454,8 @@ let to_string = function
   | Lparen                         -> "Lparen"
   | Rparen                         -> "Rparen"
   | Asm                            -> "Asm"
+  | TemplateArguments              -> "TemplateArguments"
+  | SuffixMacroInvocation i        -> "SuffixMacroInvocation:"^i
 
   | ObjcThrow                         -> "ObjcThrow"
   | ObjcSynchronized                  -> "ObjcSynchronized"
@@ -1488,6 +1502,10 @@ let to_string = function
   | ObjcTry         -> "ObjcTry"
   | ObjcCatchClause -> "ObjcCatchClause"
   | ObjcFinally     -> "ObjcFinally"
+  | ObjcMethodMacroInvocation i -> "ObjcMethodMacroInvocation:"^i
+
+  | SwiftArg i   -> "SwiftArg:"^i
+  | SwiftFunCall -> "SwiftFunCall"
 
   | HugeArray(sz, c) -> sprintf "HugeArray(%d):%s\n" sz c
 
@@ -1806,6 +1824,7 @@ let to_simple_string = function
   | MsStdcall i                     -> i
   | MsPragma i                      -> i
   | MsWarningSpecifier i            -> i
+  | MsProperty i                    -> sprintf "property %s" i
 
   | CallingConvention i             -> i
   | GnuAsmBlock(a, s)               -> sprintf "%s %s" a s
@@ -1912,6 +1931,7 @@ let to_simple_string = function
   | ClassHeadUnion  -> "union"
   | ClassHeadMacro i -> i
   | ClassHeadMacroInvocation i -> i
+  | ClassHeadMsRefClass -> "ref class"
 
 (* EnumHead *)
   | EnumHead           -> "<enum-head>"
@@ -2024,6 +2044,7 @@ let to_simple_string = function
   | BaseSpecMacro i                -> i
   | SuffixMacro i                  -> i
   | ClassVirtSpecifierFinal        -> "final"
+  | ClassVirtSpecifierMsSealed     -> "sealed"
   | ClassName i                    -> i
   | ClassHeadName n                -> n
   | MacroArgument                  -> "<macro-argument>"
@@ -2167,6 +2188,8 @@ let to_simple_string = function
   | Lparen                         -> "("
   | Rparen                         -> ")"
   | Asm                            -> "asm"
+  | TemplateArguments              -> "<>"
+  | SuffixMacroInvocation i        -> i
 
   | ObjcThrow                         -> "@throw"
   | ObjcSynchronized                  -> "@synchronized"
@@ -2213,6 +2236,10 @@ let to_simple_string = function
   | ObjcTry         -> "@try"
   | ObjcCatchClause -> "@catch"
   | ObjcFinally     -> "@finally"
+  | ObjcMethodMacroInvocation i -> i
+
+  | SwiftArg i   -> i^":"
+  | SwiftFunCall -> "<swift-function-call>"
 
   | HugeArray(_, c) -> c
 
@@ -2543,6 +2570,7 @@ let to_tag : t -> string * (string * string) list = function
   | MsStdcall i                     -> "MsStdcall", ["ident",i]
   | MsPragma i                      -> "MsPragma", ["ident",i]
   | MsWarningSpecifier i            -> "MsWarningSpecifier", ["ident",i]
+  | MsProperty i                    -> "MsProperty", ["ident",i]
 
   | CallingConvention i             -> "CallingConvention", ["ident",i]
   | GnuAsmBlock(a, s)               -> "GnuAsmBlock", ["ident",a;"block",s]
@@ -2650,6 +2678,7 @@ let to_tag : t -> string * (string * string) list = function
   | ClassHeadUnion  -> "ClassHeadUnion", []
   | ClassHeadMacro i -> "ClassHeadMacro", ["ident",i]
   | ClassHeadMacroInvocation i -> "ClassHeadMacroInvocation", ["ident",i]
+  | ClassHeadMsRefClass -> "ClassHeadMsRefClass", []
 
 (* EnumHead *)
   | EnumHead           -> "EnumHead", []
@@ -2761,6 +2790,7 @@ let to_tag : t -> string * (string * string) list = function
   | BaseSpecMacro i                -> "BaseSpecMacro", ["ident",i]
   | SuffixMacro i                  -> "SuffixMacro", ["ident",i]
   | ClassVirtSpecifierFinal        -> "ClassVirtSpecifierFinal", []
+  | ClassVirtSpecifierMsSealed     -> "ClassVirtSpecifierMsSealed", []
   | ClassName i                    -> "ClassName", ["ident",i]
   | ClassHeadName n                -> "ClassHeadName", ["name",n]
   | MacroArgument                  -> "MacroArgument", []
@@ -2906,6 +2936,8 @@ let to_tag : t -> string * (string * string) list = function
   | Lparen                         -> "Lparen", []
   | Rparen                         -> "Rparen", []
   | Asm                            -> "Asm", []
+  | TemplateArguments              -> "TemplateArguments", []
+  | SuffixMacroInvocation i        -> "SuffixMacroInvocation", ["ident",i]
 
   | ObjcThrow                         -> "ObjcThrow", []
   | ObjcSynchronized                  -> "ObjcSynchronized", []
@@ -2952,6 +2984,10 @@ let to_tag : t -> string * (string * string) list = function
   | ObjcTry         -> "ObjcTry", []
   | ObjcCatchClause -> "ObjcCatchClause", []
   | ObjcFinally     -> "ObjcFinally", []
+  | ObjcMethodMacroInvocation i -> "ObjcMethodMacroInvocation", ["ident",i]
+
+  | SwiftArg i   -> "SwiftArg", ["ident",i]
+  | SwiftFunCall -> "SwiftFunCall", []
 
   | HugeArray(sz, c) -> "HugeArray", ["size",string_of_int sz;"code", c]
 
@@ -3141,12 +3177,14 @@ module ClassKey = struct
     | Struct
     | Union
     | MacroInvocation of ident
+    | MsRefClass
 
   let to_class_head = function
     | Class  -> ClassHeadClass
     | Struct -> ClassHeadStruct
     | Union  -> ClassHeadUnion
     | MacroInvocation i -> ClassHeadMacroInvocation i
+    | MsRefClass -> ClassHeadMsRefClass
 
   let to_elaborated_type_specifier i = function
     | Class  -> ElaboratedTypeSpecifierClass i

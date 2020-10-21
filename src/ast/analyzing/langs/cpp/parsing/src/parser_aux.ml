@@ -1703,6 +1703,7 @@ class env = object (self)
         | ClassHeadUnion  -> N.Spec.Union s
         | ClassHeadMacro _ -> N.Spec.Class s
         | ClassHeadMacroInvocation _ -> N.Spec.Class s
+        | ClassHeadMsRefClass -> N.Spec.Class s
         | _ -> assert false
       in
       let spec = new N.Spec.c ~prefix:p nd#loc qn k in

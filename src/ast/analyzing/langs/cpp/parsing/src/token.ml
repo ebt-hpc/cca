@@ -80,6 +80,7 @@ let rawtoken_to_string = function
   | CLASS_HEAD_MACRO s   -> sprintf "CLASS_HEAD_MACRO:%s" s
 
   | IDENT s               -> sprintf "IDENT:%s" s
+  | IDENT_ s              -> sprintf "IDENT_:%s" s
   | IDENT_V s             -> sprintf "IDENT_V:%s" s
   | IDENT_B s             -> sprintf "IDENT_B:%s" s
   | IDENT_C s             -> sprintf "IDENT_C:%s" s
@@ -106,10 +107,12 @@ let rawtoken_to_string = function
   | IDENT_LOM s           -> sprintf "IDENT_LOM:%s" s
   | IDENT_PDM s           -> sprintf "IDENT_PDM:%s" s
   | IDENT_VM s            -> sprintf "IDENT_VM:%s" s
+  | IDENT_SXM s           -> sprintf "IDENT_SXM:%s" s
 
   | AT                    -> "AT"
   | BS                    -> "BS"
   | TEMPL_LT              -> "TEMPL_LT"
+  | TEMPL_LT_             -> "TEMPL_LT_"
   | TEMPL_GT              -> "TEMPL_GT"
   | TY_TEMPL_GT           -> "TY_TEMPL_GT"
   | TY_TEMPL_GT_          -> "TY_TEMPL_GT_"
@@ -306,6 +309,8 @@ let rawtoken_to_string = function
   | MS_CDECL s            -> "MS_CDECL:"^s
   | MS_STDCALL s          -> "MS_STDCALL:"^s
   | MS_REF                -> "MS_REF"
+  | MS_PROPERTY           -> "MS_PROPERTY"
+  | MS_SEALED             -> "MS_SEALED"
 
   | GNU_ASM s             -> "GNU_ASM:"^s
   | GNU_ATTR s            -> "GNU_ATTR:"^s
@@ -509,6 +514,7 @@ let rawtoken_to_repr = function
   | CLASS_HEAD_MACRO s   -> s
 
   | IDENT s               -> s
+  | IDENT_ s              -> s
   | IDENT_V s             -> s
   | IDENT_B s             -> s
   | IDENT_C s             -> s
@@ -535,10 +541,12 @@ let rawtoken_to_repr = function
   | IDENT_LOM s           -> s
   | IDENT_PDM s           -> s
   | IDENT_VM s            -> s
+  | IDENT_SXM s           -> s
 
   | AT                    -> "@"
   | BS                    -> "\\"
   | TEMPL_LT              -> "<"
+  | TEMPL_LT_             -> "<"
   | TEMPL_GT              -> ">"
   | TY_TEMPL_GT           -> ">"
   | TY_TEMPL_GT_          -> ">"
@@ -736,6 +744,8 @@ let rawtoken_to_repr = function
   | MS_CDECL s            -> s
   | MS_STDCALL s          -> s
   | MS_REF                -> "ref"
+  | MS_PROPERTY           -> "property"
+  | MS_SEALED             -> "sealed"
 
   | GNU_ASM s             -> s
   | GNU_ATTR s            -> s

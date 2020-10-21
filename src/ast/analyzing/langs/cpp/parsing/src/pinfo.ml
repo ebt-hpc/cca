@@ -164,23 +164,27 @@ module ElaboratedType = struct
     | Struct of name
     | Union of name
     | Enum of name
+    | Macro of name
 
   let to_string = function
     | Class n -> "class "^n
     | Struct n -> "struct "^n
     | Union n -> "union "^n
     | Enum n -> "enum "^n
+    | Macro n -> n
 
   let get_name = function
     | Class n -> n
     | Struct n -> n
     | Union n -> n
     | Enum n -> n
+    | Macro n -> n
 
   let encode = function
     | Class n | Struct n -> "Ts"^n
     | Union n -> "Tu"^n
     | Enum n -> "Te"^n
+    | Macro n -> n
 
 end (* module Pinfo.ElaboratedType *)
 

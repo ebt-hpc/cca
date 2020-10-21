@@ -250,7 +250,7 @@ let lloc_of_lexposs pos0 pos1 =
 
 
 let mknode env start_pos end_pos ?(info=I.NoInfo) ?(pvec=[]) label children =
-  DEBUG_MSG "%s" (L.to_string label);
+  DEBUG_MSG "%s (nchildren=%d)" (L.to_string label) (List.length children);
   let lloc = lloc_of_lexposs start_pos end_pos in
   let nd = new node ~lloc ~children ~info ~pvec label in
   List.iter (fun x -> x#set_parent nd) children;
@@ -262,10 +262,17 @@ let mkleaf env start_pos end_pos ?(info=I.NoInfo) ?(pvec=[]) label =
 
 let reloc env start_pos end_pos node =
   let lloc = lloc_of_lexposs start_pos end_pos in
-  DEBUG_MSG "relocating %s: %s -> %s" 
-    (L.to_string node#label) 
+  DEBUG_MSG "relocating %s: %s -> %s"
+    (L.to_string node#label)
     (node#lloc#to_string ?short:(Some true) ()) (lloc#to_string ?short:(Some true) ());
   node#set_lloc lloc
+
+let reloc_end env end_pos node =
+  let lloc = lloc_of_lexposs end_pos end_pos in
+  DEBUG_MSG "relocating %s: %s -> %s"
+    (L.to_string node#label)
+    (node#lloc#to_string ?short:(Some true) ()) (lloc#to_string ?short:(Some true) ());
+  node#set_lloc (LLoc.merge node#lloc lloc)
 
 (* *)
 
@@ -1132,7 +1139,7 @@ and base_specs_of_base_clause ns (nd : node) =
 and qn_class_spec_of_class ns (nd : node) =
   DEBUG_MSG "%s" (L.to_string nd#label);
   match nd#label with
-  | ClassHeadClass | ClassHeadStruct | ClassHeadUnion -> begin
+  | ClassHeadClass | ClassHeadStruct | ClassHeadUnion | ClassHeadMsRefClass -> begin
       let qn =
         match nd#nth_children 1 with
         | [] -> ""
@@ -1151,6 +1158,8 @@ and qn_class_spec_of_class ns (nd : node) =
         | [v] -> begin
             match v#label with
             | ClassVirtSpecifierFinal -> spec#virt_specs#set_final()
+            | ClassVirtSpecifierMsSealed -> spec#virt_specs#set_final()
+            | VirtSpecifierMacro i -> ()
             | _ -> assert false
         end
         | _ -> ()
@@ -1546,7 +1555,21 @@ and qn_wrap_of_declarator (nd : node) =
       in
       i, fun _ -> w0 (w1 t)
   end
-  | PtrAbstractDeclaratorPtr | NewDeclaratorPtr | ConversionDeclarator | AbstractPackDeclarator -> begin
+  | PtrAbstractDeclaratorPtr -> begin
+      let op =
+        match nd#nth_children 1 with
+        | [x] -> pointer_op_of_node x
+        | _ -> assert false
+      in
+      match nd#nth_children 2 with
+      | [] -> "", Type.make_pointer_type op
+      | [n] -> begin
+          let i, w = qn_wrap_of_declarator n in
+          i, fun x -> w (Type.make_pointer_type op (w x))
+      end
+      | _ -> assert false
+  end
+  | NewDeclaratorPtr | ConversionDeclarator | AbstractPackDeclarator -> begin
       let op = pointer_op_of_node (nd#nth_child 0) in
       match nd#nth_children 1 with
       | [] -> "", Type.make_pointer_type op
@@ -1798,16 +1821,20 @@ and type_spec_of_node ?(ns="") (nd : node) =
 
 and simple_type_of_class_head (nd : node) =
   try
+    let is_macro = ref false in
     let k =
       match nd#label with
       | ClassHeadClass  -> fun x -> I.ElaboratedType.Class x
       | ClassHeadStruct -> fun x -> I.ElaboratedType.Struct x
       | ClassHeadUnion  -> fun x -> I.ElaboratedType.Union x
+      | ClassHeadMacro i           -> is_macro := true; fun _ -> I.ElaboratedType.Macro (mk_macro_id i)
+      | ClassHeadMacroInvocation i -> is_macro := true; fun _ -> I.ElaboratedType.Macro (mk_macro_call_id i)
       | PpIfSection _   -> raise Exit
       | _ -> assert false
     in
     let n =
       match nd#nth_children 1 with
+      | _ when !is_macro -> ""
       | [] -> ""
       | [x] -> begin
           match x#label with
@@ -1865,12 +1892,12 @@ and simple_type_of_decl_spec_seq (nds : node list) =
         | Const | Volatile -> (type_spec_of_node x)::ts
 
         | ClassSpecifier -> begin
-            match x#nth_children 0 with
+            match x#nth_children 1 with
             | [y] -> (simple_type_of_class_head y)@ts
             | _ -> assert false
         end
         | EnumSpecifier -> begin
-            match x#nth_children 0 with
+            match x#nth_children 1 with
             | [y] -> begin
                 let k =
                   match y#label with

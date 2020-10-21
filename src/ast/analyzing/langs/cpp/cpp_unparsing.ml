@@ -517,6 +517,20 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
       pr_nth_child 1
   end
 
+  | SwiftArg i -> begin
+      pr_id i; pr_colon();
+      if nchildren > 0 then begin
+        pad1();
+        pr_nth_child 0
+      end
+  end
+  | SwiftFunCall -> begin
+      pb#open_hbox();
+      pr_nth_child 0;
+      pr_nth_children 1;
+      pb#close_box()
+  end
+
   | AssignmentExpression              -> pr_string "<assignment-expression>"
   | AssignmentExpressionOverloaded i  -> pr_nth_child 0; pad1(); pr_string i; pad1(); pr_nth_children 1
   | AssignmentExpressionEq            -> pr_nth_child 0; pr_eq(); pr_nth_children 1
@@ -840,6 +854,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
   | ClassHeadClass             -> pr_string "class "; pr_seq()
   | ClassHeadStruct            -> pr_string "struct "; pr_seq()
   | ClassHeadUnion             -> pr_string "union "; pr_seq()
+  | ClassHeadMsRefClass        -> pr_string "ref class"; pr_seq()
   | ClassHeadMacro i           -> pr_id i
   | ClassHeadMacroInvocation i -> pr_macro_invocation i
 
@@ -949,6 +964,14 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
   | MemberSpecification   -> pr_seq ~sep:pr_cut ()
   | MemberDeclarationDecl -> pb#open_hbox(); pr_seq(); pb#close_box()
 
+  | MsProperty i ->
+      pr_string "property "; pr_nth_child 0; pad1(); pr_id i;
+      if nchildren > 1 then begin
+        pb#pr_block_head();
+        pr_nth_child 1;
+        pb#pr_block_end()
+      end
+
 (* *)
   | Explicit                         -> pr_string "explicit"
   | Virtual                          -> pr_string "virtual"
@@ -968,7 +991,9 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
   | BaseMacro i                      -> pr_id i
   | BaseSpecMacro i                  -> pr_id i
   | SuffixMacro i                    -> pr_id i
+  | SuffixMacroInvocation i          -> pr_macro_invocation i
   | ClassVirtSpecifierFinal          -> pr_string "final"
+  | ClassVirtSpecifierMsSealed       -> pr_string "sealed"
   | ClassName i when nchildren = 0   -> pr_id (Ast.decode_ident i)
   | ClassName i                      -> pr_nth_child 0
   | ClassHeadName n                  -> pr_seq ~sep:pr_none ()
@@ -1105,6 +1130,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
       pr_nth_child 0; pr_lt(); pr_nth_children 1; pr_gt();
       pb#close_box()
   end
+  | TemplateArguments -> pr_lt(); pr_seq(); pr_gt();
   | Identifier i                      -> pr_id i
   | IdentifierMacroInvocation i       -> pr_macro_invocation i
   | PpConcatenatedIdentifier          -> pr_nth_child 0; pr_string "##"; pr_nth_child 1
@@ -1219,6 +1245,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
   | ObjcPropertyAttributesDeclaration        -> pr_string "<objc-property-attributes-declaration>"
   | ObjcClassMethodDeclaration               -> pr_string "<objc-class-method-declaration>"
   | ObjcInstanceMethodDeclaration            -> pr_string "<objc-instance-method-declaration>"
+  | ObjcMethodMacroInvocation i              -> pr_macro_invocation i
   | ObjcMethodType                           -> pr_string "<objc-MethodType"
   | ObjcMethodSelector                       -> pr_string "<objc-method-selector>"
   | ObjcMethodSelectorPack                   -> pr_string "<objc-method-selector-pack>"

@@ -777,6 +777,14 @@ let to_short_string ?(ignore_identifiers_flag=false) =
       let h = Xhash.digest_hex_of_string Xhash.MD5 c in
       combo2 632 [string_of_int sz; h]
 
+  | SwiftArg i   -> combo2 633 [i]
+  | SwiftFunCall -> mkstr2 634
+  | TemplateArguments -> mkstr2 635
+  | MsProperty i -> combo2 636 [i]
+  | ObjcMethodMacroInvocation i -> combo2 637 [i]
+  | SuffixMacroInvocation i -> combo2 638 [i]
+  | ClassHeadMsRefClass -> mkstr2 639
+  | ClassVirtSpecifierMsSealed -> mkstr2 640
 
 let _anonymize ?(more=false) ?(most=false) = function
   | SimpleTypeSpecifier _           when most -> DefiningTypeSpecifier
@@ -1178,6 +1186,7 @@ let _anonymize ?(more=false) ?(most=false) = function
   | TypeMacro _                              -> TypeMacro ""
   | MsPragma _                               -> MsPragma ""
   | MsWarningSpecifier _                     -> MsWarningSpecifier ""
+  | MsProperty _                             -> MsProperty ""
   | PtrOperatorMacro _                       -> PtrOperatorMacro ""
   | ClassHeadMacroInvocation _               -> ClassHeadMacroInvocation ""
   | FunctionBodyMacro _                      -> FunctionBodyMacro ""
@@ -1213,6 +1222,11 @@ let _anonymize ?(more=false) ?(most=false) = function
   | ObjcPropertyAttribute _                  -> ObjcPropertyAttribute ""
   | ObjcKeywordArgument _                    -> ObjcKeywordArgument ""
   | ObjcSelectorExpression _                 -> ObjcSelectorExpression ""
+  | ObjcMethodMacroInvocation _              -> ObjcMethodMacroInvocation ""
+
+  | SuffixMacroInvocation _ -> SuffixMacroInvocation ""
+
+  | SwiftArg _ -> SwiftArg ""
 
   | HugeArray _ -> HugeArray(0, "")
 
@@ -1536,6 +1550,7 @@ let is_expr = function
   | ExpressionMacroInvocation _
   | DefinedMacroExpression _
   | CudaKernelCall
+  | SwiftFunCall
     -> true
   | lab -> is_primary lab
 
@@ -2422,6 +2437,7 @@ let of_elem_data =
     "MsStdcall",                     (fun a -> MsStdcall(find_ident a));
     "MsPragma",                      (fun a -> MsPragma(find_ident a));
     "MsWarningSpecifier",            (fun a -> MsWarningSpecifier(find_ident a));
+    "MsProperty",                    (fun a -> MsProperty(find_ident a));
     "CallingConvention",             (fun a -> CallingConvention(find_ident a));
     "GnuAsmBlock",                   (fun a -> GnuAsmBlock(find_ident a, find_block a));
     "GnuAttribute",                  (fun a -> GnuAttribute(find_ident ~default:"__attribute__" a));
@@ -2769,6 +2785,8 @@ let of_elem_data =
     "PtrMacro",                     (fun a -> PtrMacro(find_ident a));
     "ClassBody",                    (fun a -> ClassBody);
     "HugeArray",                    (fun a -> HugeArray(find_size a, find_code a));
+    "TemplateArguments",            (fun a -> TemplateArguments);
+    "SuffixMacroInvocation",        (fun a -> SuffixMacroInvocation(find_ident a));
 
 (* Objective-C *)
     "ObjcAutoreleasepool",                      (fun a -> ObjcAutoreleasepool);
@@ -2790,6 +2808,7 @@ let of_elem_data =
     "ObjcKeywordSelector",                      (fun a -> ObjcKeywordSelector);
     "ObjcMessageExpression",                    (fun a -> ObjcMessageExpression);
     "ObjcMessageSelector",                      (fun a -> ObjcMessageSelector);
+    "ObjcMethodMacroInvocation",                (fun a -> ObjcMethodMacroInvocation(find_ident a));
     "ObjcMethodSelector",                       (fun a -> ObjcMethodSelector);
     "ObjcMethodSelectorPack",                   (fun a -> ObjcMethodSelectorPack);
     "ObjcMethodType",                           (fun a -> ObjcMethodType);
@@ -2816,6 +2835,9 @@ let of_elem_data =
     "ObjcThrow",                                (fun a -> ObjcThrow);
     "ObjcTry",                                  (fun a -> ObjcTry);
     "ObjcTryBlock",                             (fun a -> ObjcTryBlock);
+
+    "SwiftArg",     (fun a -> SwiftArg(find_ident a));
+    "SwiftFunCall", (fun a -> SwiftFunCall)
   ]
   in
   let tbl = Hashtbl.create (List.length tag_list) in

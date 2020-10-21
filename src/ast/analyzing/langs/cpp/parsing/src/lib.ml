@@ -225,6 +225,7 @@ class parser_c = object (self)
       | T_HAT_EQ -> "HAT_EQ"
       | T_HEAD_COLON_COLON -> "HEAD_COLON_COLON"
       | T_IDENT -> "IDENT"
+      | T_IDENT_ -> "IDENT_"
       | T_IDENT_AGM -> "IDENT_AGM"
       | T_IDENT_AM -> "IDENT_AM"
       | T_IDENT_B -> "IDENT_B"
@@ -246,6 +247,7 @@ class parser_c = object (self)
       | T_IDENT_PDM -> "IDENT_PDM"
       | T_IDENT_PM -> "IDENT_PM"
       | T_IDENT_SM -> "IDENT_SM"
+      | T_IDENT_SXM -> "IDENT_SXM"
       | T_IDENT_TM -> "IDENT_TM"
       | T_IDENT_TPM -> "IDENT_TPM"
       | T_IDENT_NSM -> "IDENT_NSM"
@@ -281,6 +283,8 @@ class parser_c = object (self)
       | T_MS_ASM -> "MS_ASM"
       | T_MS_CDECL -> "MS_CDECL"
       | T_MS_PRAGMA -> "MS_PRAGMA"
+      | T_MS_PROPERTY -> "MS_PROPERTY"
+      | T_MS_SEALED -> "MS_SEALED"
       | T_MS_REF -> "MS_REF"
       | T_MS_STDCALL -> "MS_STDCALL"
       | T_MUTABLE -> "MUTABLE"
@@ -461,6 +465,7 @@ class parser_c = object (self)
       | T_TEMPLATE -> "TEMPLATE"
       | T_TEMPL_GT -> "TEMPL_GT"
       | T_TEMPL_LT -> "TEMPL_LT"
+      | T_TEMPL_LT_ -> "TEMPL_LT_"
       | T_THIS -> "THIS"
       | T_THREAD_LOCAL -> "THREAD_LOCAL"
       | T_THROW -> "THROW"
@@ -815,6 +820,7 @@ class parser_c = object (self)
       | N_nonempty_list_pp_gnu_asm_if_section_ -> "nonempty_list(pp_gnu_asm_if_section)"
       | N_nonempty_list_QUEST_ -> "nonempty_list(QUEST)"
       | N_nonempty_list_q_prop_token_ -> "nonempty_list(q_prop_token)"
+      | N_nonempty_list_swift_arg_ -> "nonempty_list(swift_arg)"
       | N_nonempty_list_token_ -> "nonempty_list(token)"
       | N_noptr_abstract_declarator -> "noptr_abstract_declarator"
       | N_noptr_abstract_pack_declarator -> "noptr_abstract_pack_declarator"
@@ -872,7 +878,6 @@ class parser_c = object (self)
       | N_opaque_enum_declaration -> "opaque_enum_declaration"
       | N_operator -> "operator"
       | N_operator_function_id -> "operator_function_id"
-      | N_param_decl_seq -> "param_decl_seq"
       | N_parameter_declaration -> "parameter_declaration"
       | N_parameter_declaration_clause -> "parameter_declaration_clause"
       | N_parameter_declaration_list -> "parameter_declaration_list"
@@ -1166,13 +1171,17 @@ class parser_c = object (self)
       | N_statement -> "statement"
       | N_statement_seq_opt -> "statement_seq_opt"
       | N_static_assert_declaration -> "static_assert_declaration"
+      | N_stmt_macro_arg -> "stmt_macro_arg"
       | N_stmt_macro_call -> "stmt_macro_call"
+      | N_stmts_macro_arg -> "stmts_macro_arg"
       | N_stmts_sub -> "stmts_sub"
       | N_storage_class_specifier -> "storage_class_specifier"
       | N_str_ -> "str_"
       | N_string_literal -> "string_literal"
       | N_string_literal_ -> "string_literal_"
       | N_string_literal_list -> "string_literal_list"
+      | N_suffix_macro_call -> "suffix_macro_call"
+      | N_swift_arg -> "swift_arg"
       | N_templ_param_macro_call -> "templ_param_macro_call"
       | N_template_argument -> "template_argument"
       | N_template_argument_list -> "template_argument_list"
@@ -2133,7 +2142,12 @@ class parser_c = object (self)
                 scanner#ctx_ini();
                 raise Exit
             end
+            | I.X (I.N N_class_head), I.X (I.T T_IDENT_CHM)::_, I.X (I.T T_LPAREN) -> begin
+                env#enter_macro_arg();
+                raise Exit
+            end
             | I.X (I.N N_class_head), I.X (I.T T_IDENT_CHM)::_, I.X (I.T T_RPAREN) -> begin
+                env#exit_macro_arg();
                 scanner#ctx_class();
                 scanner#ctx_ini();
                 raise Exit
@@ -3240,6 +3254,14 @@ class parser_c = object (self)
                 scanner#ctx_expr();
                 raise Exit
             end
+            | I.X (I.N N_macro_arg), I.X (I.T T_TEMPL_LT)::_, I.X (I.T T_TEMPL_LT) -> begin
+                env#enter_templ_arg false;
+                raise Exit
+            end
+            | I.X (I.N N_macro_arg), I.X (I.T T_TEMPL_LT)::_, I.X (I.T T_TEMPL_GT) -> begin
+                env#exit_templ_arg();
+                raise Exit
+            end
             | I.X (I.N N_simple_template_id), _, I.X (I.T T_TEMPL_LT) -> begin
                 scanner#push_context();
                 scanner#push_sub_context();
@@ -3532,6 +3554,14 @@ class parser_c = object (self)
                 scanner#ctx_ini();
                 raise Exit
             end
+            | I.X (I.N N_suffix_macro_call), _, I.X (I.T T_LPAREN) -> begin
+                env#enter_macro_arg();
+                raise Exit
+            end
+            | I.X (I.N N_suffix_macro_call), _, I.X (I.T T_RPAREN) -> begin
+                env#exit_macro_arg();
+                raise Exit
+            end
             | I.X (I.N N_pp_edef_if_group), _, I.X (I.T T_COMMA) -> begin
                 scanner#ctx_enum();
                 raise Exit
@@ -3694,6 +3724,9 @@ class parser_c = object (self)
             | I.X (I.N N_base_clause)            -> env#exit_base_clause()
             | I.X (I.N N_decl_spec_macro_call)   -> env#clear_end_of_decl_spec_macro_call_flag()
             | I.X (I.N N_ctor_initializer)       -> env#exit_ctor_init()
+            | I.X (I.N N_macro_arg) when
+                try (List.nth rhs 0) = I.X (I.N N_cast_key) with _ -> false
+                  -> env#clear_cast_key_flag();
             | I.X (I.N N_noptr_declarator) when
                 try (List.nth rhs 1) = I.X (I.T T_PS_LPAREN) with _ -> false
                   -> env#clear_old_param_decl_flag();
@@ -3804,6 +3837,8 @@ class parser_c = object (self)
             | I.X (I.N N_objc_method_selector) -> env#clear_end_of_objc_meth_sel_flag()
             | I.X (I.N N_objc_selector) -> env#clear_objc_sel_flag()
             | I.X (I.N N_objc_keyword_dtor) -> env#clear_objc_sel_flag()
+            | I.X (I.N N_objc_method_decl) ->
+                env#clear_objc_sel_flag(); env#clear_end_of_objc_meth_sel_flag()
             | _ -> ()
           end;
           let ckpt = I.resume ckpt in
