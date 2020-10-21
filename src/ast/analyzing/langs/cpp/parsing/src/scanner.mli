@@ -62,7 +62,7 @@ class type c_t = object
   method peek_rawtoken_up_to_group_end :
       ?limit:int -> ?from:int -> ?filt:(T.token -> bool) -> unit -> int * T.token list
   method peek_rawtoken_up_to_section_end : ?from:int -> unit -> int
-  method peek_rawtoken_up_to_end_of_qualified_id : ?from:int -> unit -> int
+  method peek_rawtoken_up_to_end_of_qualified_id : ?from:int -> ?ini_tlv:int -> unit -> int
   method peek_rawtoken_up_to_rparen_split_at_comma :
       ?from:int -> ?ignore_pp:bool -> ?ignore_templ_lv:bool -> ?lv_ofs:int -> ?filt:(T.token list -> bool) ->
         unit -> int * T.token list list
