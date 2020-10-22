@@ -5647,7 +5647,15 @@ postfix_expression:
     { 
       let el = list_opt_to_list el_opt in
       let pvec = [1; List.length el] in
-      mknode ~pvec $startpos $endpos L.PostfixExpressionExplicitTypeConvExpr (s::el)
+      let lab =
+        match s#label with
+        | L.SimpleTypeSpecifier x when env#scanner_keep_flag && s#nchildren = 0 -> begin
+            s#relab (L.Identifier s#get_name);
+            L.PostfixExpressionFunCall
+        end
+        | _ -> L.PostfixExpressionExplicitTypeConvExpr
+      in
+      mknode ~pvec $startpos $endpos lab (s::el)
     }
 | t=typename_specifier LPAREN el_opt=expression_list_opt RPAREN
     { 
@@ -8707,7 +8715,15 @@ restricted_postfix_expr:
     { 
       let el = list_opt_to_list el_opt in
       let pvec = [1; List.length el] in
-      mknode ~pvec $startpos $endpos L.PostfixExpressionExplicitTypeConvExpr (s::el)
+      let lab =
+        match s#label with
+        | L.SimpleTypeSpecifier x when env#scanner_keep_flag && s#nchildren = 0 -> begin
+            s#relab (L.Identifier s#get_name);
+            L.PostfixExpressionFunCall
+        end
+        | _ -> L.PostfixExpressionExplicitTypeConvExpr
+      in
+      mknode ~pvec $startpos $endpos lab (s::el)
     }
 | t=typename_specifier LPAREN el_opt=expression_list_opt RPAREN
     { 
@@ -9703,7 +9719,15 @@ pp_control_line:
 | PP_ERROR  tl=token_seq NEWLINE
     { mkleaf $startpos $endpos (L.PpError (Token.seq_to_repr tl)) }
 | PP_PRAGMA tl=token_seq NEWLINE
-    { mkleaf $startpos $endpos (L.PpPragma (Token.seq_to_repr tl)) }
+    { 
+      let lab =
+        match tl with
+        | (T.IDENT "omp",_,_)::rest -> L.OmpDirective (Token.seq_to_repr rest)
+        | (T.IDENT "acc",_,_)::rest -> L.AccDirective (Token.seq_to_repr rest)
+        | _ -> L.PpPragma (Token.seq_to_repr tl)
+      in
+      mkleaf $startpos $endpos lab
+    }
 | PP_ NEWLINE { mkleaf $startpos $endpos L.PpNull }
 | PP_ i=INT_LITERAL s=STR_LITERAL il=INT_LITERAL* NEWLINE
     { 

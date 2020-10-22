@@ -194,7 +194,7 @@ class Node(NodeBase):
         if children_l:
             if self.is_constr_head(children_l[0]):
                 children_l = children_l[1:]
-
+        if children_l:
             if self.is_constr_tail(children_l[-1]):
                 children_l = children_l[:-1]
         return children_l
@@ -308,7 +308,7 @@ class Outline(OutlineBase):
 
 
     def extract_metrics(self):
-        if not self._metrics:
+        if self._metrics == None:
             self.message('extracting metrics...')
             self._metrics = Metrics(self._proj_id, self._method, pw=self._pw, port=self._port)
             self._metrics.calc()
@@ -607,7 +607,7 @@ class Outline(OutlineBase):
                                  pu_name=pu_name,
                                  vpu_name=vpu_name, all_sps=self._all_sps)
 
-                if True or call_node.is_relevant():
+                if call_node.is_relevant():
                     self._relevant_nodes.add(call_node)
 
                 parent_constr = row.get('constr', None)

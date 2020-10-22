@@ -108,9 +108,6 @@ class Node(NodeBase):
             elif c.startswith('dec-'):
                 ty = 'dec'
                 break
-            elif c.startswith('xlf-'):
-                ty = 'xlf'
-                break
             elif c.startswith('ocl-'):
                 ty = 'ocl'
                 break
@@ -136,20 +133,26 @@ class Node(NodeBase):
                 break
         return cat
 
-    def is_stmt_head(self, child):
-        b = all([self.is_statement(),
+    def is_constr_head(self, child):
+        b = all([child.is_pp_ifx(),
                  self.get_start_line() == child.get_start_line(),
-                 not child.is_pp(),
-                 not child.is_statement(),
-                 not child.is_block()])
+                 ])
         return b
 
-    def is_stmt_tail(self, child):
-        b = all([self.is_statement(),
+    def is_constr_tail(self, child):
+        b = all([child.is_pp_ifx(),
                  self.get_end_line() == child.get_end_line(),
-                 not child.is_statement(),
-                 not child.is_block()])
+                 ])
         return b
+
+    def check_children(self, children_l):
+        if children_l:
+            if self.is_constr_head(children_l[0]):
+                children_l = children_l[1:]
+        if children_l:
+            if self.is_constr_tail(children_l[-1]):
+                children_l = children_l[:-1]
+        return children_l
 
 class Outline(OutlineBase):
     def __init__(self,
@@ -421,12 +424,14 @@ class Outline(OutlineBase):
                 fn     = row.get('fn', None)
                 call   = row['call']
 
-                callee_name = row['callee_name']
+                callee_name = demangle(row['callee_name'])
 
                 cat = 'fun-call*'
 
-                if callee_name.startswith('mpi_'):
+                if callee_name.startswith('MPI_'):
                     cat = 'mpi-call'
+                elif callee_name.startswith('omp_'):
+                    cat = 'omp-call'
 
                 call_node = Node(ver, loc, call, cat=cat, fn=fn, callee_name=callee_name,
                                  all_sps=self._all_sps)

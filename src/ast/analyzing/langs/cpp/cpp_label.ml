@@ -785,6 +785,9 @@ let to_short_string ?(ignore_identifiers_flag=false) =
   | SuffixMacroInvocation i -> combo2 638 [i]
   | ClassHeadMsRefClass -> mkstr2 639
   | ClassVirtSpecifierMsSealed -> mkstr2 640
+  | OmpDirective s -> combo2 641 [s]
+  | AccDirective s -> combo2 642 [s]
+
 
 let _anonymize ?(more=false) ?(most=false) = function
   | SimpleTypeSpecifier _           when most -> DefiningTypeSpecifier
@@ -1085,6 +1088,8 @@ let _anonymize ?(more=false) ?(most=false) = function
   | PpIfSection _                       -> PpIfSection 0
   | PpMarker _                          -> PpMarker(0, "", [])
   | PpImport _                          -> PpImport ""
+  | OmpDirective _                      -> OmpDirective ""
+  | AccDirective _                      -> AccDirective ""
   | AsmDefinition _                     -> AsmDefinition ""
   | UsingDirective _                    -> UsingDirective ""
   | NamespaceAliasDefinition _          -> NamespaceAliasDefinition ""
@@ -2158,6 +2163,8 @@ let of_elem_data =
     "PpEndif",                   (fun a -> PpEndif);
     "PpUnknown",                 (fun a -> PpUnknown(find_line a));
     "PpImport",                  (fun a -> PpImport(find_line a));
+    "OmpDirective",              (fun a -> OmpDirective(find_line a));
+    "AccDirective",              (fun a -> AccDirective(find_line a));
     "PpMacroParam",              (fun a -> PpMacroParam(find_ident a));
     "PpStringized",              (fun a -> PpStringized(find_ident a));
     "PpConcatenatedIdentifier",  (fun a -> PpConcatenatedIdentifier);

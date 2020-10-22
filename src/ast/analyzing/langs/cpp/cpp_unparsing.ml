@@ -177,6 +177,9 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
   | PpUnknown s -> pr_string "#"; pr_string s
   | PpImport s  -> pr_string "#import "; pr_string s
 
+  | OmpDirective s -> pr_string "#pragma omp ";pr_string s
+  | AccDirective s -> pr_string "#pragma acc ";pr_string s
+
   | PpIfSection _
   | PpIfSectionFuncDef _
   | PpIfSectionAltFuncDef

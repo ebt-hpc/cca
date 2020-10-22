@@ -63,11 +63,18 @@ WHERE {
   }
   UNION
   {
+    ?dtor a cpp:InitDeclarator ;
+          cpp:provides/cpp:name ?xn ;
+          src:binding ?b .
+    ?call src:child0/src:binding ?b .
     ?callee a cpp:FunctionDefinition ;
-            cpp:provides/cpp:regexp ?xpat .
-
+            cpp:provides/cpp:name ?xn .
+  }
+  UNION
+  {
+    ?callee a cpp:FunctionDefinition ;
+            cpp:provides/cpp:name ?xn .
     ?call src:child0/cpp:requires/cpp:name ?xn .
-    FILTER (REGEX(?xn, ?xpat, "i"))
   }
 
   FILTER EXISTS {

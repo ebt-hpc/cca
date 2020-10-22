@@ -1485,8 +1485,14 @@ class env = object (self)
 
   val mutable access_spec_opt = (None : N.Spec.access_spec option)
 
+  val mutable scanner_keep_flag = false
+
   initializer
     stack#push top_frame
+
+  method scanner_keep_flag = scanner_keep_flag
+  method set_scanner_keep_flag() = scanner_keep_flag <- true
+  method clear_scanner_keep_flag() = scanner_keep_flag <- false
 
   method access_spec_opt = access_spec_opt
 

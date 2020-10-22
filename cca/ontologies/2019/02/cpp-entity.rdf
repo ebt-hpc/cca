@@ -289,6 +289,15 @@
     
 
 
+    <!-- http://codinuum.com/ontologies/2019/02/cpp-entity#AccDirective -->
+
+    <owl:Class rdf:about="http://codinuum.com/ontologies/2019/02/cpp-entity#AccDirective">
+        <rdfs:subClassOf rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#PpDirective"/>
+        <rdfs:label xml:lang="en">acc-directive</rdfs:label>
+    </owl:Class>
+    
+
+
     <!-- http://codinuum.com/ontologies/2019/02/cpp-entity#AccessSpecAnnot -->
 
     <owl:Class rdf:about="http://codinuum.com/ontologies/2019/02/cpp-entity#AccessSpecAnnot">
@@ -987,14 +996,21 @@
     <owl:Class rdf:about="http://codinuum.com/ontologies/2019/02/cpp-entity#ClassSpecifier">
         <owl:equivalentClass>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child0"/>
+                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child1"/>
                 <owl:qualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:qualifiedCardinality>
                 <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#ClassHead"/>
             </owl:Restriction>
         </owl:equivalentClass>
         <owl:equivalentClass>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child1"/>
+                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child0"/>
+                <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
+                <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#AccessSpecifier"/>
+            </owl:Restriction>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child2"/>
                 <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
                 <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#MemberSpecification"/>
             </owl:Restriction>
@@ -1891,16 +1907,23 @@
     <owl:Class rdf:about="http://codinuum.com/ontologies/2019/02/cpp-entity#EnumSpecifier">
         <owl:equivalentClass>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child1"/>
+                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child2"/>
                 <owl:minQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">0</owl:minQualifiedCardinality>
                 <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#EnumeratorDefinition"/>
             </owl:Restriction>
         </owl:equivalentClass>
         <owl:equivalentClass>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child0"/>
+                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child1"/>
                 <owl:qualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:qualifiedCardinality>
                 <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#EnumHead"/>
+            </owl:Restriction>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child0"/>
+                <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
+                <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#AccessSpecifier"/>
             </owl:Restriction>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#DefiningTypeSpecifier"/>
@@ -3483,6 +3506,15 @@
     
 
 
+    <!-- http://codinuum.com/ontologies/2019/02/cpp-entity#OmpDirective -->
+
+    <owl:Class rdf:about="http://codinuum.com/ontologies/2019/02/cpp-entity#OmpDirective">
+        <rdfs:subClassOf rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#PpDirective"/>
+        <rdfs:label xml:lang="en">omp-directive</rdfs:label>
+    </owl:Class>
+    
+
+
     <!-- http://codinuum.com/ontologies/2019/02/cpp-entity#OpaqueEnumDeclaration -->
 
     <owl:Class rdf:about="http://codinuum.com/ontologies/2019/02/cpp-entity#OpaqueEnumDeclaration">
@@ -3804,15 +3836,8 @@
         <owl:equivalentClass>
             <owl:Restriction>
                 <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child0"/>
-                <owl:qualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
                 <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#PostfixExpression"/>
-            </owl:Restriction>
-        </owl:equivalentClass>
-        <owl:equivalentClass>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child2"/>
-                <owl:qualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:qualifiedCardinality>
-                <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#IdExpression"/>
             </owl:Restriction>
         </owl:equivalentClass>
         <owl:equivalentClass>
@@ -3820,6 +3845,13 @@
                 <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child1"/>
                 <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
                 <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#Template"/>
+            </owl:Restriction>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child2"/>
+                <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
+                <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#IdExpression"/>
             </owl:Restriction>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#PostfixExpression"/>
@@ -3878,8 +3910,15 @@
         <owl:equivalentClass>
             <owl:Restriction>
                 <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child0"/>
-                <owl:qualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
                 <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#PostfixExpression"/>
+            </owl:Restriction>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://codinuum.com/ontologies/2012/10/source-code-entity#child2"/>
+                <owl:maxQualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:maxQualifiedCardinality>
+                <owl:onClass rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#IdExpression"/>
             </owl:Restriction>
         </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="http://codinuum.com/ontologies/2019/02/cpp-entity#PostfixExpression"/>

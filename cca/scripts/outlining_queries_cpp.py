@@ -33,7 +33,7 @@ SUBPROGS = set([
 
 LOOPS = set(['for-statement','range-based-for-statement','do-statement','while-statement'])
 
-CALLS = set(['fun-call','fun-call-guarded'])
+CALLS = set(['fun-call','fun-call-guarded','fun-call*','mpi-call','omp-call'])
 
 TYPE_TBL = { # cat -> type
     'file'                           : 'file',
@@ -72,7 +72,10 @@ TYPE_TBL = { # cat -> type
     'pp-if-section-templ-decl'       : 'pp',
     'pp-if-section-try-block'        : 'pp',
 
+    'pp-pragma'                      : 'pp',
+
     'mpi-call'                       : 'mpi',
+    'omp-call'                       : 'omp',
 
     'fun-call*'                      : 'call*'
 }
@@ -196,12 +199,12 @@ SELECT DISTINCT ?ver ?loc ?fd ?fd_cat ?fn ?dtv ?cat ?cntnr
 WHERE {
 GRAPH <%%(proj)s> {
 
-  ?dtv a cpp:CompilerDirective ;
+  ?dtv a cpp:PpDirective ;
        a ?cat0 OPTION (INFERENCE NONE) ;
        cpp:inTranslationUnitOrFunction ?tu_or_fd ;
-       cpp:inProgramUnit ?tu .
+       cpp:inTranslationUnit ?tu .
 
-  ?fu_or_fd src:inFile/src:location ?loc .
+  ?tu_or_fd src:inFile/src:location ?loc .
 
   ?tu a cpp:TranslationUnit ;
       src:inFile/src:location ?tu_loc ;
@@ -235,19 +238,19 @@ GRAPH <%%(proj)s> {
       {
         ?cntnr cpp:inTranslationUnit ?tu .
         FILTER NOT EXISTS {
-          ?call cpp:inFunctionDefinition/cpp:inContainerUnit ?cntnr .
+          ?dtv cpp:inFunctionDefinition/cpp:inContainerUnit ?cntnr .
         }
       }
       UNION
       {
-        ?call cpp:inFunctionDefinition ?fd0 .
+        ?dtv cpp:inFunctionDefinition ?fd0 .
         ?cntnr cpp:inFunctionDefinition ?fd0 .
       }
     }
     FILTER NOT EXISTS {
       ?c a cpp:ContainerUnit ;
          cpp:inContainerUnit ?cntnr .
-      ?call cpp:inContainerUnit ?c .
+      ?dtv cpp:inContainerUnit ?c .
       FILTER (?c != ?cntnr)
     }
   }

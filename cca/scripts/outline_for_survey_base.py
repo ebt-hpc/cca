@@ -52,6 +52,8 @@ from virtuoso import VIRTUOSO_PW, VIRTUOSO_PORT
 
 MARKER_CALLEE_PAT = re.compile('^.*(dgemm|timer|start|begin).*$')
 
+PP_IFX_SET = set(['pp-if','pp-ifdef','pp-ifndef','pp-elif','pp-else','pp-endif'])
+
 QN_SEP = ','
 
 NID_SEP = '_'
@@ -250,7 +252,7 @@ class NodeBase(dp.base):
                 if m:
                     b = True
                 else:
-                    b = self._callee_name.startswith('mpi_')
+                    b = any([self._callee_name.startswith(h) for h in ['mpi_','MPI_','omp_']])
         return b
 
     def get_container(self):
@@ -470,6 +472,9 @@ class NodeBase(dp.base):
                 b = True
                 break
         return b
+
+    def is_pp_ifx(self):
+        return self.cats & PP_IFX_SET
 
     def set_extra(self, d):
         return
@@ -860,7 +865,7 @@ class OutlineBase(dp.base):
         return lv
 
     def get_metrics(self):
-        if not self._metrics:
+        if self._metrics == None:
             self.extract_metrics()
         return self._metrics
 
@@ -868,7 +873,7 @@ class OutlineBase(dp.base):
         return
 
     def get_metrics_tbl(self, key):
-        if not self._metrics:
+        if self._metrics == None:
             self.extract_metrics()
 
         ftbl = self._metrics.find_ftbl(key)
@@ -1188,7 +1193,7 @@ class OutlineBase(dp.base):
                                 del df['fid']
 
                     d['aref_ranges'] = json.dumps(aref_ranges)
-                    
+
                 try:
                     mtbl = self.get_metrics_tbl(mkey)
 

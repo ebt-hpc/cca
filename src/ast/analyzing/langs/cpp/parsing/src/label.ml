@@ -95,6 +95,9 @@ type t =
   | PpMacroParam of ident
   | PpImport of string
 
+  | OmpDirective of string
+  | AccDirective of string
+
 (* Declaration *)
   | SimpleDeclaration                 (* BlockDeclaration *)
   | AsmDefinition of string           (* BlockDeclaration *)
@@ -836,6 +839,9 @@ let to_string = function
   | PpMacroParam s           -> "PpMacroParam:"^s
   | PpImport s               -> "PpImport:"^s
 
+  | OmpDirective s           -> "OmpDirective:"^s
+  | AccDirective s           -> "AccDirective:"^s
+
 (* Declaration *)
   | SimpleDeclaration             -> "SimpleDeclaration"
   | AsmDefinition s               -> sprintf "AsmDefinition(%s)" s
@@ -1563,6 +1569,10 @@ let to_simple_string = function
   | PpStringized s           -> s
   | PpMacroParam s           -> s
   | PpImport s               -> "#import "^s
+
+  | OmpDirective s           -> "#pragma omp "^s
+  | AccDirective s           -> "#pragma acc "^s
+
 
 (* Declaration *)
   | SimpleDeclaration             -> "<simple-declaration>"
@@ -2298,6 +2308,10 @@ let to_tag : t -> string * (string * string) list = function
   | PpStringized s           -> "PpStringized", ["ident",s]
   | PpMacroParam s           -> "PpMacroParam", ["ident",s]
   | PpImport s               -> "PpImport", ["line",s]
+
+  | OmpDirective s           -> "OmpDirective", ["line",s]
+  | AccDirective s           -> "AccDirective", ["line",s]
+
 
 (* Declaration *)
   | SimpleDeclaration             -> "SimpleDeclaration", []

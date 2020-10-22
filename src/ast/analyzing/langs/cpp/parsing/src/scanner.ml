@@ -19160,6 +19160,7 @@ module F (Stat : Aux.STATE_T) = struct
       self#save_prev_rawtokens();
       saved_pstat <- pstat#copy;
       env#save_stack();
+      env#set_scanner_keep_flag();
       keep_flag <- true
 
     method stop_replay_queue () =
@@ -19174,11 +19175,13 @@ module F (Stat : Aux.STATE_T) = struct
         end
         | [] -> failwith "Scanner.F.c#stop_replay_queue"
       end;
+      env#clear_scanner_keep_flag();
       keep_flag <- false;
       replay_flag <- true
 
     method clear_keep_flag () =
       DEBUG_MSG "keep_flag cleared";
+      env#clear_scanner_keep_flag();
       keep_flag <- false
 
     method keep_flag = keep_flag

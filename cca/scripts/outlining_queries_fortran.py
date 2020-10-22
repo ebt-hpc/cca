@@ -38,7 +38,7 @@ SUBPROGS = set([
 
 LOOPS = set(['do-construct','do-stmt','end-do-stmt','do-block'])
 
-CALLS = set(['call-stmt','function-reference','part-name'])
+CALLS = set(['call-stmt','function-reference','part-name','call-stmt*','mpi-call'])
 
 TYPE_TBL = { # cat -> type
     'file'                           : 'file',

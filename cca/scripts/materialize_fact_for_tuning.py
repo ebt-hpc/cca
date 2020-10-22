@@ -69,6 +69,7 @@ QUERIES = {
         'materialize_array_ref_sig2_0.rq',
         'materialize_array_ref_sig2_1.rq',
         'materialize_type_spec.rq',
+        'materialize_type_spec_memb.rq',
         'materialize_callee.rq',
         'materialize_call.rq',
     ],
