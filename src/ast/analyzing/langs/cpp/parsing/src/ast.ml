@@ -1807,6 +1807,8 @@ and type_spec_of_node ?(ns="") (nd : node) =
   | Float    -> I.TypeSpec.Float
   | Double   -> I.TypeSpec.Double
   | Void     -> I.TypeSpec.Void
+  | UnsignedInt  -> I.TypeSpec.UnsignedInt
+  | UnsignedLong -> I.TypeSpec.UnsignedLong
   | ElaboratedTypeSpecifierClass u  -> I.TypeSpec.Elaborated (I.ElaboratedType.Class (ns^u))
   | ElaboratedTypeSpecifierStruct u -> I.TypeSpec.Elaborated (I.ElaboratedType.Struct (ns^u))
   | ElaboratedTypeSpecifierUnion u  -> I.TypeSpec.Elaborated (I.ElaboratedType.Union (ns^u))

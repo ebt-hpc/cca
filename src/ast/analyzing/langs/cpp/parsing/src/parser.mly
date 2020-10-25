@@ -339,7 +339,7 @@ ENUM     : ELAB_ENUM
 
 LT       : TEMPL_LT
 GT       : TEMPL_GT, TY_TEMPL_GT
-LBRACKET : LAM_LBRACKET, ATTR_LBRACKET
+LBRACKET : LAM_LBRACKET, ATTR_LBRACKET, MS_ATTR_LBRACKET
 LPAREN   : FOLD_LPAREN, TY_LPAREN, PP_LPAREN SS_LPAREN PS_LPAREN
 LBRACE   : INI_LBRACE, CLASS_LBRACE
 
@@ -389,7 +389,7 @@ PP_IFNDEF : PP_IFNDEF_E PP_IFNDEF_SHIFT PP_IFNDEF_CLOSING
 
 (* for WIN *)
 %token <string> MS_STDCALL MS_CDECL MS_ASM MS_PRAGMA
-%token END_ASM MS_REF MS_PROPERTY MS_SEALED
+%token END_ASM MS_REF MS_PROPERTY MS_SEALED MS_ATTR_LBRACKET
 
 (* for CUDA C *)
 %token CUDA_LT_LT_LT CUDA_GT_GT_GT
@@ -432,7 +432,7 @@ PP_IFNDEF : PP_IFNDEF_E PP_IFNDEF_SHIFT PP_IFNDEF_CLOSING
 
 (* directive *)
 %token PP_INCLUDE PP_DEFINE PP_UNDEF PP_LINE PP_ERROR PP_PRAGMA PP_
-%token PP_IF PP_IFDEF PP_IFNDEF PP_ELIF PP_ELSE PP_ENDIF
+%token PP_IF PP_IFDEF PP_IFNDEF PP_ELIF PP_ELSE PP_ENDIF PP_ENDIF_
 %token <int> BRACE_LEVEL
 %token <string> PP_UNKNOWN
 
@@ -445,8 +445,9 @@ PP_IFNDEF : PP_IFNDEF_E PP_IFNDEF_SHIFT PP_IFNDEF_CLOSING
 %nonassoc LBRACKET LPAREN INI_LBRACE
 %right ELAB_ENUM CLASS ELAB_CLASS TYPENAME STRUCT UNION DECLTYPE MS_REF
 %nonassoc IDENT IDENT_C IDENT_TM IDENT_IM IDENT_CM
+%right SIGNED UNSIGNED
 %nonassoc WCHAR_T VOID SHORT LONG INT FLOAT DOUBLE CHAR8_T CHAR32_T CHAR16_T CHAR BOOL
-%nonassoc SIGNED UNSIGNED VOLATILE CONST AUTO RESTRICT MS_STDCALL MS_CDECL CC_MACRO CV_MACRO TYPE_MACRO
+%nonassoc VOLATILE CONST AUTO RESTRICT MS_STDCALL MS_CDECL CC_MACRO CV_MACRO TYPE_MACRO
 %nonassoc PTR_STAR PTR_AMP PTR_AMP_AMP PTR_HAT PTR_MACRO
 %nonassoc ATTR_MACRO IDENT_AM OBJC_UNKNOWN PP_IF_ATTR PP_IFDEF_ATTR PP_IFNDEF_ATTR
 %right ALIGNAS ATTR_LBRACKET GNU_ATTR
@@ -497,6 +498,7 @@ clist(X):
 ;
 
 special_token:
+| PP_ENDIF_ { }
 | IDENT_ { }
 | TEMPL_LT_ { }
 | TY_LPAREN_ { }
@@ -4007,6 +4009,12 @@ named_namespace_definition:
       env#register_namespace i nd frm;
       nd
     }
+| h=named_namespace_definition_head ODD_LBRACE
+    { 
+      let il, al, i, ml = h in
+      let pvec = [List.length il; List.length al; List.length ml; 0] in
+      mknode ~pvec $symbolstartpos $endpos (L.NamedNamespaceDefinition i) (il @ al @ ml)
+    }
 ;
 (*named_namespace_definition:
 | i_opt=ioption(inline) NAMESPACE al_opt=attribute_specifier_seq_opt i=IDENT
@@ -5458,15 +5466,19 @@ attribute_token:
 ;
 
 attribute_scoped_token:
-| a=attribute_namespace COLON_COLON i=IDENT
-    { mknode $startpos $endpos (L.AttributeScopedToken i) [a] }
-| a=attribute_namespace COLON_COLON i=IDENT_V
-    { mknode $startpos $endpos (L.AttributeScopedToken i) [a] }
+| al=attribute_namespace_seq i=IDENT
+    { mknode $startpos $endpos (L.AttributeScopedToken i) al }
+| al=attribute_namespace_seq i=IDENT_V
+    { mknode $startpos $endpos (L.AttributeScopedToken i) al }
 ;
 
+attribute_namespace_seq:
+| a=attribute_namespace { [a] }
+| al=attribute_namespace_seq a=attribute_namespace { al @ [a] }
+;
 %inline
 attribute_namespace:
-| i=IDENT { mkleaf $startpos $endpos (L.AttributeNamespace i) }
+| i=IDENT COLON_COLON { mkleaf $startpos $endpos (L.AttributeNamespace i) }
 ;
 
 attribute_argument_clause_opt:
@@ -7845,13 +7857,17 @@ initializer_:
 
 %inline
 equal_initializer:
-| EQ i=initializer_clause { mknode $startpos $endpos L.EqualInitializer [i] }
-| EQ pl=pp_control_line+ i=initializer_clause { mknode $startpos $endpos L.EqualInitializer (pl@[i]) }
-| EQ p=pp_expr_if_section { mknode $startpos $endpos L.EqualInitializer [p] }
+| EQ i=initializer_clause { mknode ~pvec:[0; 1] $startpos $endpos L.EqualInitializer [i] }
+| EQ pl=pp_control_line+ MARKER { mknode ~pvec:[0; List.length pl] $startpos $endpos L.EqualInitializer pl }
+| EQ pl=pp_control_line+ i=initializer_clause
+    { 
+      mknode ~pvec:[List.length pl; 1] $startpos $endpos L.EqualInitializer (pl@[i])
+    }
+| EQ p=pp_expr_if_section { mknode ~pvec:[0; 1] $startpos $endpos L.EqualInitializer [p] }
 | EQ p=pp_expr_if_section o=bin_op e=multiplicative_expression
     { 
       let e_ = mknode ~pvec:[1; 1] $startpos(p) $endpos o (p::[e]) in
-      mknode $startpos $endpos L.EqualInitializer [e_]
+      mknode ~pvec:[0; 1] $startpos $endpos L.EqualInitializer [e_]
     }
 ;
 
@@ -8130,6 +8146,8 @@ basic_type:
 | FLOAT    { mkleaf ~pvec:[0] $startpos $endpos L.Float }
 | DOUBLE   { mkleaf ~pvec:[0] $startpos $endpos L.Double }
 | VOID     { mkleaf ~pvec:[0] $startpos $endpos L.Void }
+| UNSIGNED INT  { mkleaf ~pvec:[0] $startpos $endpos L.UnsignedInt }
+| UNSIGNED LONG { mkleaf ~pvec:[0] $startpos $endpos L.UnsignedLong }
 ;
 
 %inline
@@ -9078,10 +9096,20 @@ typename:
 | TYPENAME { mkleaf $startpos $endpos L.Typename }
 ;
 
+ms_attr:
+| MS_ATTR_LBRACKET al=attribute_list RBRACKET { mknode $startpos $endpos L.MsAttributeSpecifier al }
+;
+%inline
+ms_attrs:
+| { [] }
+| m=ms_attr                    { [m] }
+| m=ms_attr a=access_specifier { [m; a] }
+|           a=access_specifier { [a] }
+;
+
 class_specifier:
-| a_opt=access_specifier_opt c=class_head CLASS_LBRACE m_opt=ioption(member_specification) RBRACE
+| al=ms_attrs c=class_head CLASS_LBRACE m_opt=ioption(member_specification) RBRACE
     { 
-      let al = opt_to_list a_opt in
       let ml = opt_to_list m_opt in
       mknode ~pvec:[List.length al; 1; List.length ml] $symbolstartpos $endpos L.ClassSpecifier (al@c::ml)
     }

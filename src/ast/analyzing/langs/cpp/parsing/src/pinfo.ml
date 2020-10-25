@@ -246,6 +246,8 @@ module TypeSpec = struct
     | Float
     | Double
     | Void
+    | UnsignedInt
+    | UnsignedLong
     | Elaborated of ElaboratedType.t
     | Typename of string
     | CvQualifier of CvQualifier.t
@@ -279,6 +281,8 @@ module TypeSpec = struct
     | Float           -> "float"
     | Double          -> "double"
     | Void            -> "void"
+    | UnsignedInt     -> "unsigned int"
+    | UnsignedLong    -> "unsigned long"
     | Elaborated e    -> ElaboratedType.to_string e
     | Typename e      -> "typename "^e
     | CvQualifier cvq -> CvQualifier.to_string cvq
@@ -298,6 +302,8 @@ module TypeSpec = struct
     | Float
     | Double
     | Void
+    | UnsignedInt
+    | UnsignedLong
       -> true
     | _ -> false
 
@@ -356,6 +362,8 @@ module TypeSpec = struct
              | Double when !long_count = 1 -> "e"
              | Double -> "d"
              | Void -> "v"
+             | UnsignedInt -> "j"
+             | UnsignedLong -> "m"
              | Elaborated e -> ElaboratedType.encode e
              | Typename e -> e
              | _ -> ""

@@ -118,6 +118,7 @@ let rawtoken_to_string = function
   | TY_TEMPL_GT_          -> "TY_TEMPL_GT_"
   | LAM_LBRACKET          -> "LAM_LBRACKET"
   | ATTR_LBRACKET         -> "ATTR_LBRACKET"
+  | MS_ATTR_LBRACKET      -> "MS_ATTR_LBRACKET"
   | INI_LBRACE            -> "INI_LBRACE"
   | CLASS_LBRACE          -> "CLASS_LBRACE"
   | FOLD_LPAREN           -> "FOLD_LPAREN"
@@ -402,6 +403,7 @@ let rawtoken_to_string = function
   | PP_ELIF               -> "PP_ELIF"
   | PP_ELSE               -> "PP_ELSE"
   | PP_ENDIF              -> "PP_ENDIF"
+  | PP_ENDIF_             -> "PP_ENDIF_"
 
   | PP_IMPORT             -> "PP_IMPORT"
 
@@ -552,6 +554,7 @@ let rawtoken_to_repr = function
   | TY_TEMPL_GT_          -> ">"
   | LAM_LBRACKET          -> "["
   | ATTR_LBRACKET         -> "["
+  | MS_ATTR_LBRACKET      -> "["
   | INI_LBRACE            -> "{"
   | CLASS_LBRACE          -> "{"
   | FOLD_LPAREN           -> "("
@@ -838,6 +841,7 @@ let rawtoken_to_repr = function
   | PP_ELIF               -> "#elif"
   | PP_ELSE               -> "#else"
   | PP_ENDIF              -> "#endif"
+  | PP_ENDIF_             -> "#endif"
 
   | PP_IMPORT             -> "#import"
 

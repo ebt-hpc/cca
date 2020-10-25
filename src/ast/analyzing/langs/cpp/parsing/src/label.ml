@@ -356,12 +356,14 @@ type t =
   | Volatile (* CvQualifier *)
   | Restrict of ident (* CvQualifier *)
 
+
   | MsAsmBlock of ident * string (* MS *)
   | MsCdecl of ident   (* MS calling convention *)
   | MsStdcall of ident (* MS calling convention *)
   | MsPragma of ident
   | MsWarningSpecifier of ident
   | MsProperty of ident
+  | MsAttributeSpecifier
 
   | CallingConvention of ident
 
@@ -393,6 +395,8 @@ type t =
   | Float
   | Double
   | Void
+  | UnsignedInt
+  | UnsignedLong
 
 (* AccessSpecifier *)
   | AccessSpecifier
@@ -1101,6 +1105,7 @@ let to_string = function
   | MsPragma i                      -> "MsPragma:"^i
   | MsWarningSpecifier i            -> "MsWarningSpecifier:"^i
   | MsProperty i                    -> "MsProperty:"^i
+  | MsAttributeSpecifier            -> "MsAttributeSpecifier"
   | CallingConvention i             -> "CallingConvention:"^i
   | GnuAsmBlock(a, s)               -> sprintf "GnuAsmBlock:%s%s" a s
   | GnuAttribute i                  -> "GnuAttribute:"^i
@@ -1124,6 +1129,8 @@ let to_string = function
   | Float    -> "Float"
   | Double   -> "Double"
   | Void     -> "Void"
+  | UnsignedInt -> "UnsignedInt"
+  | UnsignedLong -> "UnsignedLong"
 
 (* AccessSpecifier *)
   | AccessSpecifier -> "AccessSpecifier"
@@ -1835,6 +1842,7 @@ let to_simple_string = function
   | MsPragma i                      -> i
   | MsWarningSpecifier i            -> i
   | MsProperty i                    -> sprintf "property %s" i
+  | MsAttributeSpecifier            -> "<ms-attribute-specifier>"
 
   | CallingConvention i             -> i
   | GnuAsmBlock(a, s)               -> sprintf "%s %s" a s
@@ -1860,6 +1868,8 @@ let to_simple_string = function
   | Float    -> "float"
   | Double   -> "double"
   | Void     -> "void"
+  | UnsignedInt -> "unsigned int"
+  | UnsignedLong -> "unsigned long"
 
 (* AccessSpecifier *)
   | AccessSpecifier -> "<access-specifier>"
@@ -2585,6 +2595,7 @@ let to_tag : t -> string * (string * string) list = function
   | MsPragma i                      -> "MsPragma", ["ident",i]
   | MsWarningSpecifier i            -> "MsWarningSpecifier", ["ident",i]
   | MsProperty i                    -> "MsProperty", ["ident",i]
+  | MsAttributeSpecifier            -> "MsAttributeSpecifier", []
 
   | CallingConvention i             -> "CallingConvention", ["ident",i]
   | GnuAsmBlock(a, s)               -> "GnuAsmBlock", ["ident",a;"block",s]
@@ -2611,6 +2622,8 @@ let to_tag : t -> string * (string * string) list = function
   | Float    -> "Float", []
   | Double   -> "Double", []
   | Void     -> "Void", []
+  | UnsignedInt -> "UnsignedInt", []
+  | UnsignedLong -> "UnsignedLong", []
 
 (* AccessSpecifier *)
   | AccessSpecifier -> "AccessSpecifier", []

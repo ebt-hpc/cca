@@ -787,7 +787,9 @@ let to_short_string ?(ignore_identifiers_flag=false) =
   | ClassVirtSpecifierMsSealed -> mkstr2 640
   | OmpDirective s -> combo2 641 [s]
   | AccDirective s -> combo2 642 [s]
-
+  | MsAttributeSpecifier -> mkstr2 643
+  | UnsignedInt  -> mkstr2 644
+  | UnsignedLong -> mkstr2 645
 
 let _anonymize ?(more=false) ?(most=false) = function
   | SimpleTypeSpecifier _           when most -> DefiningTypeSpecifier
@@ -894,6 +896,8 @@ let _anonymize ?(more=false) ?(most=false) = function
   | Long                                when more -> BasicType
   | Signed                              when more -> BasicType
   | Unsigned                            when more -> BasicType
+  | UnsignedInt                         when more -> BasicType
+  | UnsignedLong                        when more -> BasicType
   | Float                               when more -> BasicType
   | Double                              when more -> BasicType
   | Void                                when more -> BasicType
@@ -1856,6 +1860,7 @@ let is_decl_spec = function
   | PlaceholderTypeSpecifierDecltype
   | Char | Char8_t | Char16_t | Char32_t | Wchar_t | Bool | Short | Int | Long | Signed | Unsigned | Float | Double
   | Void
+  | UnsignedInt | UnsignedLong
   | ElaboratedTypeSpecifier
   | TypenameSpecifier _
 
@@ -2445,6 +2450,7 @@ let of_elem_data =
     "MsPragma",                      (fun a -> MsPragma(find_ident a));
     "MsWarningSpecifier",            (fun a -> MsWarningSpecifier(find_ident a));
     "MsProperty",                    (fun a -> MsProperty(find_ident a));
+    "MsAttributeSpecifier",          (fun a -> MsAttributeSpecifier);
     "CallingConvention",             (fun a -> CallingConvention(find_ident a));
     "GnuAsmBlock",                   (fun a -> GnuAsmBlock(find_ident a, find_block a));
     "GnuAttribute",                  (fun a -> GnuAttribute(find_ident ~default:"__attribute__" a));
@@ -2468,6 +2474,8 @@ let of_elem_data =
     "Float",     (fun a -> Float);
     "Double",    (fun a -> Double);
     "Void",      (fun a -> Void);
+    "UnsignedInt",  (fun a -> UnsignedInt);
+    "UnsignedLong", (fun a -> UnsignedLong);
 
 (* AccessSpecifier *)
     "AccessSpecifier", (fun a -> AccessSpecifier);

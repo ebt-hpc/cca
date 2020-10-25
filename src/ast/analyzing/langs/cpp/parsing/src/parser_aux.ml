@@ -45,6 +45,9 @@ let paren_kind_to_string = function
   | PK_PS     -> "PK_PS"
   | PK_F      -> "PK_F"
 
+type odd_brace_lv_t = { o_lv : int; mutable o_ini_lv : int }
+let odd_brace_lv_to_string { o_lv=lv; o_ini_lv=ilv } = sprintf "%d(%d)" lv ilv
+
 class pstat = object (self)
   val mutable for_flag = false
   val mutable sizeof_ty_flag = false
@@ -108,7 +111,7 @@ class pstat = object (self)
   val pp_if_section_stack = (Stack.create() : I.pp_if_section_info Stack.t)
   val top_stmts_stack = (Stack.create() : int Stack.t)
   val templ_arg_stack = (Stack.create() : bool Stack.t)
-  val odd_brace_lv_stack = (Stack.create() : int Stack.t)
+  val odd_brace_lv_stack = (Stack.create() : odd_brace_lv_t Stack.t)
 
   val mutable last_templ_arg_stack_top = false
 
@@ -940,16 +943,17 @@ class pstat = object (self)
     DEBUG_MSG "entering pp_if_section %s" (I.pp_if_section_info_to_string info);
     Stack.push info pp_if_section_stack
 
-  method exit_pp_if_section () =
-    DEBUG_MSG "exiting pp_if_section...";
+  method exit_pp_if_section ?(odd=false) () =
+    DEBUG_MSG "exiting pp_if_section (odd=%B)..." odd;
     let info = Stack.pop pp_if_section_stack in
     last_pp_if_section_info <- info;
+    if odd && self#pp_odd_if_section_level > 0 then
+      (Stack.top odd_brace_lv_stack).o_ini_lv <- info.i_brace_level;
     DEBUG_MSG "pp_if_section exited %s" (I.pp_if_section_info_to_string info)
 
   method pp_if_section_stack = pp_if_section_stack
 
   method pp_if_section_level = Stack.length pp_if_section_stack
-
   method pp_if_section_top_info = Stack.top pp_if_section_stack
 
   method last_pp_if_section_info = last_pp_if_section_info
@@ -982,6 +986,16 @@ class pstat = object (self)
     let lv =
       try
         self#brace_level - (Stack.top pp_if_section_stack).i_brace_level
+      with
+        _ -> 0
+    in
+    DEBUG_MSG "%d" lv;
+    lv
+
+  method pp_odd_if_section_rel_brace_level =
+    let lv =
+      try
+        self#brace_level - (Stack.top odd_brace_lv_stack).o_ini_lv
       with
         _ -> 0
     in
@@ -1415,24 +1429,26 @@ class pstat = object (self)
   method odd_brace_lv_stack_to_string =
     let buf = Buffer.create 0 in
     Stack.iter
-      (fun lv -> Buffer.add_string buf (sprintf "%d;" lv))
+      (fun oblv -> Buffer.add_string buf (odd_brace_lv_to_string oblv))
       odd_brace_lv_stack;
     Buffer.contents buf
 
   method open_odd_brace () =
     DEBUG_MSG "odd_brace_lv_stack=%s" self#odd_brace_lv_stack_to_string;
     DEBUG_MSG "brace_level=%d" self#brace_level;
-    Stack.push self#brace_level odd_brace_lv_stack
+    Stack.push {o_lv=self#brace_level;o_ini_lv=0} odd_brace_lv_stack
 
   method close_odd_brace () =
     DEBUG_MSG "odd_brace_lv_stack=%s" self#odd_brace_lv_stack_to_string;
-    let blv = Stack.pop odd_brace_lv_stack in
-    DEBUG_MSG "brace_level=%d" blv;
-    ignore blv
+    let oblv = Stack.pop odd_brace_lv_stack in
+    DEBUG_MSG "brace_level=%s" (odd_brace_lv_to_string oblv);
+    ignore oblv
+
+  method pp_odd_if_section_level = Stack.length odd_brace_lv_stack
 
   method odd_brace_level =
     try
-      Stack.top odd_brace_lv_stack
+      (Stack.top odd_brace_lv_stack).o_lv
     with
       _ -> 0
 
@@ -2052,8 +2068,12 @@ class env = object (self)
   method pp_if_section_level = pstat#pp_if_section_level
   method pp_if_section_top_info = pstat#pp_if_section_top_info
   method pp_if_section_nth_info = pstat#pp_if_section_nth_info
+
+  method pp_odd_if_section_level = pstat#pp_odd_if_section_level
+
   method pp_if_section_rel_brace_level = pstat#pp_if_section_rel_brace_level
   method pp_if_section_rel_paren_level = pstat#pp_if_section_rel_paren_level
+  method pp_odd_if_section_rel_brace_level = pstat#pp_odd_if_section_rel_brace_level
   method pp_if_section_flag = pstat#pp_if_section_flag
 
   method enter_templ_arg = pstat#enter_templ_arg

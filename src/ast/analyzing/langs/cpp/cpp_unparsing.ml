@@ -747,6 +747,8 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
   | Float     -> pr_string "float"
   | Double    -> pr_string "double"
   | Void      -> pr_string "void"
+  | UnsignedInt   -> pr_string "unsigned int"
+  | UnsignedLong  -> pr_string "unsigned long"
 
 (* AccessSpecifier *)
   | AccessSpecifier   -> pr_string "<access-specifier>"
@@ -781,6 +783,7 @@ let rec pr_node ?(fail_on_error=true) ?(va=false) ?(prec=0) node =
       pr_rparen()
   end
   | AttributeMacro i -> pr_id i
+  | MsAttributeSpecifier -> pr_string "["; pr_seq(); pr_string "]"
 
 (* RefQualifier *)
   | RefQualifier       -> pr_string "<ref-qualifier>"
