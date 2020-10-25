@@ -107,6 +107,7 @@ RUN set -x && \
     cd ast/analyzing && \
     cp -r bin etc /opt/cca/ && \
     cp modules/Mfortran_p.cmxs /opt/cca/modules/ && \
+    cp modules/Mcpp_p.cmxs /opt/cca/modules/ && \
     cd /root && \
     rm -r src
 

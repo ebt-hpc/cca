@@ -32,7 +32,7 @@ import dp
 import project
 from siteconf import PROJECTS_DIR
 import Git2
-from outline_for_survey import gen_conf, gen_conf_a, GIT_REPO_BASE, ensure_dir, get_proj_list
+from outline_for_survey_base import gen_conf, gen_conf_a, GIT_REPO_BASE, ensure_dir, get_proj_list
 
 
 

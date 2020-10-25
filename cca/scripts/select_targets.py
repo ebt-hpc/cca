@@ -30,7 +30,7 @@ import json
 
 import pathsetup
 import dp
-from sourcecode_metrics_for_survey import BF
+from sourcecode_metrics_for_survey_base import BF
 from classify_loops import classify
 
 NSAMPLES = 0

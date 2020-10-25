@@ -75,9 +75,9 @@ import load_into_virtuoso
 import load_ont_into_virtuoso
 import materialize_fact_for_tuning
 from outline_for_flops import Outline as OutlineForFlops
-from outline_for_survey import Outline as OutlineForSurvey
-from outline_for_survey import METRICS_DIR
-import outline_for_survey
+from outline_for_survey_cpp import Outline as OutlineForSurveyCpp
+from outline_for_survey_fortran import Outline as OutlineForSurveyFortran
+from outline_for_survey_base import METRICS_DIR
 from select_targets import predict_kernels, TARGET_DIR_NAME
 from collect_readme_for_survey import collect_readme
 
@@ -288,7 +288,8 @@ def parse(proj_dir, proj_id, ver):
     args += ' -fact:project-root %s' % proj_dir
     args += ' -fact:version VARIANT:%s -fact:add-versions' % ver
     args += ' -fact:encoding:FDLCO -fact:size-thresh 100000'
-    args += ' -parser:fortran'
+    #args += ' -parser:cpp'
+    #args += ' -parser:fortran'
     args += ' %s' % proj_dir
 
     cmd = '%s%s' % (PARSESRC_CMD, args)
