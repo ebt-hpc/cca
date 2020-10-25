@@ -111,9 +111,6 @@ let speclist =
    "-parser:cpp", Arg.Unit (fun () -> options#designate_parser "cpp"), "\t\t\tforce to use C++ parser";
    "-parser:disable", Arg.String options#disable_parser, "PARSER_ID\tdisable parser";
 
-   "-parser:fortran", Arg.Unit (fun () -> options#designate_parser "fortran"),
-   "\t\tforce to use Fortran parser";
-
 (* output *)
    "-dump:ast", Arg.Unit set_dump_ast_flags, "\tdump AST";
    "-dump:ast:compress", Arg.Unit set_dump_compressed_ast_flags, "\tdump compressed AST";

@@ -7,7 +7,7 @@ BIN_DIR=bin
 PARSESRC_CMD  = $(BIN_DIR)/parsesrc.byte
 
 LANGS_DIR = langs
-#LANGS = astml python java verilog fortran
+#LANGS = astml python java verilog fortran cpp
 LANGS = astml fortran cpp
 
 LANG_DIRS     = $(foreach lang,$(LANGS),$(LANGS_DIR)/$(lang))
