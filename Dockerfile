@@ -2,8 +2,6 @@ FROM ubuntu:20.04
 
 MAINTAINER ebtxhpc
 
-ENV DEBIAN_FRONTEND=noninteractive
-
 RUN set -x && \
     useradd -r -s /bin/nologin cca && \
     mkdir -p /opt/cca/modules && \
@@ -18,7 +16,7 @@ COPY cca /opt/cca/
 RUN set -x && \
     cd /root && \
     apt-get update && \
-    apt-get install -y --no-install-recommends \
+    env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             sudo \
             vim \
             opam \
